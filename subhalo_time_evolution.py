@@ -787,7 +787,10 @@ plt.show()
 Plotting to check how the virial mass over radius changes so that we can adjust the isothermal parameter accordingly
 '''
 fig, ax = plt.subplots()
-ax.plot(ages_rvir, central_gr_m200 / central_r200)
+v0 = np.sqrt(4.3e-6 * central_gr_m200 / central_r200)
+ax.plot(ages_rvir, v0, 'k-')
+ax.set_xlabel('Age (Gyr)')
+ax.set_ylabel(r'$V_0$ (km/s)')
 plt.show()
 
 

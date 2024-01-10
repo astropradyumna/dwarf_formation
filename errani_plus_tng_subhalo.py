@@ -126,14 +126,14 @@ class Subhalo(TNG_Subhalo):
         temp_tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = ['SnapNum', 'SubfindID'], onlyMDB = True)
         sfid_99 = temp_tree['SubfindID'][0] #FIXME: This only works for a surviving subhalo
         self.tree = il.sublink.loadTree(basePath, 99, sfid_99, fields = fields, onlyMPB = True)
-        
+
         self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
         self.torb = None 
         self.rperi = None 
         self.rapo = None 
         
         assert len(temp_tree) <= 100, 'Probably getting merged, you are yet to write the code' #This is probably getting merged
-        self.mstar = max(self.tree['SubhaloMassType'][:, 4]) * 1e10 / h #This is the stellar mass at infall
+        self.mstar = max(self.tree['SubhaloMassType'][:, 4][self.tree['SnapNum'] > self.snap]) * 1e10 / h #This is the maximum stellar mass at infall
 
     def get_infall_properties(self):
         '''

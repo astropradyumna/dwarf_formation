@@ -218,7 +218,7 @@ for ix in tqdm(range(len(snap_if_ar))):
     subh_tinf_ar = np.append(subh_tinf_ar, all_ages[snap_if_ar[ix]])
     fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel']
     subh_m200_ar = np.append(subh_m200_ar, subh.get_m200(where = int(snap_if_ar[ix] - 1))) #Append only when there are no errors
-    frem = subh.evolve(t, V0 = 978.59) #FIXME: Some orbits are not unbound as galpy reports
+    frem = subh.evolve(t, V0 = 800) #FIXME: Some orbits are not unbound as galpy reports
     frem_tng = subh.get_tng_values()[2]/subh.mmx0
     frem_tng_ar = np.append(frem_tng_ar, frem_tng)
     subh_fstar_model_ar = np.append(subh_fstar_model_ar, subh.get_mstar_model(frem = frem)/subh.mstar)
@@ -278,8 +278,8 @@ pdf_file = outpath + "orbits_tng50_more1e9msun_epts.pdf"
 pdf_pages = PdfPages(pdf_file)
 
 
-for ix in tqdm(range(len(snap_if_ar))):
-# for ix in tqdm([30, 49, 56, 68, 84, 85, 89, 95]):
+# for ix in tqdm(range(len(snap_if_ar))):
+for ix in tqdm([30, 49, 56, 68, 84, 85, 89, 95]):
     '''
     This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
     ''' 
@@ -290,8 +290,8 @@ for ix in tqdm(range(len(snap_if_ar))):
         pass
     subh.plot_orbit_comprehensive(merged = False)
     plt.tight_layout()
-    pdf_pages.savefig()
-    # plt.show()
+    # pdf_pages.savefig()
+    plt.show()
     plt.close()   
 
     
