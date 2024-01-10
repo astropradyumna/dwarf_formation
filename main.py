@@ -291,7 +291,7 @@ for ix in tqdm(range(len(snap_if_ar))):
     subh.plot_orbit_comprehensive(merged = False)
     plt.tight_layout()
     pdf_pages.savefig()
-    plt.show()
+    # plt.show()
     plt.close()   
 
     

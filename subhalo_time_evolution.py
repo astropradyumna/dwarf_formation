@@ -712,27 +712,27 @@ This loop runs over all the subhalos that are in the merger file
 This part is for plotting the velocities and the energy; uses the plot_orbit_comprehensive function
 '''
 
-for ix in tqdm(range(len(sfid_if_ar))):
-    '''
-    this loop runs over all the subhalos that are in the subeset file
-    Plots all the orbits along with velocities
-    '''
-    # print(ix)
-    fig = plt.figure(figsize=(15, 6))
-    gs = gridspec.GridSpec(2, 3, width_ratios=[3, 1.5, 1.5]) #Generating one big image to the left and four small images to the right, from ChatGPT
+# for ix in tqdm(range(len(sfid_if_ar))):
+#     '''
+#     this loop runs over all the subhalos that are in the subeset file
+#     Plots all the orbits along with velocities
+#     '''
+#     # print(ix)
+#     fig = plt.figure(figsize=(15, 6))
+#     gs = gridspec.GridSpec(2, 3, width_ratios=[3, 1.5, 1.5]) #Generating one big image to the left and four small images to the right, from ChatGPT
 
-    ax_big = plt.subplot(gs[:, 0])
-    ax_sub1 = plt.subplot(gs[0, 1])
-    ax_sub2 = plt.subplot(gs[0, 2])
-    ax_sub3 = plt.subplot(gs[1, 1])
-    ax_sub4 = plt.subplot(gs[1, 2])
-    plot_orbit_comprehensive(snap_if_ar[ix], sfid_if_ar[ix], [ax_big, ax_sub1, ax_sub2, ax_sub3, ax_sub4], merged = False)
-    plt.tight_layout()
-    pdf_pages.savefig()
-    # plt.show()
-    plt.close()
+#     ax_big = plt.subplot(gs[:, 0])
+#     ax_sub1 = plt.subplot(gs[0, 1])
+#     ax_sub2 = plt.subplot(gs[0, 2])
+#     ax_sub3 = plt.subplot(gs[1, 1])
+#     ax_sub4 = plt.subplot(gs[1, 2])
+#     plot_orbit_comprehensive(snap_if_ar[ix], sfid_if_ar[ix], [ax_big, ax_sub1, ax_sub2, ax_sub3, ax_sub4], merged = False)
+#     plt.tight_layout()
+#     pdf_pages.savefig()
+#     # plt.show()
+#     plt.close()
 
-pdf_pages.close()
+# pdf_pages.close()
 
 # fig = plt.figure(figsize=(15, 6))
 # gs = gridspec.GridSpec(2, 3, width_ratios=[3, 1.5, 1.5]) #Generating one big image to the left and four small images to the right, from ChatGPT
@@ -780,7 +780,16 @@ plt.xscale('log')
 plt.legend()
 plt.tight_layout()
 plt.show()
+
 '''
+
+'''
+Plotting to check how the virial mass over radius changes so that we can adjust the isothermal parameter accordingly
+'''
+fig, ax = plt.subplots()
+ax.plot(ages_rvir, central_gr_m200 / central_r200)
+plt.show()
+
 
 
 # Code below is rewritten because it is getting too complicated
