@@ -106,7 +106,7 @@ l10rbyrmx0_1by8_spl = UnivariateSpline(l10mmxbymmx0_1by8, l10rbyrmx0_1by8, k = 3
 l10rbyrmx0_1by16_spl = UnivariateSpline(l10mmxbymmx0_1by16, l10rbyrmx0_1by16, k = 3, s = 0.5)
 
 '''
-Following is the dataset for the cd values that have been digitized
+Following is the dataset for the vd values that have been digitized
 '''
 '''
 This part for importing data from the csv files
@@ -411,7 +411,7 @@ def get_mxbymx0(rmxbyrmx0):
     return (rmxbyrmx0*get_vmxbyvmx0(rmxbyrmx0)**2)
 
 def get_rmxbyrmx0(mxbymx0_reqd):
-    mxbymx0_reqd = np.array(mxbymx0_reqd)
+    # mxbymx0_reqd = np.array(mxbymx0_reqd)
     if isinstance(mxbymx0_reqd, np.ndarray):
         rmxbyrmx0_ar = np.zeros(0)
         for mfrac in mxbymx0_reqd:

@@ -12,7 +12,7 @@ from orbit_calculator_preamble import *
 from galpy.potential import NFWPotential, TimeDependentAmplitudeWrapperPotential
 from galpy.orbit import Orbit
 from astropy import units as u
-from testing_errani import get_rot_curve, get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0
+from testing_errani import get_rot_curve, get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0, l10rbyrmx0_1by4_spl,l10rbyrmx0_1by2_spl, l10rbyrmx0_1by8_spl, l10rbyrmx0_1by16_spl, l10vbyvmx0_1by2_spl, l10vbyvmx0_1by4_spl, l10vbyvmx0_1by8_spl, l10vbyvmx0_1by16_spl
 from tng_subhalo_and_halo import TNG_Subhalo
 from matplotlib import gridspec
 
@@ -402,17 +402,39 @@ class Subhalo(TNG_Subhalo):
         # print(closest_value)
         return closest_value
 
-    def get_mstar_model(self, tevol = None, frem = None): #FIXME: The fraction rh0byrmx0 has to be accounted for
+    def get_starprops_model(self, tevol = None, frem = None): #FIXME: The fraction rh0byrmx0 has to be accounted for
         '''
-        This function calculates the stellar mass from the model at a given time from the 
+        This function calculates the stellar mass, half light radius and the velocity dispersion from the model at a given time from the remnant fraction 
+        EITHER using tevol or using frem. Raises an error if both values are provided
+
+        FIXME: Update the name whenever possible
         '''
         rh0byrmx0 = self.get_rh0byrmx0()
-        if tevol is not None:
-            frem = self.evolve(tevol, V0 = 978.59) #FIXME: This needs to be updated for other halos
-            mstar_now = get_LbyL0(frem, rh0byrmx0) * self.mstar
-        if frem is not None:
-            mstar_now = get_LbyL0(frem, rh0byrmx0) * self.mstar
-        return mstar_now
+        if frem is not None and tevol is not None:
+            frem_from_tevol = self.evolve(tevol, V0 = 800)
+            assert np.isclose(frem, frem_from_tevol), 'The input provided to get_mstar_total looks wrong'   
+        if tevol is not None and frem is None:
+            frem = self.evolve(tevol, V0 = 800) #FIXME: This needs to be updated for other halos
+           
+        mstar_now = get_LbyL0(frem, rh0byrmx0) * self.mstar
+        rh0byrmx0 = self.get_rh0byrmx0()
+        if rh0byrmx0 == 0.25:
+            rh_now = 10 ** (l10rbyrmx0_1by4_spl(np.log10(frem))) * self.rmx0
+            vd_now = 10 ** (l10vbyvmx0_1by4_spl(np.log10(frem))) * self.vmx0
+        elif rh0byrmx0 == 0.125:
+            rh_now = 10 ** (l10rbyrmx0_1by8_spl(np.log10(frem))) * self.rmx0
+            vd_now = 10 ** (l10vbyvmx0_1by8_spl(np.log10(frem))) * self.vmx0
+        elif rh0byrmx0 == 0.5:
+            rh_now = 10 ** (l10rbyrmx0_1by2_spl(np.log10(frem))) * self.rmx0
+            vd_now = 10 ** (l10vbyvmx0_1by2_spl(np.log10(frem))) * self.vmx0
+        elif rh0byrmx0 == 0.0625:
+            rh_now = 10 ** (l10rbyrmx0_1by16_spl(np.log10(frem))) * self.rmx0
+            vd_now = 10 ** (l10vbyvmx0_1by16_spl(np.log10(frem))) * self.vmx0
+        
+
+        return mstar_now, rh_now, vd_now
+    
+    
 
 
     def plot_orbit_comprehensive(self, merged, when_te = 'last', show = False):
@@ -429,16 +451,18 @@ class Subhalo(TNG_Subhalo):
         Returns None because this is only a plotting routine
         ''' 
 
-        fig = plt.figure(figsize=(10, 6))
-        gs = gridspec.GridSpec(2, 2, width_ratios=[2, 1]) #Generating one big image to the left and four small images to the right, from ChatGPT
-        ax = plt.subplot(gs[:, 0])
-        ax_sub1 = plt.subplot(gs[0, 1]) #For energy
-        ax_sub2 = plt.subplot(gs[1, 1]) #For masses
+        fig = plt.figure(figsize=(15, 6))
+        gs = gridspec.GridSpec(2, 3, width_ratios=[3, 1.5, 1.5]) #Generating one big image to the left and four small images to the right, from ChatGPT
+        ax_sub2 = plt.subplot(gs[:, 0])
+        ax = plt.subplot(gs[0, 1]) #For energy
+        ax_sub1 = plt.subplot(gs[1, 1]) #For masses
+        ax_sub3 = plt.subplot(gs[0, 2]) #For radii
+        ax_sub4 = plt.subplot(gs[1, 2]) #For velocity dispersion
 
 
         snap = self.snap
         sfid = self.sfid
-        fields = ['SubhaloGrNr', 'GroupFirstSub', 'SnapNum', 'SubfindID', 'SubhaloPos', 'SubhaloVel', 'SubhaloMassType', 'SubhaloMassInRadType'] #These are the fields that will be taken for the subhalos
+        fields = ['SubhaloGrNr', 'GroupFirstSub', 'SnapNum', 'SubfindID', 'SubhaloPos', 'SubhaloVel', 'SubhaloMassType', 'SubhaloMassInRadType', 'SubhaloHalfmassRadType', 'SubhaloVelDisp', 'SubhaloMassInHalfRadType'] #These are the fields that will be taken for the subhalos
         if not merged:
             tree = il.sublink.loadTree(basePath, snap, sfid, fields = fields, onlyMDB = True) #This only works for surviving subhalos
         else: #If it merges
@@ -590,8 +614,8 @@ class Subhalo(TNG_Subhalo):
         ax.plot(np.flip(subh_ages), np.flip(subh_dist), lw = 1, color = 'blue', label = r'Orbit')
         ax.plot(all_ages[central_snaps[central_ixs]], central_r200[central_ixs], c = 'gray', ls = '--',label = r'$R_{200}$', lw = 0.3)
         ax.plot(t_gp, dist_gp, lw = 0.5, alpha = 0.8, label = 'galpy orbit', color = 'r')
-        ax.set_ylabel('Cluster-centric distance (kpc)')
-        ax.set_xlabel('Age (Gyr)')
+        ax.set_ylabel('Distance (kpc)')
+        ax.set_xlabel('Time (Gyr)')
         ax.set_xlim(left = 0.9*all_ages[common_snaps[0]], right = 1.1*all_ages[99])
         
         subh_max_mstar = round(np.log10(max(subh_mstar)), 2)
@@ -607,7 +631,7 @@ class Subhalo(TNG_Subhalo):
 
         # plt.legend()
         # ax.legend(fontsize = 10, loc='upper left', bbox_to_anchor=(1, 1))
-        ax.legend(fontsize = 8)
+        ax.legend(fontsize = 6)
 
         
 
@@ -643,7 +667,7 @@ class Subhalo(TNG_Subhalo):
         ax_sub1.plot(np.flip(subh_ages), np.flip(ke_ar + pe_ar), color = 'blue', ls = '-', label = 'TE')
         ax_sub1.axhline(0, ls = '--', color = 'gray', alpha = 0.2)
         ax_sub1.set_xlim(left = 0.9*all_ages[common_snaps[0]], right = 1.1*all_ages[99])
-        ax_sub1.set_xlabel('Age (Gyr)')
+        ax_sub1.set_xlabel('Time (Gyr)')
         ax_sub1.set_ylabel(r'$E \, \rm{(km/s)^2}$')
         ax_sub1.legend(fontsize = 6)
 
@@ -655,20 +679,37 @@ class Subhalo(TNG_Subhalo):
 
         totMdm = tree['SubhaloMassType'][:, 1][subh_ixs] * 1e10/h #This would be such that the snaps are in decreasing order and also after the infall only
         totMstar = tree['SubhaloMassType'][:, 4][subh_ixs] * 1e10/h #This would be such that the snaps are in decreasing order and also after the infall only
-        
-        
+        rh_tng = tree['SubhaloHalfmassRadType'][:, 4][subh_ixs]/h/(np.ones(len(subh_ixs)) + all_redshifts[common_snaps_des] )
+        vd_tng = tree['SubhaloVelDisp'][subh_ixs] #this is in km/s
 
-        if self.torb != None:
+        if self.torb != None: #this is for the model part
             max_time = 13.8 - subh_ages[-1]
             tpl = np.linspace(0, max_time, 25) #This is for plotting the results from Errani models
             mstar_model = np.zeros(0) #This is the stellar mass that we obtain from the model
             mmx_model = np.zeros(0) #This is the Mmx that the model gives
+            rmx_model = np.zeros(0)
+            vmx_model = np.zeros(0)    
+
+            rh_model = np.zeros(0) #The projected half light radius from the model
+            vd_model = np.zeros(0) #The projected los velocity dispersion from the model
             for tevol in tpl:
-                frem = self.evolve(tevol, 978) #This is Mmx/Mmx0 from the model
-                mstar_model = np.append(mstar_model, self.get_mstar_model(tevol, frem) )
+                frem = self.evolve(tevol, 800) #This is Mmx/Mmx0 from the model
+                mstar, rh, vd = self.get_starprops_model(tevol, frem)
+                mstar_model = np.append(mstar_model, mstar)
+                rh_model = np.append(rh_model, rh)
+                vd_model = np.append(vd_model, vd)
                 mmx_model = np.append(mmx_model, frem * self.mmx0)
+                # print(type(np.asscalar(frem)))
+                rmx_model = np.append(rmx_model, get_rmxbyrmx0(np.asscalar(frem)) * self.rmx0)
+                vmx_model = np.append(vmx_model, get_vmxbyvmx0(float(rmx_model[-1]/self.rmx0)) * self.vmx0)
             ax_sub2.plot(tpl + all_ages[common_snaps[0]], np.log10(mstar_model), 'r--', label = 'model stellar mass')
             ax_sub2.plot(tpl + all_ages[common_snaps[0]], np.log10(mmx_model), 'r-', label = 'model Mmx')
+
+            ax_sub3.plot(tpl + all_ages[common_snaps[0]], rh_model, 'r--', label = r'$R_h$ model')
+            ax_sub3.plot(tpl + all_ages[common_snaps[0]], rmx_model, 'r-', label = r'$r_{\rm{mx}}$ model')
+
+            ax_sub4.plot(tpl + all_ages[common_snaps[0]], vd_model, 'r--', label = r'$\sigma$ model')
+            ax_sub4.plot(tpl + all_ages[common_snaps[0]], vmx_model, 'r-', label = r'$v_{\rm{mx}}$ model')
         
         lab_var = True
         for ix in range(len(common_snaps)):
@@ -678,22 +719,40 @@ class Subhalo(TNG_Subhalo):
             filename = filepath + 'cutout_files/cutout_'+str(shid)+'_'+str(snap)+'.hdf5'
              #This is just to set the label of the 
             if os.path.exists(filename): 
-                mmx_here = self.get_rot_curve(where = int(snap))[2]
+                vmx_here, rmx_here, mmx_here = self.get_rot_curve(where = int(snap))
+                # print(vmx_here, rmx_here, mmx_here)
+                # print(f'vmx/vmx0 = {vmx_here/self.vmx0:.2f}')
+                # print(f'rmx/rmx0 = {rmx_here/self.rmx0:.2f}')
                 if lab_var:
-                    ax_sub2.plot(all_ages[snap], np.log10(mmx_here), 'bo', label = 'Mdm from TNG')
+                    ax_sub2.plot(all_ages[snap], np.log10(mmx_here), 'bo', label = r'$M_{\rm{mx}}$ from TNG')
+                    ax_sub3.plot(all_ages[snap], rmx_here, 'bo', label = r'$r_{\rm{mx}}$ from TNG')
+                    ax_sub4.plot(all_ages[snap], vmx_here, 'bo', label = r'$v_{\rm{mx}}$ from TNG')
                     lab_var = False
                 else:
                     ax_sub2.plot(all_ages[snap], np.log10(mmx_here), 'bo')
+                    ax_sub3.plot(all_ages[snap], rmx_here, 'bo')
+                    ax_sub4.plot(all_ages[snap], vmx_here, 'bo')
 
         # ax_sub2.plot(np.flip(subh_ages), np.flip(np.log10(Mdm)), 'b-', label = r'Dark mattter in $2R_h$')
-        # ax_sub2.plot(np.flip(subh_ages), np.flip(np.log10(Mstar)), 'b--', label = r'Stars in $2R_h$')
-        # ax_sub2.plot(np.flip(subh_ages), np.flip(np.log10(totMdm)), 'g-', label = r'Dark mattter total')
+        # ax_sub2.plot(np.flip(subh_ages), np.flip(np.log10(Mstar)), color = 'magenta', ls = '--', label = r'Stars in $R_h$')
+        ax_sub2.plot(np.flip(subh_ages), np.flip(np.log10(totMdm)), color = 'chocolate', label = r'Dark mattter total')
         ax_sub2.plot(np.flip(subh_ages), np.flip(np.log10(totMstar)), 'b--', label = r'Stars in total')
         
         ax_sub2.set_ylabel(r'Mass ($\log M_\odot$)')
         # ax_sub2.set_yscale('log')
         ax_sub2.set_xlabel(r'Time (Gyr)')
         ax_sub2.legend(fontsize = 6)
+
+        ax_sub3.plot(np.flip(subh_ages), np.flip(rh_tng/np.sqrt(2)), 'b-', label = 'TNG')
+        ax_sub3.set_yscale('log')
+        ax_sub3.set_ylabel(r'$R_h$ or $r_{\rm{mx}}$ (kpc)')
+        ax_sub3.set_xlabel('Time (Gyr)')
+        ax_sub3.legend(fontsize = 6)
+
+        ax_sub4.plot(np.flip(subh_ages), np.flip(vd_tng), 'b-', label = 'TNG')
+        ax_sub4.set_ylabel(r'$\sigma$ or $v_{\rm{mx}}$ (km/s)')
+        ax_sub4.set_xlabel('Time (Gyr)')
+        ax_sub4.legend(fontsize = 6)
 
         if show == True: plt.show()
 

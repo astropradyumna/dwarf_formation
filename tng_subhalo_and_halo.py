@@ -75,6 +75,16 @@ class TNG_Subhalo():
         mstar = mstar_tree[snap_wanted == self.tree['SnapNum']]
         return mstar
     
+    def get_mdm(self, where, how = 'total'):
+        '''
+        This is to get the dark matter mass from the TNG
+        '''
+        snap_wanted = self.__where_to_snap(where)
+        if how == '2rh': mstar_tree = self.tree['SubhaloMassInRadType'][:, 1]*1e10/h
+        elif how == 'total': mstar_tree = self.tree['SubhaloMassType'][:, 1]*1e10/h
+        mstar = mstar_tree[snap_wanted == self.tree['SnapNum']]
+        return mstar
+    
 
     def get_rh(self, where):
         '''
@@ -236,7 +246,7 @@ class TNG_Subhalo():
             return cg, rad_plot_cont, mass_arr_plot_cont, dm_mass_arr_cont, star_mass_arr_cont, np.zeros(len(rad_plot_cont))
 
 
-    def get_rot_curve(self, where = None):
+    def get_rot_curve(self, where = None, plot = False):
         '''
         Plots the rotation curve 
 
@@ -285,18 +295,19 @@ class TNG_Subhalo():
         rmx_subh = rad_plot_cont[ix_max_vel]
         Mmx_subh = mass_dm*len(dm_rad[dm_rad< rmx_subh]) 
 
-
-        # ax.plot(rad_plot_cont[np.argmax(dm_vel_plot_cont)], max(dm_vel_plot_cont), 'go')
-
-        # ax.plot(rad_plot_cont, circ_vel_plot_cont, 'k', label='Total Mass')
-        # ax.plot(rad_plot_cont, dm_vel_plot_cont, 'k--', label='DM')
-        # if cg == 1: ax.plot(rad_plot_cont, gas_vel_plot_cont, 'b', label='Gas')
-        # ax.plot(rad_plot_cont, star_vel_plot_cont, 'r', label='Stars')
-        # ax.set_xlim(0, min(max(dm_rad), 2.5*rmx_subh))
-        # ax.set_xlabel(r'Radius $[kpc]$')
-        # ax.set_ylabel(r'Circular Velocity $[km/s]$')
-        # ax.legend(fontsize=12)
-        # ax.set_title('Rotation Curve for subhalo ID = '+str(shid)+' at z = '+str(round(z, 2)))
+        if plot:
+            fig, ax = plt.subplots()
+            ax.plot(rad_plot_cont[np.argmax(dm_vel_plot_cont)], max(dm_vel_plot_cont), 'go')
+            ax.plot(rad_plot_cont, circ_vel_plot_cont, 'k', label='Total Mass')
+            ax.plot(rad_plot_cont, dm_vel_plot_cont, 'k--', label='DM')
+            if cg == 1: ax.plot(rad_plot_cont, gas_vel_plot_cont, 'b', label='Gas')
+            ax.plot(rad_plot_cont, star_vel_plot_cont, 'r', label='Stars')
+            ax.set_xlim(0, min(max(dm_rad), 2.5*rmx_subh))
+            ax.set_xlabel(r'Radius $[kpc]$')
+            ax.set_ylabel(r'Circular Velocity $[km/s]$')
+            ax.legend(fontsize=12)
+            ax.set_title('Rotation Curve for subhalo ID = '+str(shid)+' at z = '+str(round(z, 2)))
+            plt.tight_layout()
 
         return vmx_subh, rmx_subh, Mmx_subh
 
