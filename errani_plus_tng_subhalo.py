@@ -122,7 +122,8 @@ class Subhalo(TNG_Subhalo):
         self.sfid = sfid
         self.snap = snap 
 
-        fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SubfindID', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel', 'SubhaloHalfmassRadType', 'SubhaloMassType']
+        fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SubfindID', 'SnapNum', 'GroupNsubs', 
+        'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel', 'SubhaloHalfmassRadType', 'SubhaloMassType', 'SubhaloLenType']
         temp_tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = ['SnapNum', 'SubfindID'], onlyMDB = True)
         sfid_99 = temp_tree['SubfindID'][0] #FIXME: This only works for a surviving subhalo
         self.tree = il.sublink.loadTree(basePath, 99, sfid_99, fields = fields, onlyMPB = True)
@@ -133,7 +134,7 @@ class Subhalo(TNG_Subhalo):
         self.rapo = None 
         
         assert len(temp_tree) <= 100, 'Probably getting merged, you are yet to write the code' #This is probably getting merged
-        self.mstar = max(self.tree['SubhaloMassType'][:, 4][self.tree['SnapNum'] > self.snap]) * 1e10 / h #This is the maximum stellar mass at infall
+        self.mstar = max(self.tree['SubhaloMassType'][:, 4][self.tree['SnapNum'] >= self.snap]) * 1e10 / h #This is the maximum stellar mass at infall
 
     def get_infall_properties(self):
         '''
@@ -315,11 +316,13 @@ class Subhalo(TNG_Subhalo):
         Args:
         t (float): The time for which evolution must take place
         V0: This is a parameter of the host whn paramterized using the isothermal profile
+        
         '''
         rmx0 = self.rmx0
         vmx0 = self.vmx0
         rperi = self.rperi
         rapo = self.rapo
+        
 
         if any([rmx0, vmx0, rperi, rapo]) == None:
             raise ValueError('Some of the required values are None, recheck if they have been updated in the Object')
@@ -743,13 +746,13 @@ class Subhalo(TNG_Subhalo):
         ax_sub2.set_xlabel(r'Time (Gyr)')
         ax_sub2.legend(fontsize = 6)
 
-        ax_sub3.plot(np.flip(subh_ages), np.flip(rh_tng/np.sqrt(2)), 'b-', label = 'TNG')
+        ax_sub3.plot(np.flip(subh_ages), np.flip(rh_tng/np.sqrt(2)), 'b--', label = r'$R_h$ TNG')
         ax_sub3.set_yscale('log')
         ax_sub3.set_ylabel(r'$R_h$ or $r_{\rm{mx}}$ (kpc)')
         ax_sub3.set_xlabel('Time (Gyr)')
         ax_sub3.legend(fontsize = 6)
 
-        ax_sub4.plot(np.flip(subh_ages), np.flip(vd_tng), 'b-', label = 'TNG')
+        ax_sub4.plot(np.flip(subh_ages), np.flip(vd_tng), 'b--', label = r'$\sigma$ TNG')
         ax_sub4.set_ylabel(r'$\sigma$ or $v_{\rm{mx}}$ (km/s)')
         ax_sub4.set_xlabel('Time (Gyr)')
         ax_sub4.legend(fontsize = 6)

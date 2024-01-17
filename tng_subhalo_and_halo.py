@@ -34,7 +34,8 @@ class TNG_Subhalo():
     def __init__(self, sfid, snap):
         self.sfid = sfid
         self.snap = snap 
-        fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel', 'SubhaloHalfmassRadType', 'SubhaloMassType']
+        fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 
+        'Group_M_Crit200', 'SubhaloVel', 'SubhaloHalfmassRadType', 'SubhaloMassType', 'SubhaloLenType']
         temp_tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = ['SnapNum', 'SubfindID'], onlyMDB = True)
         sfid_99 = temp_tree['SubfindID'][0] #FIXME: This only works for a surviving subhalo
         assert len(temp_tree) <= 100, 'Probably getting merged, you are yet to write the code' #This is probably getting merged
@@ -48,8 +49,13 @@ class TNG_Subhalo():
         if where == 99 or where == 'last':
             snap_wanted = 99
         if where == 'max':
+            snaps_after_infall = np.flip(np.arange(self.snap, 99)) #These are the snapshots after infall
+            snap_arr = self.tree['SnapNum']
             mstar_ar = self.tree['SubhaloMassInRadType'][:, 4] * 1e10/h
-            snap_wanted = self.tree['SnapNum'][np.argmax(mstar_ar)]
+            ms_after_infall = np.zeros(0)
+            for s in snaps_after_infall:
+                ms_after_infall = np.append(ms_after_infall, mstar_ar[snap_arr == s])     
+            snap_wanted = snaps_after_infall[np.argmax(ms_after_infall)]
         if isinstance(where, int):
             if 0<= where <= 99:
                 snap_wanted = where 
@@ -95,7 +101,15 @@ class TNG_Subhalo():
         Rh_tree = self.tree['SubhaloHalfmassRadType'][:, 4]/(1 + all_redshifts[snap_wanted])/h
         rh = Rh_tree[snap_wanted == self.tree['SnapNum']]
         return rh
-    
+
+    def get_len(self, where, which):
+        '''
+        This function is to get the number of particles 
+        '''
+        snap_wanted = self.__where_to_snap(where)
+        if which == 'dm': len_par = self.tree['SubhaloLenType'][:, 1][snap_wanted == self.tree['SnapNum']]
+        elif which == 'stars': len_par = self.tree['SubhaloLenType'][:,4][snap_wanted == self.tree['SnapNum']]
+        return len_par
     
     def get(self, path, params=None):
     # make HTTP GET request to path
