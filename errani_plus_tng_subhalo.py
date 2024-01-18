@@ -14,6 +14,7 @@ from galpy.orbit import Orbit
 from astropy import units as u
 from testing_errani import get_rot_curve, get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0, l10rbyrmx0_1by4_spl,l10rbyrmx0_1by2_spl, l10rbyrmx0_1by8_spl, l10rbyrmx0_1by16_spl, l10vbyvmx0_1by2_spl, l10vbyvmx0_1by4_spl, l10vbyvmx0_1by8_spl, l10vbyvmx0_1by16_spl
 from tng_subhalo_and_halo import TNG_Subhalo
+from errani_subhalo import ErraniSubhalo
 from matplotlib import gridspec
 
 
@@ -105,6 +106,7 @@ central_gr_m200 = central_tree['Group_M_Crit200']*1e10/h #This is the M200 of th
 central_vx = central_tree['SubhaloVel'][:, 0] #km/s
 central_vy = central_tree['SubhaloVel'][:, 1]
 central_vz = central_tree['SubhaloVel'][:, 2]
+central_v0 = np.sqrt(4.3e-6 * central_gr_m200 / central_r200) #this is the isothermal speed of the FoF halo for all snapshots
 
 
 
@@ -307,77 +309,23 @@ class Subhalo(TNG_Subhalo):
         self.rperi = rperi
 
         return float(all_ages[99] - all_ages[common_snaps[0]])
-    
 
-    def evolve(self, tevol, V0):
-        '''
-        This is a function that evolves the subhalo using Errani models
 
-        Args:
-        t (float): The time for which evolution must take place
-        V0: This is a parameter of the host whn paramterized using the isothermal profile
-        
-        '''
-        rmx0 = self.rmx0
-        vmx0 = self.vmx0
-        rperi = self.rperi
-        rapo = self.rapo
-        
+    def get_frem(self, tinf, tevol):
+        print(f'self.get_rh0byrmx0 = {self.get_rh0byrmx0()}')
+        errani_start_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, self.get_rh0byrmx0(), self.vmx0, self.rmx0, self.mmx0, self.mstar)
+        if tinf > 2:
+            frem =  errani_start_subh.evolve(tevol, V0 = central_v0[0])[2]/self.mmx0 #just assume a constant V0
+        else:
+            pass
+            #first run for the first half,
+            #then use that output for the input of second half
+            # errani_last_subh = ErraniSubalo()
+            #evolve the last subh again
+            #get the required values out of this
+            #do not use Mmx/Mmx0 to calculate anything because it is nomore a single evolution
 
-        if any([rmx0, vmx0, rperi, rapo]) == None:
-            raise ValueError('Some of the required values are None, recheck if they have been updated in the Object')
 
-        tmx0 = 2 * np.pi *  ( rmx0 / vmx0 ) * 3.086e16 * 3.17098e-8 * 1e-9 #This would be in Gyrs assuming r to be in kpc and v to be in km/s
-        tperi = 2 * np.pi * ( rperi / V0) * 3.086e16 * 3.17098e-8 * 1e-9 #This is the tperi that is calculated in Errani+21
-        
-        x = rapo / rperi
-        fecc = (2 * x / (x + 1)) ** 3.2
-
-        torb = self.torb* fecc #Gyr, this is after accounting for the ellipticity of the orbit
-        
-        def get_tmx_t(t):
-            '''
-            This is the Tmx value at a given time t. 
-            We can calculate the real time t given a Tmx (for a given value of Mmx)
-            '''
-            
-            if tmx0/tperi >= 2/3: #Heavy mass loss regime
-                tasy = 0.22 * tperi
-                y0 = (tmx0 - tasy) / tperi
-                tau_asy = 0.65 * torb
-                tau = tau_asy / y0 
-                eta = 1 - np.exp( - 2.5 * y0 )
-                inner_term = 1 + (t/tau)**eta 
-                tmx = tasy + tperi * y0 * (inner_term)**(-1/eta)
-            else: #modest mass loss regime
-                tasyp =  ( tmx0 / (1 + (tmx0/tperi))**2.2)
-                etap = 0.67
-                # yp = (tmx - tasyp)/tperi 
-                y0p = (tmx0 - tasyp)/tperi 
-                taup = torb * 1.2 * (tmx0 / tperi)**(-0.5)
-                inner_term = 1 + (t/taup)**etap
-                tmx = tasyp + tperi * y0p * (inner_term)**(-1/etap)
-            return tmx
-        
-        def get_tmx(rmx):
-            ''' 
-            This is to calculate the Tmx value from rmx and vmx
-            '''
-            vmx = vmx0 * get_vmxbyvmx0(rmx/rmx0)
-            return 2 * np.pi * rmx / vmx * 3.086e16 * 3.17098e-8 * 1e-9 
-        
-        
-        def get_time(rmx):
-            '''
-            I want to obtain the time for a given value of rmx
-            '''
-            t = fsolve(lambda t: get_tmx_t(t) - get_tmx(rmx), 2)[0]
-            return t
-        
-        tmx = get_tmx_t(tevol)
-        rmx = fsolve(lambda rmx: get_tmx(rmx) - tmx, rmx0/100)[0]
-        frem = get_mxbymx0(rmx/rmx0) 
-        # print(f'frem = {100 * frem:.2f} % ')
         
         return frem
     
@@ -396,7 +344,7 @@ class Subhalo(TNG_Subhalo):
 
     def get_rh0byrmx0(self):
         '''
-        This is an internal function to calculate the initial rh0burmx0 for the subhalo
+        This is a function to calculate the initial rh0burmx0 for the subhalo
         '''
         values = [1/2, 1/4, 1/8, 1/16]
         Rh0 = self.get_rh(where = int(self.snap))/np.sqrt(2)
@@ -414,10 +362,10 @@ class Subhalo(TNG_Subhalo):
         '''
         rh0byrmx0 = self.get_rh0byrmx0()
         if frem is not None and tevol is not None:
-            frem_from_tevol = self.evolve(tevol, V0 = 800)
+            frem_from_tevol = self.get_frem(float(all_ages[self.snap]), tevol)
             assert np.isclose(frem, frem_from_tevol), 'The input provided to get_mstar_total looks wrong'   
         if tevol is not None and frem is None:
-            frem = self.evolve(tevol, V0 = 800) #FIXME: This needs to be updated for other halos
+            frem = self.get_frem(float(all_ages[self.snap]), tevol) #FIXME: This needs to be updated for other halos
            
         mstar_now = get_LbyL0(frem, rh0byrmx0) * self.mstar
         rh0byrmx0 = self.get_rh0byrmx0()
@@ -696,7 +644,7 @@ class Subhalo(TNG_Subhalo):
             rh_model = np.zeros(0) #The projected half light radius from the model
             vd_model = np.zeros(0) #The projected los velocity dispersion from the model
             for tevol in tpl:
-                frem = self.evolve(tevol, 800) #This is Mmx/Mmx0 from the model
+                frem = self.get_frem(float(all_ages[self.snap]), tevol) #This is Mmx/Mmx0 from the model
                 mstar, rh, vd = self.get_starprops_model(tevol, frem)
                 mstar_model = np.append(mstar_model, mstar)
                 rh_model = np.append(rh_model, rh)

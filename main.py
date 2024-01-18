@@ -235,7 +235,7 @@ for ix in tqdm(range(len(snap_if_ar))):
     This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
     '''
     
-    # if ix>2: break
+    # if ix>15: break
 
     subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix])
 
@@ -258,7 +258,7 @@ for ix in tqdm(range(len(snap_if_ar))):
     subh_tinf_ar = np.append(subh_tinf_ar, all_ages[snap_if_ar[ix]])
     fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel']
     subh_m200_ar = np.append(subh_m200_ar, subh.get_m200(where = int(snap_if_ar[ix] - 1))) #Append only when there are no errors
-    frem = subh.evolve(t, V0 = 800) #FIXME: Some orbits are not unbound as galpy reports
+    frem = subh.get_frem(float(all_ages[subh.snap]), t) #FIXME: Some orbits are not unbound as galpy reports
     frem_tng = subh.get_tng_values()[2]/subh.mmx0
     frem_tng_ar = np.append(frem_tng_ar, frem_tng)
     subh_mstar_model_ar = np.append(subh_mstar_model_ar, subh.get_starprops_model(frem = frem)[0])
