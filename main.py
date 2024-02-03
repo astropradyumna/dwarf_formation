@@ -14,7 +14,7 @@ import galpy
 import IPython
 import illustris_python as il
 from matplotlib.backends.backend_pdf import PdfPages
-from subhalo_profiles import ExponentialProfile
+from subhalo_profiles import ExponentialProfile, NFWProfile
 import warnings
 
 # Suppress the lzma module warning
@@ -114,7 +114,11 @@ Data import ends here
 '''
 
 IPython.embed()
-
+"""
+===================================================================================
+SURVIVING SUBHALOS
+===================================================================================
+"""
 
 '''
 Plot 0.1: This is to plot all the half mass radius of stars according to TNG, and the one assumed in the model
@@ -127,20 +131,530 @@ for ix in tqdm(range(len(snap_if_ar))):
     '''
     This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
     ''' 
-    subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix])
+    subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99 )
     # subh.get_infall_properties()
 
     Rh_tng_max = subh.get_rh(where = 'max')/np.sqrt(2)
     Rh_model = subh.get_rh0byrmx0() * subh.rmx0 #This is the assumption
-    if subh.get_rh0byrmx0() == 0.5:
-        print('Jai')
+    # if subh.get_rh0byrmx0() == 0.5:
+    #     print('Jai')
+    ax.plot(Rh_model/subh.rmx0, Rh_tng_max/subh.rmx0, 'ko', ms = 3.5)
+    # if ix in [30, 49, 56, 68, 84, 85, 89, 95]: 
+    #     ax.plot(Rh_model, Rh_tng_max, 'ro')
+    #     if ix == 30:ax.plot(Rh_model, Rh_tng_max, 'ro', label = r'Low $f_{\bigstar}$')
+    # elif ix in [83, 93, 94, 98, 100, 102, 103, 106]:
+    #     ax.plot(Rh_model, Rh_tng_max, 'bo')
+    #     if ix == 83: ax.plot(Rh_model, Rh_tng_max, 'bo', label = r'High $f_{\bigstar}$')
+
+ax.set_xlabel(r'$R_{\rm{h, inf}}/r_{\rm{mx0}}$ model (kpc)')
+ax.set_ylabel(r'$R_{\rm{h, max\, M_\bigstar}}/r_{\rm{mx0}}$ from TNG (kpc)')
+ax.set_xlim(0, 8)
+ax.set_ylim(0, 8)
+x_vals = np.array(ax.get_xlim())    
+ax.plot(x_vals, x_vals, 'k--', lw = 0.5)
+ax.legend(fontsize = 8)
+plt.tight_layout()
+plt.show()
+
+
+'''
+Plot 0.2: This is to plot the mass of the ones with no stellar mass remaining
+This is to compare with the exponential profile and test if it is a good enough approximation for the stellar profile
+'''
+pdf_file2 = outpath + "mass profiles_tng50_more1e9msun_tsah.pdf"
+pdf_pages2 = PdfPages(pdf_file2)
+
+for ix in tqdm(range(len(snap_if_ar))):
+# for ix in tqdm([30, 49, 56, 68, 84, 85, 89, 95]):
+# for ix in tqdm([17, 19]): # These are the indices which has too high rmx0 from the roation curve
+    subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99)
+    subh.get_mass_profiles(where = int(snap_if_ar[ix]), plot = True)
+    exp_check = ExponentialProfile(subh.get_mstar(where = 'max', how = 'total'), np.sqrt(2) * subh.get_rh0byrmx0() * subh.rmx0) #This is an instance to check the exponential profile
+    nfw_check = NFWProfile(rmx = subh.rmx0, vmx = subh.vmx0, z = subh.get_z(where = int(snap_if_ar[ix])))
+    
+    vmx, rmx, mmx = subh.get_mx_values(where = int(snap_if_ar[ix])) #this is from forcing the rotation curve to pass through the mass points
+    nfw_check2 = NFWProfile(rmx= rmx, vmx = vmx, z = subh.get_z(where = int(snap_if_ar[ix])))
+
+    left, right = plt.gca().get_xlim()
+    rpl = np.logspace(np.log10(left), np.log10(right), 100)
+    plt.plot(rpl, exp_check.mass(rpl), label = 'Expoential assumed', color = 'salmon', ls = '-.')
+    plt.plot(rpl, nfw_check.mass(rpl), label = 'NFW assumed from RC', color = 'gray', ls = '-.')
+    plt.plot(rpl, nfw_check2.mass(rpl), label = 'NFW assumed from pts', color = 'gray', ls = ':')
+    # plt.axvline(subh.get_rh(where = int(snap_if_ar[ix])), lw = 0.3, color = 'gray')
+    # plt.axvline(2 * subh.get_rh(where = int(snap_if_ar[ix])), lw = 0.3, color = 'turquoise')
+    plt.plot(subh.rmx0, subh.mmx0, 'ko', label = 'mx')
+    plt.legend(fontsize = 8)
+    plt.tight_layout()
+    pdf_pages2.savefig()
+    plt.show()
+    plt.close()
+
+pdf_pages2.close()
+
+
+'''
+Plot 0.3: This is to plot the rotation curve and see why rmx0 values are so less
+'''
+
+pdf_file3 = outpath + "rot_curves_tng50_more1e9msun_tsah.pdf"
+pdf_pages3 = PdfPages(pdf_file3)
+
+# for ix in tqdm([30, 49, 56, 68, 84, 85, 89, 95]):
+for ix in tqdm(range(len(snap_if_ar))):
+# for ix in tqdm([17, 19]): # These are the indices which has too high rmx0 from the roation curve
+    subh  = Subhalo(snap = int(snap_if_ar[ix]), sfid = int(sfid_if_ar[ix]), last_snap= 99)
+    print(subh.get_rot_curve(where = int(snap_if_ar[ix]), plot = True))
+    left, right = plt.gca().get_xlim()
+    # print(left, right)
+    rpl = np.logspace(-1, np.log10(right), 100)
+    nfw_check = NFWProfile(rmx = float(subh.rmx0), vmx = float(subh.vmx0), z = all_redshifts[snap_if_ar[ix]]) #This is from the rotation curve itself
+    vmx, rmx, mmx = subh.get_mx_values(where = int(snap_if_ar[ix])) #this is from forcing the rotation curve to pass through the mass points
+    nfw_check2 = NFWProfile(rmx= rmx, vmx = vmx, z = all_redshifts[snap_if_ar[ix]])
+    # print(nfw_check.velocity(rpl))
+    plt.plot(rpl, nfw_check.velocity(rpl), label = 'NFW assumed frm RC', color = 'gray', ls = '-.', zorder = 100)
+    plt.plot(rpl, nfw_check2.velocity(rpl), label = 'NFW assumed frm pts', color = 'gray', ls = ':', zorder = 100)
+    plt.plot(rmx, vmx, marker = 'o', color = 'gray')
+    # nfw_check.velocity(rpl)
+    # exp_check = ExponentialProfile(subh.get_mstar(where = 'max', how = 'total'), np.sqrt(2) * subh.get_rh0byrmx0() * subh.rmx0) #This is an instance to check the exponential profile
+    # left, right = plt.gca().get_xlim()
+    # rpl = np.logspace(np.log10(left), np.log10(right), 100)
+    # plt.plot(rpl, exp_check.mass(rpl), label = 'Expoential assumed', color = 'salmon', ls = ':')
+    plt.tight_layout()
+    plt.legend(fontsize = 8)
+    pdf_pages3.savefig()
+    plt.show()
+    plt.close()
+
+pdf_pages3.close()
+
+
+
+
+
+    
+
+
+# ======================================
+'''
+Thie big one, loop which evolves our subhalos
+'''
+ctr = 0
+skipped_ixs = np.zeros(0)
+frem_ar = np.zeros(0) #this is the remnant masss fraction from the SAM
+mmx_ar = np.zeros(0)
+frem_tng_ar = np.zeros(0)
+mmx_tng_ar = np.zeros(0)
+subh_m200_ar = np.zeros(0) #This is the virial mass at infall for the subhalos
+subh_mstar_99_ar = np.zeros(0) #stellar mass at z = 0 for the subhalos being considered
+subh_tinf_ar = np.zeros(0) #This is the array of infall times of the subhalo
+subh_fstar_model_ar = np.zeros(0) #This is the array of stellar mass fraction remaining in the model
+subh_fstar_tng_ar = np.zeros(0)
+subh_fstar_model_from_tngfrem_ar = np.zeros(0) #This is the array of stellar mass fraction that is remaining assuming Mmx/Mmx0 from TNG
+subh_mstar_model_from_tngfrem_ar = np.zeros(0) #This is the array of stellar mass that is remaining assuming Mmx/Mmx0 from TNG
+subh_mstar_model_ar = np.zeros(0) #this is the stellar mass remaining at the end for the model
+subh_mstar_tng_ar = np.zeros(0) #This is the stellar mass remaining at the end for TNG
+subh_parlen_99_ar = np.zeros(0) #This is the length of particles at z = 0
+subh_fbar_tng_ar = np.zeros(0) #This is the ratio of stars to dark matter in 2Rh for the subhalos at infall
+subh_fdm_ar = np.zeros(0) #This is the total remnant dark matter mass to test the Smith+16 paper results
+subh_id99_ar = np.zeros(0) #this is the array of SubfindIDs at z = 0 for the subhalos for labeling
+
+# Both the following indices are for the frem_ar, etc. (there are some subhalos that are missed for having an Unbound Orbit)
+ixs_low_mstar = np.zeros(0) #This is the list of indices of the subhalos that have low stellar mass than that in TNG
+ixs_high_mstar = np.zeros(0) #This is the list of indices which have high mstar in the model.
+ixs_unresol = np.zeros(0, dtype = int)
+subh_ixs_low_mstar = np.zeros(0, dtype = int) #This is the index in the total array 
+'''
+Run this loop for doing everything after evolution
+'''
+
+
+
+for ix in tqdm(range(len(snap_if_ar))):
+    '''
+    This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+    '''
+    
+    # if ix>15: break
+
+    subh  = Subhalo(snap = int(snap_if_ar[ix]), sfid = int(sfid_if_ar[ix]), last_snap = int(99))
+
+    # if ix in [30, 49, 56, 68, 84, 85, 89, 95]: 
+    
+    # subh.get_infall_properties()
+    # t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+    try:
+        t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+    except Exception as e:
+        # print(e)
+        ctr = ctr + 1
+        skipped_ixs = np.append(skipped_ixs, ix)
+        continue
+
+    subh_fbar_tng_ar = np.append(subh_fbar_tng_ar, subh.get_mstar(where = int(subh.snap), how = '2rh')/ subh.get_mdm(where = int(subh.snap), how = '2rh'))
+    subh_fdm_ar = np.append(subh_fdm_ar, subh.get_mdm(where = 99, how = 'total') / subh.get_mdm(where = int(snap_if_ar[ix]), how = 'total'))
+    subh_mstar_99 = subh.get_mstar(where=99, how = 'total')
+    subh_mstar_99_ar = np.append(subh_mstar_99_ar, subh_mstar_99)
+    subh_id99_ar = np.append(subh_id99_ar, subh.get_sfid(where = 99))
+    subh_tinf_ar = np.append(subh_tinf_ar, all_ages[snap_if_ar[ix]])
+    fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel']
+    subh_m200_ar = np.append(subh_m200_ar, subh.get_m200(where = int(snap_if_ar[ix] - 1))) #Append only when there are no errors
+    vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(all_ages[subh.snap]), t) #FIXME: Some orbits are not unbound as galpy reports
+    mmx_ar = np.append(mmx_ar, mmxf)
+    frem = mmxf/subh.mmx0
+    frem_tng = subh.get_tng_values(where = int(99))[2]/subh.mmx0
+    mmx_tng_ar = np.append(mmx_tng_ar, frem_tng * subh.mmx0)
+    frem_tng_ar = np.append(frem_tng_ar, frem_tng)
+    subh_mstar_model_ar = np.append(subh_mstar_model_ar, mstarf)
+    subh_fstar_model_ar = np.append(subh_fstar_model_ar, subh_mstar_model_ar[-1]/subh.mstar)
+
+    # subh_mstar_model_from_tngfrem_ar = np.append(subh_mstar_model_from_tngfrem_ar, subh.get_starprops_model(frem = frem_tng)[0])
+    # subh_fstar_model_from_tngfrem_ar = np.append(subh_fstar_model_from_tngfrem_ar, subh_mstar_model_from_tngfrem_ar[-1]/subh.mstar)
+
+    subh_mstar_tng_ar = np.append(subh_mstar_tng_ar, subh_mstar_99)
+    subh_fstar_tng_ar = np.append(subh_fstar_tng_ar, subh_mstar_99 / subh.get_mstar(where = 'max', how = 'total'))
+    subh_parlen_99_ar = np.append(subh_parlen_99_ar, subh.get_len(where = subh.last_snap, which = 'dm') + subh.get_len(where = 99, which = 'stars'))
+    if subh_parlen_99_ar[-1] < 3000:
+        ixs_unresol = np.append(ixs_unresol, int(len(frem_tng_ar) - 1))
+    if subh_fstar_model_ar[-1] > 0.8 and subh_fstar_tng_ar[-1] < 0.45 : #Checking why the masses are too low for the Errani
+        ixs_high_mstar = np.append(ixs_high_mstar, int(len(frem_tng_ar) - 1))
+    elif subh_fstar_model_ar[-1] < 0.1 and subh_fstar_tng_ar[-1] > 0.2:
+        subh_ixs_low_mstar = np.append(subh_ixs_low_mstar, ix)
+        ixs_low_mstar = np.append(ixs_low_mstar, int(len(frem_tng_ar) - 1))
+    frem_ar = np.append(frem_ar, frem)
+
+
+
+
+'''
+Plot 1: This is the comparison between  dark matter masses
+'''
+ixs_high_mstar = ixs_high_mstar.astype('i')
+ixs_low_mstar = ixs_low_mstar.astype('i')
+ixs_unresol = ixs_unresol.astype('i')
+fig, ax = plt.subplots(figsize = (7, 6))
+# dummy = np.linspace(0.001, 1, 3)
+sc = ax.scatter(mmx_ar, mmx_tng_ar, c=subh_tinf_ar, cmap='viridis', marker='o', zorder = 20)
+for six in range(len(mmx_ar)):
+    ax.text(0.95 * mmx_ar[six], mmx_tng_ar[six], str(int(subh_id99_ar[six])), fontsize = 4, color = 'gray', ha = 'right', va = 'center')
+ax.scatter(mmx_ar[ixs_low_mstar], mmx_tng_ar[ixs_low_mstar], label = r'Low $f_{\bigstar}$', edgecolors = 'red', s = 100, facecolors = 'white', zorder = 10)
+ax.scatter(mmx_ar[ixs_high_mstar], mmx_tng_ar[ixs_high_mstar], label = r'High $f_{\bigstar}$', edgecolors = 'blue', s = 100, facecolors = 'white', zorder = 10)
+# ax.scatter(mmx_ar[ixs_unresol], mmx_tng_ar[ixs_unresol], label = r'Unresolved', marker = 'x', s = 100, color = 'black', zorder = 40)
+
+cbar = plt.colorbar(sc)
+# cbar.set_label(r'$\log M_{\rm{200, infall}}$')
+cbar.set_label(r'$t_{\rm{inf}}$')
+# cbar.set_label(r'$\log f_{\rm{\bigstar, inf}}$')
+# cbar.set_label(r'$M_{\rm{\bigstar, z=0}}$')
+
+dummy = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 3) 
+ax.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax.set_xlabel(r'$M_{\rm{mx}}$ from model')
+ax.set_ylabel(r'$M_{\rm{mx}}$ from TNG')
+# ax.set_xlim(-0.1, 1)
+# ax.set_ylim(-0.1, 1)
+ax.legend(fontsize = 8)
+plt.loglog()
+plt.tight_layout()
+plt.show()
+
+# def plot_fstar():
+
+'''
+Plot 1.1: This is to plot the remnant dark matter fraction
+'''
+ixs_high_mstar = ixs_high_mstar.astype('i')
+ixs_low_mstar = ixs_low_mstar.astype('i')
+ixs_unresol = ixs_unresol.astype('i')
+fig, ax = plt.subplots(figsize = (7, 6))
+dummy = np.linspace(0.001, 1, 3)
+sc = ax.scatter(frem_ar, frem_tng_ar, c=subh_tinf_ar, cmap='viridis', marker='o', zorder = 20)
+for six in range(len(mmx_ar)):
+    ax.text(0.95 * frem_ar[six], frem_tng_ar[six], str(int(subh_id99_ar[six])), fontsize = 4, color = 'gray', ha = 'right', va = 'center', zorder = 60)
+ax.scatter(frem_ar[ixs_low_mstar], frem_tng_ar[ixs_low_mstar], label = r'Low $f_{\bigstar}$', edgecolors = 'red', s = 100, facecolors = 'white', zorder = 10)
+ax.scatter(frem_ar[ixs_high_mstar], frem_tng_ar[ixs_high_mstar], label = r'High $f_{\bigstar}$', edgecolors = 'blue', s = 100, facecolors = 'white', zorder = 10)
+# ax.scatter(frem_ar[ixs_unresol], frem_tng_ar[ixs_unresol], label = r'Unresolved', marker = 'x', s = 100, color = 'black', zorder = 40)
+
+cbar = plt.colorbar(sc)
+# cbar.set_label(r'$\log M_{\rm{200, infall}}$')
+cbar.set_label(r'$t_{\rm{inf}}$')
+# cbar.set_label(r'$\log f_{\rm{\bigstar, inf}}$')
+# cbar.set_label(r'$M_{\rm{\bigstar, z=0}}$')
+ax.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+ax.set_xlabel(r'$M_{\rm{mx}}/M_{\rm{mx0}}$ from model')
+ax.set_ylabel(r'$M_{\rm{mx}}/M_{\rm{mx0}}$ from TNG')
+# ax.set_xlim(-0.1, 1)
+# ax.set_ylim(-0.1, 1)
+ax.legend(fontsize = 8)
+plt.loglog()
+plt.tight_layout()
+plt.show()
+
+
+
+
+'''
+Plot 2: this is a comparison of the stellar fractions between the model and TNG
+'''
+ixs_high_mstar = ixs_high_mstar.astype('i')
+ixs_low_mstar = ixs_low_mstar.astype('i')
+ixs_unresol = ixs_unresol.astype('i')
+fig, ax = plt.subplots(figsize = (7, 6))
+dummy = np.linspace(0, 1, 3)
+sc = ax.scatter(subh_fstar_model_ar, subh_fstar_tng_ar, c=subh_tinf_ar, cmap='viridis', marker='o', zorder = 20)
+# sc = ax.scatter(subh_fstar_model_from_tngfrem_ar, subh_fstar_tng_ar, c=subh_tinf_ar, cmap='viridis', marker='o', zorder = 20)
+# sc = ax.scatter(1 - np.exp(-14.20 * subh_fdm_ar), subh_fstar_tng_ar, c=(subh_tinf_ar), cmap='viridis', marker='s', zorder = 20)
+cbar = plt.colorbar(sc)
+ax.scatter(subh_fstar_model_ar[ixs_low_mstar], subh_fstar_tng_ar[ixs_low_mstar], label = r'Low $f_{\bigstar}$', edgecolors = 'red', s = 100, facecolors = 'white', zorder = 10)
+ax.scatter(subh_fstar_model_ar[ixs_high_mstar], subh_fstar_tng_ar[ixs_high_mstar], label = r'High $f_{\bigstar}$', edgecolors = 'blue', s = 100, facecolors = 'white', zorder = 10)
+
+for six in range(len(mmx_ar)):
+    ax.text(0.95 * subh_fstar_model_ar[six], subh_fstar_tng_ar[six], str(int(subh_id99_ar[six])), fontsize = 4, color = 'gray', ha = 'right', va = 'center', zorder = 60)
+# cbar.set_label(r'$\log M_{\rm{200, infall}}$')
+# cbar.set_label(r'$t_{\rm{inf}}$')
+# cbar.set_label(r'$ \log(M_{\rm{mx}}/M_{\rm{mx0}})$ from model')
+cbar.set_label(r'$t_{\rm{inf}}$')
+# cbar.set_label(r'$M_{\rm{\bigstar, z=0}}$')
+ax.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+ax.set_xlabel(r'$M_{\rm{\bigstar, z=0}}/M_{\rm{\bigstar, max}}$ from model')
+ax.set_ylabel(r'$M_{\rm{\bigstar, z=0}}/M_{\rm{\bigstar, max}}$ from TNG')
+# ax.set_xlim(0, 1)
+# ax.set_ylim(0, 1)
+# ax.set_title(r'Model uses $M_{\rm{mx}}/M_{\rm{mx0}}$ from TNG', color = 'red')
+# plt.loglog()
+plt.tight_layout()
+plt.show()
+
+
+'''
+Plot 2.1: This is a plot of the stellar mass remaining in the TNG as compared to the one in the model
+'''
+ixs_high_mstar = ixs_high_mstar.astype('i')
+ixs_low_mstar = ixs_low_mstar.astype('i')
+ixs_unresol = ixs_unresol.astype('i')
+fig, ax = plt.subplots(figsize = (7, 6))
+# dummy = np.linspace(0, 1, 3)
+sc = ax.scatter(subh_mstar_model_ar, subh_mstar_tng_ar, c=np.log10(frem_ar), cmap='viridis', marker='o', zorder = 20)
+# sc = ax.scatter(subh_mstar_model_from_tngfrem_ar, subh_mstar_tng_ar, c=subh_tinf_ar, cmap='viridis', marker='o', zorder = 20)
+cbar = plt.colorbar(sc)
+ax.scatter(subh_mstar_model_ar[ixs_low_mstar], subh_mstar_tng_ar[ixs_low_mstar], label = r'Low $f_{\bigstar}$', edgecolors = 'red', s = 100, facecolors = 'white', zorder = 10)
+ax.scatter(subh_mstar_model_ar[ixs_high_mstar], subh_mstar_tng_ar[ixs_high_mstar], label = r'High $f_{\bigstar}$', edgecolors = 'blue', s = 100, facecolors = 'white', zorder = 10)
+# ax.scatter(subh_mstar_model_ar[ixs_unresol], subh_mstar_tng_ar[ixs_unresol], label = r'Unresolved', marker = 'x', s = 100, color = 'black', zorder = 40)
+for six in range(len(mmx_ar)):
+    ax.text(0.95 * subh_mstar_model_ar[six], subh_mstar_tng_ar[six], str(int(subh_id99_ar[six])), fontsize = 4, color = 'gray', ha = 'right', va = 'center', zorder = 60)
+# cbar.set_label(r'$\log M_{\rm{200, infall}}$')
+# cbar.set_label(r'$t_{\rm{inf}}$')
+cbar.set_label(r'$ \log(M_{\rm{mx}}/M_{\rm{mx0}})$ from model')
+# cbar.set_label(r'$t_{\rm{inf}}$')
+# cbar.set_label(r'$M_{\rm{\bigstar, z=0}}$')
+dummy = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 3) 
+ax.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+ax.set_xlabel(r'$M_{\rm{\bigstar, z=0}}$ from model')
+ax.set_ylabel(r'$M_{\rm{\bigstar, z=0}}$ from TNG')
+# ax.set_xlim(left = 1e5)
+ax.legend(fontsize = 8)
+# ax.set_title(r'Model uses $M_{\rm{mx}}/M_{\rm{mx0}}$ from TNG', color = 'red')
+
+# ax.set_ylim(0, 1)
+plt.loglog()
+plt.tight_layout()
+plt.show()
+
+
+
+'''
+Plot 3: Plot all the orbits for the subhalos considered
+'''
+pdf_file = outpath + "orbits_tng50_more1e9msun_epts.pdf"
+pdf_pages = PdfPages(pdf_file)
+subh_ixs_low_mstar = subh_ixs_low_mstar.astype('i')
+
+
+
+# for ix in tqdm(range(len(snap_if_ar))):
+# for ix in tqdm([30, 49, 56, 68, 84, 85, 89, 95]):
+# for ix in tqdm([83, 93, 94, 98, 100, 102, 103, 106]):
+for ix in tqdm(subh_ixs_low_mstar):
+    '''
+    This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+    ''' 
+    subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99)
+    try:
+        t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+    except Exception as e:
+        pass
+    subh.plot_orbit_comprehensive(merged = False)
+    plt.tight_layout()
+    pdf_pages.savefig()
+    # plt.show()
+    plt.close()   
+
+    
+pdf_pages.close()
+
+
+'''
+Plot 4: This plot is to compare the NFW fits from rotation curve and from the mass points
+Special highlight on the objects with low fstar to check if there is any big difference
+'''
+subh_ixs_low_mstar = subh_ixs_low_mstar.astype('i')
+
+
+fig, [ax, ax2, ax3] = plt.subplots(nrows = 1, ncols = 3, figsize = (15, 5))
+labvar = False
+
+for ix in tqdm(range(len(snap_if_ar))):
+    '''
+    This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+    ''' 
+    subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99 )
+    vmx, rmx, mmx = subh.get_mx_values(where = int(subh.snap)) #These are the values from the 
+    ax.plot(subh.rmx0, rmx, 'ko', ms = 3, alpha = 0.5)
+    ax2.plot(subh.vmx0, vmx, 'ko', ms = 3, alpha = 0.5)
+    ax3.plot(subh.mmx0, mmx, 'ko', ms = 3, alpha = 0.5)
+    if subh.rmx0 > 20 and rmx < 15:
+        print(ix)
+    # if ix in subh_ixs_low_mstar:
+    #     if not labvar:
+    #         ax.plot(subh.rmx0, rmx, 'ro', ms = 3, alpha = 0.5, label = r'low $f_\bigstar$')
+    #         ax2.plot(subh.vmx0, vmx, 'ro', ms = 3, alpha = 0.5, label = r'low $f_\bigstar$')
+    #         ax3.plot(subh.mmx0, mmx, 'ro', ms = 3, alpha = 0.5, label = r'low $f_\bigstar$')
+    #         labvar = True
+    #     else:
+    #         ax.plot(subh.rmx0, rmx, 'ro', ms = 3, alpha = 0.5)
+    #         ax2.plot(subh.vmx0, vmx, 'ro', ms = 3, alpha = 0.5) 
+    #         ax3.plot(subh.mmx0, mmx, 'ro', ms = 3, alpha = 0.5) 
+
+ax.set_xlabel(r'$r_{\rm{mx0}}$ (kpc) from RC')
+ax.set_ylabel(r'$r_{\rm{mx0}}$ (kpc) from two mass points')
+# ax.set_xlim(0, 8)
+# ax.set_ylim(0, 8)
+x_vals = np.array(ax.get_xlim())    
+ax.plot(x_vals, x_vals, 'k--', lw = 0.5)
+ax.legend(fontsize = 8)
+
+ax2.set_xlabel(r'$v_{\rm{mx0}}$ (kpc) from RC')
+ax2.set_ylabel(r'$v_{\rm{mx0}}$ (kpc) from two mass points')
+# ax.set_xlim(0, 8)
+# ax.set_ylim(0, 8)
+x_vals = np.array(ax.get_xlim())    
+ax2.plot(x_vals, x_vals, 'k--', lw = 0.5)
+ax2.legend(fontsize = 8)
+
+plt.tight_layout()
+plt.show()
+
+'''
+Plot 5: This is to plot the ratio of Rh to rmx0 to check if the outliers that we have are showing up due to some reason
+'''
+
+fig, ax = plt.subplots(figsize = (5, 5))
+
+
+for ix in tqdm(range(len(snap_if_ar))):
+    '''
+    This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+    ''' 
+    subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99 )
+    # subh.get_infall_properties()
+
+    Rh_tng_max = subh.get_rh(where = 'max')/np.sqrt(2)
+    Rh_model = subh.get_rh0byrmx0() * subh.rmx0 #This is the assumption
+    # if subh.get_rh0byrmx0() == 0.5:
+    #     print('Jai')
+    ax.plot(Rh_model/subh.rmx0, Rh_tng_max/subh.rmx0, 'ko', ms = 3.5)
+    if ix in subh_ixs_low_mstar:
+        ax.plot(Rh_model/subh.rmx0, Rh_tng_max/subh.rmx0, 'ro', ms = 3.5)
+    # if ix in [30, 49, 56, 68, 84, 85, 89, 95]: 
+    #     ax.plot(Rh_model, Rh_tng_max, 'ro')
+    #     if ix == 30:ax.plot(Rh_model, Rh_tng_max, 'ro', label = r'Low $f_{\bigstar}$')
+    # elif ix in [83, 93, 94, 98, 100, 102, 103, 106]:
+    #     ax.plot(Rh_model, Rh_tng_max, 'bo')
+    #     if ix == 83: ax.plot(Rh_model, Rh_tng_max, 'bo', label = r'High $f_{\bigstar}$')
+
+ax.set_xlabel(r'$R_{\rm{h, inf}}/r_{\rm{mx0}}$ model (kpc)')
+ax.set_ylabel(r'$R_{\rm{h, max\, M_\bigstar}}/r_{\rm{mx0}}$ from TNG (kpc)')
+# ax.set_xlim(0, 8)
+# ax.set_ylim(0, 8)
+x_vals = np.array(ax.get_xlim())    
+ax.plot(x_vals, x_vals, 'k--', lw = 0.5)
+ax.legend(fontsize = 8)
+plt.tight_layout()
+plt.show()
+
+
+
+'''
+Plot 6: This is to plot the stellar mass vs dark matter mass in half light radius to check if the outliers that we have are showing up due to some reason
+'''
+
+fig, ax = plt.subplots(figsize = (5, 5))
+
+
+for ix in tqdm(range(len(snap_if_ar))):
+    '''
+    This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+    ''' 
+    subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99 )
+
+    Mstar_rh = subh.get_mstar(where = 'max', how = 'rh')
+    Mdm_rh = subh.get_mdm(where = 'max', how = 'rh')
+    ax.plot(Mstar_rh, Mdm_rh, 'ko', ms = 3.5)
+    if ix in subh_ixs_low_mstar:
+            ax.plot(Mstar_rh, Mdm_rh, 'ro', ms = 3.5)
+
+
+ax.set_xlabel(r'$M_{\rm{\bigstar}}(<r_h)\,\rm{(M_\odot)}$')
+ax.set_ylabel(r'$M_{\rm{DM}}(<r_h)\,\rm{(M_\odot)}$')
+x_vals = np.array(ax.get_xlim())    
+ax.plot(x_vals, x_vals, 'k--', lw = 0.5)
+ax.legend(fontsize = 8)
+plt.loglog()
+plt.tight_layout()
+plt.show()
+
+
+
+
+# '''
+# Plot 3: This is Mmx and 
+# '''
+
+# for ix in tqdm([30, 49, 56, 68, 84, 85, 89, 95]):
+#     subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix])
+#     subh.get_mass_profiles(where = 'max', plot = True)
+#     exp_check = ExponentialProfile(subh.get_mstar(where = 'max', how = 'total'), np.sqrt(2) * subh.get_rh0byrmx0() * subh.rmx0) #This is an instance to check the exponential profile
+#     left, right = plt.gca().get_xlim()
+#     rpl = np.logspace(np.log10(left), np.log10(right), 100)
+#     plt.plot(rpl, exp_check.mass(rpl), label = 'Expoential assumed', color = 'salmon', ls = ':')
+#     plt.legend()
+#     pdf_pages2.savefig()
+#     plt.show()
+#     plt.close()
+
+
+"""
+================================================================
+MERGED SUBHALOS
+================================================================
+"""
+'''
+Plot 0.1: This is to plot all the half mass radius of stars according to TNG, and the one assumed in the model
+'''
+
+fig, ax = plt.subplots(figsize = (5, 5))
+
+
+for ix in tqdm(range(len(msh_snap))):
+    '''
+    This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+    ''' 
+    subh  = Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = msh_merger_snap[ix])
+    # subh.get_infall_properties()
+
+    Rh_tng_max = subh.get_rh(where = 'max')/np.sqrt(2)
+    Rh_model = subh.get_rh0byrmx0() * subh.rmx0 #This is the assumption
     ax.plot(Rh_model, Rh_tng_max, 'ko')
-    if ix in [30, 49, 56, 68, 84, 85, 89, 95]: 
-        ax.plot(Rh_model, Rh_tng_max, 'ro')
-        if ix == 30:ax.plot(Rh_model, Rh_tng_max, 'ro', label = r'Low $f_{\bigstar}$')
-    elif ix in [83, 93, 94, 98, 100, 102, 103, 106]:
-        ax.plot(Rh_model, Rh_tng_max, 'bo')
-        if ix == 83: ax.plot(Rh_model, Rh_tng_max, 'bo', label = r'High $f_{\bigstar}$')
 
 ax.set_xlabel(r'$R_{\rm{h, inf}}$ model (kpc)')
 ax.set_ylabel(r'$R_{\rm{h, max\, M_\bigstar}}$ from TNG (kpc)')
@@ -176,35 +690,19 @@ for ix in tqdm(range(len(snap_if_ar))):
 pdf_pages2.close()
 
 
+
+
+
 '''
-Plot 0.3: This is to plot the rotation curve and see why rmx0 values are so less
+Thie big one, loop which evolves our subhalos
+MERGING SUBHALOS
 '''
-
-pdf_file3 = outpath + "rot_curves_tng50_more1e9msun_tsah.pdf"
-pdf_pages3 = PdfPages(pdf_file3)
-
-for ix in tqdm([30, 49, 56, 68, 84, 85, 89, 95]):
-    subh  = Subhalo(snap = int(snap_if_ar[ix]), sfid = int(sfid_if_ar[ix]))
-    print(subh.get_rot_curve(where = int(subh.snap), plot = True))
-    # exp_check = ExponentialProfile(subh.get_mstar(where = 'max', how = 'total'), np.sqrt(2) * subh.get_rh0byrmx0() * subh.rmx0) #This is an instance to check the exponential profile
-    # left, right = plt.gca().get_xlim()
-    # rpl = np.logspace(np.log10(left), np.log10(right), 100)
-    # plt.plot(rpl, exp_check.mass(rpl), label = 'Expoential assumed', color = 'salmon', ls = ':')
-    # plt.legend()
-    pdf_pages3.savefig()
-    plt.show()
-    plt.close()
-
-pdf_pages3.close()
-
-    
-
-
-# ======================================
 ctr = 0
 skipped_ixs = np.zeros(0)
 frem_ar = np.zeros(0) #this is the remnant masss fraction from the SAM
+mmx_ar = np.zeros(0)
 frem_tng_ar = np.zeros(0)
+mmx_tng_ar = np.zeros(0)
 subh_m200_ar = np.zeros(0) #This is the virial mass at infall for the subhalos
 subh_mstar_99_ar = np.zeros(0) #stellar mass at z = 0 for the subhalos being considered
 subh_tinf_ar = np.zeros(0) #This is the array of infall times of the subhalo
@@ -217,185 +715,161 @@ subh_mstar_tng_ar = np.zeros(0) #This is the stellar mass remaining at the end f
 subh_parlen_99_ar = np.zeros(0) #This is the length of particles at z = 0
 subh_fbar_tng_ar = np.zeros(0) #This is the ratio of stars to dark matter in 2Rh for the subhalos at infall
 subh_fdm_ar = np.zeros(0) #This is the total remnant dark matter mass to test the Smith+16 paper results
+subh_id99_ar = np.zeros(0) #this is the array of SubfindIDs at z = 0 for the subhalos for labeling
+subh_rh_model_ar = np.zeros(0)
+
+subh_rh_initial_ar = np.zeros(0) #inital rh of the galaxies
+subh_mstar_initial_ar = np.zeros(0) #Initial stellar masses of the galaxies
 
 
 # Both the following indices are for the frem_ar, etc. (there are some subhalos that are missed for having an Unbound Orbit)
 ixs_low_mstar = np.zeros(0) #This is the list of indices of the subhalos that have low stellar mass than that in TNG
 ixs_high_mstar = np.zeros(0) #This is the list of indices which have high mstar in the model.
-ixs_unresol = np.zeros(0, dtype = int)
-subh_ixs_low_mstar = np.zeros(0, dtype = int)
+ixs_high_rh = np.zeros(0, dtype = int)
+subh_ixs_high_rh = np.zeros(0, dtype = int)
 '''
 Run this loop for doing everything after evolution
 '''
 
 
 
-for ix in tqdm(range(len(snap_if_ar))):
+for ix in tqdm(range(len(msh_snap))):
     '''
-    This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+    This is to loop over all the merging subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
     '''
-    
-    # if ix>15: break
+    if ix in [5, 9, 14, 22]: continue #takes lot of time to get compiled
+    # if ix>25: break
 
-    subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix])
+    subh  = Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = int(msh_merger_snap[ix])) #these are at infall
 
     # if ix in [30, 49, 56, 68, 84, 85, 89, 95]: 
     
     # subh.get_infall_properties()
     # t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+    # t = subh.get_orbit(merged = True, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
     try:
-        t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+        t = subh.get_orbit(merged = True, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
     except Exception as e:
         # print(e)
         ctr = ctr + 1
         skipped_ixs = np.append(skipped_ixs, ix)
         continue
 
-    subh_fbar_tng_ar = np.append(subh_fbar_tng_ar, subh.get_mstar(where = int(subh.snap), how = '2rh')/ subh.get_mdm(where = int(subh.snap), how = '2rh'))
-    subh_fdm_ar = np.append(subh_fdm_ar, subh.get_mdm(where = 99, how = 'total') / subh.get_mdm(where = int(snap_if_ar[ix]), how = 'total'))
-    subh_mstar_99 = subh.get_mstar(where=99, how = 'total')
-    subh_mstar_99_ar = np.append(subh_mstar_99_ar, subh_mstar_99)
-    subh_tinf_ar = np.append(subh_tinf_ar, all_ages[snap_if_ar[ix]])
+    try:
+        subh_rh_initial_ar = np.append(subh_rh_initial_ar, subh.get_rh(where = 'max'))
+    except ValueError:
+        continue
+
+    subh_mstar_initial_ar = np.append(subh_mstar_initial_ar, subh.mstar)
+
+    # subh_fbar_tng_ar = np.append(subh_fbar_tng_ar, subh.get_mstar(where = int(subh.snap), how = '2rh')/ subh.get_mdm(where = int(subh.snap), how = '2rh'))
+    # subh_fdm_ar = np.append(subh_fdm_ar, subh.get_mdm(where = subh.last_snap, how = 'total') / subh.get_mdm(where = int(snap_if_ar[ix]), how = 'total'))
+    # subh_mstar_99 = subh.get_mstar(where=subh.last_snap, how = 'total') #99 is not at snap 99 always
+    # subh_mstar_99_ar = np.append(subh_mstar_99_ar, subh_mstar_99)
+    # subh_id99_ar = np.append(subh_id99_ar, subh.get_sfid(where = subh.last_snap))
+    # subh_tinf_ar = np.append(subh_tinf_ar, all_ages[snap_if_ar[ix]])
     fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel']
-    subh_m200_ar = np.append(subh_m200_ar, subh.get_m200(where = int(snap_if_ar[ix] - 1))) #Append only when there are no errors
-    frem = subh.get_frem(float(all_ages[subh.snap]), t) #FIXME: Some orbits are not unbound as galpy reports
-    frem_tng = subh.get_tng_values()[2]/subh.mmx0
-    frem_tng_ar = np.append(frem_tng_ar, frem_tng)
-    subh_mstar_model_ar = np.append(subh_mstar_model_ar, subh.get_starprops_model(frem = frem)[0])
+    # subh_m200_ar = np.append(subh_m200_ar, subh.get_m200(where = int(snap_if_ar[ix] - 1))) #Append only when there are no errors
+    try:
+        vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(all_ages[subh.snap]), t) #FIXME: Some orbits are not unbound as galpy reports
+    except Exception as e:
+        print(e)
+        continue
+    # print(vmxf, rmxf, mmxf, vdf, rhf, mstarf)
+    if rhf > subh_rh_initial_ar[-1]:
+        subh_ixs_high_rh = np.append(subh_ixs_high_rh, int(len(subh_mstar_initial_ar) - 1))
+        ixs_high_rh = np.append(ixs_high_rh, ix)
+
+    mmx_ar = np.append(mmx_ar, mmxf)
+    frem = mmxf/subh.mmx0
+    # frem_tng = subh.get_tng_values(where = subh.last_snap)[2]/subh.mmx0
+    # mmx_tng_ar = np.append(mmx_tng_ar, frem_tng * subh.mmx0)
+    # frem_tng_ar = np.append(frem_tng_ar, frem_tng)
+    subh_mstar_model_ar = np.append(subh_mstar_model_ar, mstarf)
+    subh_rh_model_ar = np.append(subh_rh_model_ar, rhf)
     subh_fstar_model_ar = np.append(subh_fstar_model_ar, subh_mstar_model_ar[-1]/subh.mstar)
 
-    subh_mstar_model_from_tngfrem_ar = np.append(subh_mstar_model_from_tngfrem_ar, subh.get_starprops_model(frem = frem_tng)[0])
-    subh_fstar_model_from_tngfrem_ar = np.append(subh_fstar_model_from_tngfrem_ar, subh_mstar_model_from_tngfrem_ar[-1]/subh.mstar)
+    # subh_mstar_model_from_tngfrem_ar = np.append(subh_mstar_model_from_tngfrem_ar, subh.get_starprops_model(frem = frem_tng)[0])
+    # subh_fstar_model_from_tngfrem_ar = np.append(subh_fstar_model_from_tngfrem_ar, subh_mstar_model_from_tngfrem_ar[-1]/subh.mstar)
 
-    subh_mstar_tng_ar = np.append(subh_mstar_tng_ar, subh_mstar_99)
-    subh_fstar_tng_ar = np.append(subh_fstar_tng_ar, subh_mstar_99 / subh.get_mstar(where = 'max', how = 'total'))
-    subh_parlen_99_ar = np.append(subh_parlen_99_ar, subh.get_len(where = 99, which = 'dm') + subh.get_len(where = 99, which = 'stars'))
-    if subh_parlen_99_ar[-1] < 3000:
-        ixs_unresol = np.append(ixs_unresol, int(len(frem_tng_ar) - 1))
-    if subh_fstar_model_ar[-1] > 0.8 and subh_fstar_tng_ar[-1] < 0.45 : #Checking why the masses are too low for the Errani
-        ixs_high_mstar = np.append(ixs_high_mstar, int(len(frem_tng_ar) - 1))
-    elif subh_fstar_model_ar[-1] < 0.1 and subh_fstar_tng_ar[-1] > 0.2:
-        subh_ixs_low_mstar = np.append(subh_ixs_low_mstar, ix)
-        ixs_low_mstar = np.append(ixs_low_mstar, int(len(frem_tng_ar) - 1))
+    # subh_mstar_tng_ar = np.append(subh_mstar_tng_ar, subh_mstar_99)
+    # subh_fstar_tng_ar = np.append(subh_fstar_tng_ar, subh_mstar_99 / subh.get_mstar(where = 'max', how = 'total'))
+    # subh_parlen_99_ar = np.append(subh_parlen_99_ar, subh.get_len(where = subh.last_snap, which = 'dm') + subh.get_len(where = subh.last_snap, which = 'stars'))
+    # if subh_parlen_99_ar[-1] < 3000:
+    #     ixs_unresol = np.append(ixs_unresol, int(len(frem_tng_ar) - 1))
+    # if subh_fstar_model_ar[-1] > 0.8 and subh_fstar_tng_ar[-1] < 0.45 : #Checking why the masses are too low for the Errani
+    #     ixs_high_mstar = np.append(ixs_high_mstar, int(len(frem_tng_ar) - 1))
+    # elif subh_fstar_model_ar[-1] < 0.1 and subh_fstar_tng_ar[-1] > 0.2:
+    #     subh_ixs_low_mstar = np.append(subh_ixs_low_mstar, ix)
+    #     ixs_low_mstar = np.append(ixs_low_mstar, int(len(frem_tng_ar) - 1))
     frem_ar = np.append(frem_ar, frem)
 
 
 
 
 '''
-Plot 1: This is the comparison between  dark matter fractions
+Plot 1: Plotting the Stellar vs Dark matter masses for the subhalos that got merged
 '''
-ixs_high_mstar = ixs_high_mstar.astype('i')
-ixs_low_mstar = ixs_low_mstar.astype('i')
-ixs_unresol = ixs_unresol.astype('i')
-fig, ax = plt.subplots(figsize = (7, 6))
-dummy = np.linspace(0.001, 1, 3)
-sc = ax.scatter(frem_ar, frem_tng_ar, c=np.log10(subh_mstar_99_ar), cmap='viridis', marker='o', zorder = 20)
-ax.scatter(frem_ar[ixs_low_mstar], frem_tng_ar[ixs_low_mstar], label = r'Low $f_{\bigstar}$', edgecolors = 'red', s = 100, facecolors = 'white', zorder = 10)
-ax.scatter(frem_ar[ixs_high_mstar], frem_tng_ar[ixs_high_mstar], label = r'High $f_{\bigstar}$', edgecolors = 'blue', s = 100, facecolors = 'white', zorder = 10)
-ax.scatter(frem_ar[ixs_unresol], frem_tng_ar[ixs_unresol], label = r'Unresolved', marker = 'x', s = 100, color = 'black', zorder = 40)
-
-cbar = plt.colorbar(sc)
-# cbar.set_label(r'$\log M_{\rm{200, infall}}$')
-# cbar.set_label(r'$t_{\rm{inf}}$')
-# cbar.set_label(r'$\log f_{\rm{\bigstar, inf}}$')
-cbar.set_label(r'$M_{\rm{\bigstar, z=0}}$')
-ax.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
-ax.set_xlabel(r'$M_{\rm{mx}}/M_{\rm{mx0}}$ from model')
-ax.set_ylabel(r'$M_{\rm{mx}}/M_{\rm{mx0}}$ from TNG')
-# ax.set_xlim(-0.1, 1)
-# ax.set_ylim(-0.1, 1)
-ax.legend(fontsize = 8)
-plt.loglog()
-plt.tight_layout()
-plt.show()
-
-# def plot_fstar():
-
-
-
-'''
-Plot 2: this is a comparison of the stellar fractions between the model and TNG
-'''
-fig, ax = plt.subplots(figsize = (7, 6))
-dummy = np.linspace(0, 1, 3)
-# sc = ax.scatter(subh_fstar_model_ar, subh_fstar_tng_ar, c=subh_tinf_ar, cmap='viridis', marker='o', zorder = 20)
-sc = ax.scatter(subh_fstar_model_from_tngfrem_ar, subh_fstar_tng_ar, c=subh_tinf_ar, cmap='viridis', marker='o', zorder = 20)
-# sc = ax.scatter(1 - np.exp(-14.20 * subh_fdm_ar), subh_fstar_tng_ar, c=(subh_tinf_ar), cmap='viridis', marker='s', zorder = 20)
-cbar = plt.colorbar(sc)
-# cbar.set_label(r'$\log M_{\rm{200, infall}}$')
-# cbar.set_label(r'$t_{\rm{inf}}$')
-# cbar.set_label(r'$ \log(M_{\rm{mx}}/M_{\rm{mx0}})$ from model')
-cbar.set_label(r'$t_{\rm{inf}}$')
-# cbar.set_label(r'$M_{\rm{\bigstar, z=0}}$')
-ax.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
-ax.set_xlabel(r'$M_{\rm{\bigstar, z=0}}/M_{\rm{\bigstar, max}}$ from model')
-ax.set_ylabel(r'$M_{\rm{\bigstar, z=0}}/M_{\rm{\bigstar, max}}$ from TNG')
-# ax.set_xlim(0, 1)
-# ax.set_ylim(0, 1)
-ax.set_title(r'Model uses $M_{\rm{mx}}/M_{\rm{mx0}}$ from TNG', color = 'red')
-# plt.loglog()
-plt.tight_layout()
-plt.show()
-
-
-'''
-Plot 2.1: This is a plot of the stellar mass remaining in the TNG as compared to the one in the model
-'''
-ixs_high_mstar = ixs_high_mstar.astype('i')
-ixs_low_mstar = ixs_low_mstar.astype('i')
-ixs_unresol = ixs_unresol.astype('i')
-fig, ax = plt.subplots(figsize = (7, 6))
-# dummy = np.linspace(0, 1, 3)
-sc = ax.scatter(subh_mstar_model_ar, subh_mstar_tng_ar, c=subh_tinf_ar, cmap='viridis', marker='o', zorder = 20)
-# sc = ax.scatter(subh_mstar_model_from_tngfrem_ar, subh_mstar_tng_ar, c=subh_tinf_ar, cmap='viridis', marker='o', zorder = 20)
-cbar = plt.colorbar(sc)
-ax.scatter(subh_mstar_model_ar[ixs_low_mstar], subh_mstar_tng_ar[ixs_low_mstar], label = r'Low $f_{\bigstar}$', edgecolors = 'red', s = 100, facecolors = 'white', zorder = 10)
-ax.scatter(subh_mstar_model_ar[ixs_high_mstar], subh_mstar_tng_ar[ixs_high_mstar], label = r'High $f_{\bigstar}$', edgecolors = 'blue', s = 100, facecolors = 'white', zorder = 10)
-ax.scatter(subh_mstar_model_ar[ixs_unresol], subh_mstar_tng_ar[ixs_unresol], label = r'Unresolved', marker = 'x', s = 100, color = 'black', zorder = 40)
-
-# cbar.set_label(r'$\log M_{\rm{200, infall}}$')
-# cbar.set_label(r'$t_{\rm{inf}}$')
-# cbar.set_label(r'$ \log(M_{\rm{mx}}/M_{\rm{mx0}})$ from model')
-cbar.set_label(r'$t_{\rm{inf}}$')
-# cbar.set_label(r'$M_{\rm{\bigstar, z=0}}$')
-dummy = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 3) 
-ax.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
-ax.set_xlabel(r'$M_{\rm{\bigstar, z=0}}$ from model')
-ax.set_ylabel(r'$M_{\rm{\bigstar, z=0}}$ from TNG')
-# ax.set_xlim(left = 1e5)
-ax.legend(fontsize = 8)
-# ax.set_title(r'Model uses $M_{\rm{mx}}/M_{\rm{mx0}}$ from TNG', color = 'red')
-
-# ax.set_ylim(0, 1)
+fig, ax = plt.subplots(figsize = (6, 5))
+ax.scatter(mmx_ar, subh_mstar_model_ar, marker = 'o', color = 'black', alpha = 0.5, s = 3)
+ax.set_xlabel(r'$M_{\rm{mx}}\,(M_\odot)$')
+ax.set_ylabel(r'$M_{\rm{\bigstar}}\,(M_\odot)$')
+ax.set_title('From model')
 plt.loglog()
 plt.tight_layout()
 plt.show()
 
 
+'''
+Plot 2: Plotting half light radius vs the stellar mass for the merged subhalos
+'''
+fig, ax = plt.subplots(figsize = (6, 5))
+# for ix in range(len(subh_mstar_model_ar)):
+#     ax.plot([subh_mstar_model_ar[ix], subh_mstar_initial_ar[ix]], [1e3 * subh_rh_model_ar[ix], 1e3 * subh_rh_initial_ar[ix]], alpha = 0.5, lw = 0.3, color = 'gray')
+ax.scatter(subh_mstar_model_ar, 1e3 * subh_rh_model_ar, marker = 'o', color = 'black', alpha = 0.5, s = 3, label = 'z=0 from model')
+# ax.scatter(subh_mstar_initial_ar, 1e3 * subh_rh_initial_ar, marker = 'o', color = 'red', alpha = 0.5, s = 3, label = 'initial')
+ax.set_xlabel(r'$M_{\rm{star}}\,\rm{(M_\odot)}$')
+ax.set_ylabel(r'$R_h\,\rm{(pc)}$')
+ax.set_title('160 subhalos merging into central of FoF0 - TNG50-1', fontsize = 10)
+ax.legend(fontsize = 8)
+plt.loglog()
+plt.tight_layout()
+plt.show()
+
+
+
 
 '''
-Plot 3: Plot all the orbits for the subhalos considered
+Plot 3: Plotting the orbits of the subhalos that get merged
 '''
-pdf_file = outpath + "orbits_tng50_more1e9msun_epts.pdf"
+
+
+pdf_file = outpath + "merged_orbits_tng50_more1e9msun_epts.pdf"
 pdf_pages = PdfPages(pdf_file)
-subh_ixs_low_mstar = subh_ixs_low_mstar.astype('i')
+# subh_ixs_low_mstar = subh_ixs_low_mstar.astype('i')
 
 
 
-# for ix in tqdm(range(len(snap_if_ar))):
+for ix in tqdm(range(len(msh_sfid))):
 # for ix in tqdm([30, 49, 56, 68, 84, 85, 89, 95]):
 # for ix in tqdm([83, 93, 94, 98, 100, 102, 103, 106]):
-for ix in tqdm(subh_ixs_low_mstar):
+# for ix in tqdm(ixs_high_rh):
     '''
     This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
     ''' 
-    subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix])
+    if ix in [9, 14, 22]: #weird index, FIXME: #8 Check later
+        continue
+    # if ix > 25:
+    #     break
+    subh  = Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = msh_merger_snap[ix]) #these are at infall
+    
     try:
-        t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+        t = subh.get_orbit(merged = True, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+        # print(t)
     except Exception as e:
+        print(e)
         pass
-    subh.plot_orbit_comprehensive(merged = False)
+    subh.plot_orbit_comprehensive(merged = True)
     plt.tight_layout()
     pdf_pages.savefig()
     # plt.show()
@@ -405,18 +879,3 @@ for ix in tqdm(subh_ixs_low_mstar):
 pdf_pages.close()
 
 
-# '''
-# Plot 3: This is Mmx and 
-# '''
-
-# for ix in tqdm([30, 49, 56, 68, 84, 85, 89, 95]):
-#     subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix])
-#     subh.get_mass_profiles(where = 'max', plot = True)
-#     exp_check = ExponentialProfile(subh.get_mstar(where = 'max', how = 'total'), np.sqrt(2) * subh.get_rh0byrmx0() * subh.rmx0) #This is an instance to check the exponential profile
-#     left, right = plt.gca().get_xlim()
-#     rpl = np.logspace(np.log10(left), np.log10(right), 100)
-#     plt.plot(rpl, exp_check.mass(rpl), label = 'Expoential assumed', color = 'salmon', ls = ':')
-#     plt.legend()
-#     pdf_pages2.savefig()
-#     plt.show()
-#     plt.close()

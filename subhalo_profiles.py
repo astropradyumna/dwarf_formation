@@ -6,6 +6,8 @@ import numpy as np
 from scipy.integrate import quad
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
+import IPython
+import warnings
 
 
 filepath = '/rhome/psadh003/bigdata/ucd_formation_errani_files/'
@@ -71,7 +73,7 @@ def get_H(z = 0, h = 0.6774):
     return hubble_parameter
 
 
-def get_critical_dens(z = 0):
+def get_critical_dens(z):
     '''
     Returns the critical density of the universe at a given redshift in Msun/kpc^3
     '''
@@ -216,10 +218,58 @@ class ExponentialProfile(StellarProfile):
 
 
 class NFWProfile():
-    def __init__(self, Mvir, cvir, z=0):
-        self.Mvir = Mvir
-        self.cvir = cvir
+    def __init__(self, z, Mvir = None, cvir = None, rmx = None, vmx = None):
         self.z = z
+        if (rmx is None and vmx is None) and (Mvir is not None and cvir is not None):
+            self.Mvir = Mvir
+            self.cvir = cvir
+        else:
+            self.rmx = rmx
+            self.vmx = vmx
+            self.Mvir, self.cvir = self.get_mvircvir_from_mx()
+
+    def get_mvircvir_from_mx(self):
+        '''
+        This function converts the rmx and vmx values into Mvir and cvir
+        First proceeds through calculation of rho0 and rs
+        '''
+        rs = self.rmx/2.16 #hopeflly in kpc
+        rho0 = 1e9 * (self.vmx  / (1.64 * rs * 1e3)) ** 2 * (1/4.3e-3) #this would be in Msun/kpc^3
+        def g(c):
+            return 1 / ( np.log(1 + c) - (c / (1 + c)) )
+        
+        with warnings.catch_warnings(record=True) as w:
+            cvir = fsolve(lambda c: np.log10(rho0 * 3 / (200 * get_critical_dens(self.z))) -  np.log10(c ** 3 * g(c)),  10, xtol=1.49012e-12)[0]
+            if len(w) > 0:
+                with warnings.catch_warnings(record=True) as w:
+                    cvir = fsolve(lambda c: np.log10(rho0 * 3 / (200 * get_critical_dens(self.z))) -  np.log10(c ** 3 * g(c)),  15, xtol=1.49012e-12)[0]
+                    if len(w) > 0:
+                        cvir = fsolve(lambda c: np.log10(rho0 * 3 / (200 * get_critical_dens(self.z))) -  np.log10(c ** 3 * g(c)),  20, xtol=1.49012e-12)[0]
+        
+        # print(rho0 * 3 / (200 * get_critical_dens(self.z)) -  cvir ** 3 * g(cvir))
+        Mvir = 4 * np.pi * rho0 * rs ** 3  / g(cvir)
+
+        # print(Mvir, cvir)
+        # G2 = 4.302e-6 # Gravitational constant in units of kpc / Msun (km/s)^2
+    
+        # Calculate critical density of the Universe
+        # rho_crit = 3 * 0.06744**2 / (8 * np.pi * G2)
+        
+        # Calculate virial radius
+        r_vir = (3 * Mvir / (4 * np.pi * 200 * get_critical_dens(self.z)))**(1/3)
+        
+        # Calculate scale radius
+        r_s = r_vir / cvir
+        
+        # Calculate scale density
+        rho_s = Mvir / (4 * np.pi * r_s**3 * (np.log(1 + cvir) - cvir / (1 + cvir)))
+
+        # rs = self.rmx/2.16 #hopeflly in kpc
+        vmx_calc= 1.64 * r_s * 1e3 * np.sqrt(4.3e-3 * rho_s/1e9)  #this would be in Msun/kpc^3
+        print(f'Calcuated rmx / input rmx = {2.16 * r_s / self.rmx:.2f} and vmx = {vmx_calc / self.vmx:.2f}')
+
+        return Mvir, cvir
+
 
     def density(self, r):
         '''
@@ -237,7 +287,7 @@ class NFWProfile():
         def g(c):
             return 1 / ( np.log(1 + c) - c / (1 + c) )
         
-        dens = get_critical_dens() * 200 * cvir ** 2 * g(cvir) / (3 * s * (1 + cvir * s)**2)
+        dens = get_critical_dens(self.z) * 200 * cvir ** 2 * g(cvir) / (3 * s * (1 + cvir * s)**2)
         return dens
 
     def mass(self, r):
@@ -252,8 +302,27 @@ class NFWProfile():
         s = r/rvir
         def g(c):
             return 1 / ( np.log(1 + c) - c / (1 + c) )
-        mass = Mvir * g(cvir) * (np.log( 1+ cvir * s) + cvir * s / (1 + cvir * s))
+        mass = Mvir * g(cvir) * (np.log( 1+ cvir * s) - cvir * s / (1 + cvir * s))
         return mass
+    
+    # def velocity2(self, r):
+    #     v =  np.sqrt(G * self.mass(r)/r) / 3.24078e-17
+    #     return v
+
+    def velocity(self, r):
+        '''
+        This is to get the circular velocity curve for the NFW from the same paper as above
+        '''
+        rvir = (self.Mvir / (4 / 3. * np.pi * 200 * get_critical_dens(self.z))) ** (1/3.) #kpc
+        vv = 3.086e+16 *np.sqrt (G * self.Mvir / rvir) #km/s
+        s = r / rvir
+        c = self.cvir
+        def g(c):
+            return 1 / ( np.log(1 + c) - c / (1 + c) )
+        # print(rvir, vv, s, c, g(c))
+        v = vv * np.sqrt((g(c)/s) * (np.log(1 + c * s) - (c * s/(1 + c*s))))
+
+        return v #km/s
 
     def mean_density(self, r):
         '''
@@ -324,6 +393,8 @@ def plot_subhalo(M, rh, M_ucd = 1e6, r_c_ucd = 10, c_ucd = 1.5):
     plt.savefig(filepath + 'test.png')
 
     return None
+
+
 
 
 
