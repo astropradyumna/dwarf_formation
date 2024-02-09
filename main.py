@@ -1,6 +1,6 @@
 '''
 This is an attempt to organize things in this project
-main.py combines everything
+main.py combines everything and generates the data required to generate plots.
 '''
 
 import numpy as np
@@ -44,7 +44,7 @@ Following is the dataset of the entire list of subhalos which infalled after z =
 '''
 survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1.csv')
 
-ssh_sfid = survived_df['SubfindID']
+ssh_sfid = survived_df['SubfindID'] #is this at infall?
 ssh_sfid = np.array([s.strip('[]') for s in ssh_sfid], dtype = int)
 ssh_snap = np.array(survived_df['SnapNum'], dtype = int)
 ssh_ift = all_ages[ssh_snap]
@@ -114,6 +114,280 @@ Data import ends here
 '''
 
 IPython.embed()
+
+
+
+
+'''
+Surviving subhalos from FoF0
+'''
+vmx_if_ar = np.zeros(0)
+rmx_if_ar = np.zeros(0)
+mmx_if_ar = np.zeros(0)
+vmx_f_ar = np.zeros(0)
+rmx_f_ar = np.zeros(0)
+mmx_f_ar = np.zeros(0)
+
+sfid_if_ar = np.zeros(0)
+snap_if_ar = np.zeros(0)
+
+mstar_max_ar = np.zeros(0)
+rh_max_ar = np.zeros(0)
+vd_max_ar = np.zeros(0)
+
+mstar_f_ar = np.zeros(0)
+rh_f_ar = np.zeros(0)
+vd_f_ar = np.zeros(0)
+
+rperi_ar = np.zeros(0)
+rapo_ar = np.zeros(0)
+torb_ar = np.zeros(0)
+tinf_ar = np.zeros(0)
+
+vmx_f_ar_tng = np.zeros(0)
+rmx_f_ar_tng = np.zeros(0)
+mmx_f_ar_tng = np.zeros(0)
+mstar_f_ar_tng = np.zeros(0)
+rh_f_ar_tng = np.zeros(0)
+vd_f_ar_tng = np.zeros(0)
+
+pos_f_ar = np.zeros(0) #These are the final positions
+dist_f_ar = np.zeros(0)
+
+
+for ix in tqdm(range(len(ssh_snap))): #This would run over all the subhalos surviving till z = 0
+
+
+    if ix > 5:
+        break
+    subh = Subhalo(snap = ssh_snap[ix], sfid = ssh_sfid[ix], last_snap=99)
+    try:
+        t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+    except Exception as e:
+        print(e)
+        # ctr = ctr + 1
+        # skipped_ixs = np.append(skipped_ixs, ix)
+        continue
+
+    vmx_if_ar = np.append(vmx_if_ar, subh.vmx0)
+    rmx_if_ar = np.append(rmx_if_ar, subh.rmx0)
+    mmx_if_ar = np.append(mmx_if_ar, subh.mmx0)
+
+    sfid_if_ar = np.append(sfid_if_ar, ssh_sfid[ix])
+    snap_if_ar = np.append(snap_if_ar, ssh_snap[ix])
+    rperi_ar = np.append(rperi_ar, subh.rperi)
+    rapo_ar = np.append(rapo_ar, subh.rapo)
+    torb_ar = np.append(torb_ar, subh.torb)
+    tinf_ar = np.append(tinf_ar, all_ages[ssh_snap[ix]])
+
+    mstar_max_ar = np.append(mstar_max_ar, subh.mstar)
+    
+    try:
+        rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')/np.sqrt(2)) #this is the 2d half light radius
+        vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
+    except ValueError:
+        rh_max_ar = np.append(rh_max_ar, 0)
+        vd_max_ar = np.append(vd_max_ar, 0) #los vd
+
+    
+
+    vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t) #FIXME: Some orbits are not unbound as galpy reports
+    vmx_f_ar = np.append(vmx_f_ar, vmxf)
+    rmx_f_ar = np.append(rmx_f_ar, rmxf)
+    mmx_f_ar = np.append(mmx_f_ar, mmxf)
+    mstar_f_ar = np.append(mstar_f_ar, mstarf)
+    rh_f_ar = np.append(rh_f_ar, rhf)
+    vd_f_ar = np.append(vd_f_ar, vdf)
+
+    vmxf_tng, rmxf_tng, mmxf_tng = subh.get_mx_values(where = int(99))
+    # Following are from TNG
+    vmx_f_ar_tng = np.append(vmx_f_ar_tng, vmxf_tng)
+    rmx_f_ar_tng = np.append(rmx_f_ar_tng, rmxf_tng)
+    mmx_f_ar_tng = np.append(mmx_f_ar_tng, mmxf_tng)
+    mstar_f_ar_tng = np.append(mstar_f_ar_tng, subh.get_mstar(where = 99, how = 'total'))
+    try:
+        rh_f_ar_tng = np.append(rh_f_ar_tng, subh.get_rh(where = 99))
+        vd_f_ar_tng = np.append(vd_f_ar_tng, subh.get_vd(where = 99))
+    except ValueError:
+        rh_f_ar_tng = np.append(rh_f_ar_tng, 0)
+        vd_f_ar_tng = np.append(vd_f_ar_tng, 0)
+    
+    if len(pos_f_ar) == 0:
+        pos_f_ar = subh.tree['SubhaloPos'][-1, :]/h
+        pos_f_ar = pos_f_ar.reshape(1, -1)
+    else:
+        this_pos = np.array(subh.tree['SubhaloPos'][-1, :]/h)
+        pos_f_ar = np.append(pos_f_ar, this_pos.reshape(1, -1), axis = 0)
+
+    dist_f_ar = np.append(dist_f_ar, subh.get_dist_from_cen(where = 99))
+    # print(dist_f_ar[-1], 'kpc')
+
+
+
+df = pd.DataFrame()
+
+df['vmx_if_ar'] = vmx_if_ar
+df['rmx_if_ar'] = rmx_if_ar
+df['mmx_if_ar'] = mmx_if_ar
+df['vmx_f_ar'] = vmx_f_ar
+df['rmx_f_ar'] = rmx_f_ar
+df['mmx_f_ar'] = mmx_f_ar
+
+df['sfid_if_ar'] = sfid_if_ar
+df['snap_if_ar'] = snap_if_ar
+
+df['mstar_max_ar'] = mstar_max_ar
+df['rh_max_ar'] = rh_max_ar
+df['vd_max_ar'] = vd_max_ar
+
+df['mstar_f_ar'] = mstar_f_ar
+df['rh_f_ar'] = rh_f_ar
+df['vd_f_ar'] = vd_f_ar
+
+df['rperi_ar'] = rperi_ar
+df['rapo_ar'] = rapo_ar
+df['torb_ar'] = torb_ar
+df['tinf_ar'] = tinf_ar
+
+df['vmx_f_ar_tng'] = vmx_f_ar_tng
+df['rmx_f_ar_tng'] = rmx_f_ar_tng
+df['mmx_f_ar_tng'] = mmx_f_ar_tng
+df['mstar_f_ar_tng'] = mstar_f_ar_tng
+df['rh_f_ar_tng'] = rh_f_ar_tng
+df['vd_f_ar_tng'] = vd_f_ar_tng
+
+df['pos_f_ar'] = pos_f_ar.tolist()  #These are the final positions
+df['dist_f_ar'] = dist_f_ar #This is the distance of the subhalo at z = 0
+
+df.to_csv(outpath + 'surviving_evolved_fof0.csv', index = False)
+
+
+
+
+'''
+Merging subhalos from FoF0
+'''
+
+vmx_if_ar = np.zeros(0)
+rmx_if_ar = np.zeros(0)
+mmx_if_ar = np.zeros(0)
+vmx_f_ar = np.zeros(0)
+rmx_f_ar = np.zeros(0)
+mmx_f_ar = np.zeros(0)
+
+sfid_if_ar = np.zeros(0)
+snap_if_ar = np.zeros(0)
+
+mstar_max_ar = np.zeros(0)
+rh_max_ar = np.zeros(0)
+vd_max_ar = np.zeros(0)
+
+mstar_f_ar = np.zeros(0)
+rh_f_ar = np.zeros(0)
+vd_f_ar = np.zeros(0)
+
+rperi_ar = np.zeros(0)
+rapo_ar = np.zeros(0)
+torb_ar = np.zeros(0)
+tinf_ar = np.zeros(0)
+
+mbpid_ar = np.zeros(0)
+
+
+for ix in tqdm(range(len(msh_snap))):
+    '''
+    This is to loop over all the merging subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+    '''
+    if ix in [5, 9, 14, 22]: continue #takes lot of time to get compiled
+
+    subh  = Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = int(msh_merger_snap[ix])) #these are at infall
+
+    try:
+        t = subh.get_orbit(merged = True, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+    except Exception as e:
+        print(e)
+        # ctr = ctr + 1
+        # skipped_ixs = np.append(skipped_ixs, ix)
+        continue
+    
+    vmx_if_ar = np.append(vmx_if_ar, subh.vmx0)
+    rmx_if_ar = np.append(rmx_if_ar, subh.rmx0)
+    mmx_if_ar = np.append(mmx_if_ar, subh.mmx0)
+
+    sfid_if_ar = np.append(sfid_if_ar, msh_sfid[ix])
+    snap_if_ar = np.append(snap_if_ar, msh_snap[ix])
+    rperi_ar = np.append(rperi_ar, subh.rperi)
+    rapo_ar = np.append(rapo_ar, subh.rapo)
+    torb_ar = np.append(torb_ar, subh.torb)
+    tinf_ar = np.append(tinf_ar, all_ages[msh_snap[ix]])
+
+    mstar_max_ar = np.append(mstar_max_ar, subh.mstar)
+
+    try:
+        rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')/np.sqrt(2)) #this is the 2d half light radius
+        vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
+    except ValueError:
+        rh_max_ar = np.append(rh_max_ar, 0)
+        vd_max_ar = np.append(vd_max_ar, 0) #los vd
+
+    vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t) #FIXME: Some orbits are not unbound as galpy reports
+    vmx_f_ar = np.append(vmx_f_ar, vmxf)
+    rmx_f_ar = np.append(rmx_f_ar, rmxf)
+    mmx_f_ar = np.append(mmx_f_ar, mmxf)
+    mstar_f_ar = np.append(mstar_f_ar, mstarf)
+    rh_f_ar = np.append(rh_f_ar, rhf)
+    vd_f_ar = np.append(vd_f_ar, vdf)
+
+    mbpid_ar = np.append(mbpid_ar, subh.get_mbpid(where = subh.snap)) #Get the MBP ID at infall
+
+
+df = pd.DataFrame()
+
+df['vmx_if_ar'] = vmx_if_ar
+df['rmx_if_ar'] = rmx_if_ar
+df['mmx_if_ar'] = mmx_if_ar
+df['vmx_f_ar'] = vmx_f_ar
+df['rmx_f_ar'] = rmx_f_ar
+df['mmx_f_ar'] = mmx_f_ar
+
+df['sfid_if_ar'] = sfid_if_ar
+df['snap_if_ar'] = snap_if_ar
+
+df['mstar_max_ar'] = mstar_max_ar
+df['rh_max_ar'] = rh_max_ar
+df['vd_max_ar'] = vd_max_ar
+
+df['mstar_f_ar'] = mstar_f_ar
+df['rh_f_ar'] = rh_f_ar
+df['vd_f_ar'] = vd_f_ar
+
+df['rperi_ar'] = rperi_ar
+df['rapo_ar'] = rapo_ar
+df['torb_ar'] = torb_ar
+df['tinf_ar'] = tinf_ar
+
+df['mbpid_ar'] = mbpid_ar  #These are the final positions
+
+df.to_csv(outpath + 'merged_evolved_fof0.csv', index = False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''
+Following are the analyses which we used in the past to generate all the plots required. 
+Moving on, we will be using plots.py to make the plots and do only the calculations here to generate the data required
+'''
+
 """
 ===================================================================================
 SURVIVING SUBHALOS
@@ -170,23 +444,36 @@ for ix in tqdm(range(len(snap_if_ar))):
     subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99)
     subh.get_mass_profiles(where = int(snap_if_ar[ix]), plot = True)
     exp_check = ExponentialProfile(subh.get_mstar(where = 'max', how = 'total'), np.sqrt(2) * subh.get_rh0byrmx0() * subh.rmx0) #This is an instance to check the exponential profile
-    nfw_check = NFWProfile(rmx = subh.rmx0, vmx = subh.vmx0, z = subh.get_z(where = int(snap_if_ar[ix])))
     
     vmx, rmx, mmx = subh.get_mx_values(where = int(snap_if_ar[ix])) #this is from forcing the rotation curve to pass through the mass points
-    nfw_check2 = NFWProfile(rmx= rmx, vmx = vmx, z = subh.get_z(where = int(snap_if_ar[ix])))
+    try:
+        nfw_check = NFWProfile(rmx = subh.rmx0, vmx = subh.vmx0, z = subh.get_z(where = int(snap_if_ar[ix])))
+        plt.plot(rpl, nfw_check.mass(rpl), label = 'NFW assumed from RC', color = 'gray', ls = '-.')
+    except Exception as e:
+        print(e)
+        pass
+
+    
+    
+    try:
+        nfw_check2 = NFWProfile(rmx= rmx, vmx = vmx, z = subh.get_z(where = int(snap_if_ar[ix])))
+        plt.plot(rpl, nfw_check2.mass(rpl), label = 'NFW assumed from pts', color = 'gray', ls = ':')
+    except Exception as e:
+        print(e)
+        pass
 
     left, right = plt.gca().get_xlim()
     rpl = np.logspace(np.log10(left), np.log10(right), 100)
     plt.plot(rpl, exp_check.mass(rpl), label = 'Expoential assumed', color = 'salmon', ls = '-.')
-    plt.plot(rpl, nfw_check.mass(rpl), label = 'NFW assumed from RC', color = 'gray', ls = '-.')
-    plt.plot(rpl, nfw_check2.mass(rpl), label = 'NFW assumed from pts', color = 'gray', ls = ':')
+    
+    
     # plt.axvline(subh.get_rh(where = int(snap_if_ar[ix])), lw = 0.3, color = 'gray')
     # plt.axvline(2 * subh.get_rh(where = int(snap_if_ar[ix])), lw = 0.3, color = 'turquoise')
     plt.plot(subh.rmx0, subh.mmx0, 'ko', label = 'mx')
     plt.legend(fontsize = 8)
     plt.tight_layout()
     pdf_pages2.savefig()
-    plt.show()
+    # plt.show()
     plt.close()
 
 pdf_pages2.close()
@@ -207,12 +494,23 @@ for ix in tqdm(range(len(snap_if_ar))):
     left, right = plt.gca().get_xlim()
     # print(left, right)
     rpl = np.logspace(-1, np.log10(right), 100)
-    nfw_check = NFWProfile(rmx = float(subh.rmx0), vmx = float(subh.vmx0), z = all_redshifts[snap_if_ar[ix]]) #This is from the rotation curve itself
     vmx, rmx, mmx = subh.get_mx_values(where = int(snap_if_ar[ix])) #this is from forcing the rotation curve to pass through the mass points
-    nfw_check2 = NFWProfile(rmx= rmx, vmx = vmx, z = all_redshifts[snap_if_ar[ix]])
+    try:
+        nfw_check = NFWProfile(rmx = subh.rmx0, vmx = subh.vmx0, z = subh.get_z(where = int(snap_if_ar[ix])))
+        plt.plot(rpl, nfw_check.velocity(rpl), label = 'NFW assumed frm RC', color = 'gray', ls = '-.', zorder = 100)
+
+    except Exception as e:
+        print(e)
+        pass
+    
+    try:
+        nfw_check2 = NFWProfile(rmx= rmx, vmx = vmx, z = all_redshifts[snap_if_ar[ix]])
+        plt.plot(rpl, nfw_check2.velocity(rpl), label = 'NFW assumed frm pts', color = 'gray', ls = ':', zorder = 100)
+    except Exception as e:
+        print(e)
+        pass
     # print(nfw_check.velocity(rpl))
-    plt.plot(rpl, nfw_check.velocity(rpl), label = 'NFW assumed frm RC', color = 'gray', ls = '-.', zorder = 100)
-    plt.plot(rpl, nfw_check2.velocity(rpl), label = 'NFW assumed frm pts', color = 'gray', ls = ':', zorder = 100)
+    
     plt.plot(rmx, vmx, marker = 'o', color = 'gray')
     # nfw_check.velocity(rpl)
     # exp_check = ExponentialProfile(subh.get_mstar(where = 'max', how = 'total'), np.sqrt(2) * subh.get_rh0byrmx0() * subh.rmx0) #This is an instance to check the exponential profile
@@ -222,7 +520,7 @@ for ix in tqdm(range(len(snap_if_ar))):
     plt.tight_layout()
     plt.legend(fontsize = 8)
     pdf_pages3.savefig()
-    plt.show()
+    # plt.show()
     plt.close()
 
 pdf_pages3.close()
@@ -237,6 +535,7 @@ pdf_pages3.close()
 # ======================================
 '''
 Thie big one, loop which evolves our subhalos
+Surviving
 '''
 ctr = 0
 skipped_ixs = np.zeros(0)
@@ -257,6 +556,8 @@ subh_parlen_99_ar = np.zeros(0) #This is the length of particles at z = 0
 subh_fbar_tng_ar = np.zeros(0) #This is the ratio of stars to dark matter in 2Rh for the subhalos at infall
 subh_fdm_ar = np.zeros(0) #This is the total remnant dark matter mass to test the Smith+16 paper results
 subh_id99_ar = np.zeros(0) #this is the array of SubfindIDs at z = 0 for the subhalos for labeling
+rperi_ar = np.zeros(0)
+rapo_ar = np.zeros(0)
 
 # Both the following indices are for the frem_ar, etc. (there are some subhalos that are missed for having an Unbound Orbit)
 ixs_low_mstar = np.zeros(0) #This is the list of indices of the subhalos that have low stellar mass than that in TNG
@@ -290,13 +591,12 @@ for ix in tqdm(range(len(snap_if_ar))):
         skipped_ixs = np.append(skipped_ixs, ix)
         continue
 
-    subh_fbar_tng_ar = np.append(subh_fbar_tng_ar, subh.get_mstar(where = int(subh.snap), how = '2rh')/ subh.get_mdm(where = int(subh.snap), how = '2rh'))
+    subh_fbar_tng_ar = np.append(subh_fbar_tng_ar, subh.get_mstar(where = int(subh.snap), how = 'rh')/ subh.get_mdm(where = int(subh.snap), how = 'rh'))
     subh_fdm_ar = np.append(subh_fdm_ar, subh.get_mdm(where = 99, how = 'total') / subh.get_mdm(where = int(snap_if_ar[ix]), how = 'total'))
     subh_mstar_99 = subh.get_mstar(where=99, how = 'total')
     subh_mstar_99_ar = np.append(subh_mstar_99_ar, subh_mstar_99)
     subh_id99_ar = np.append(subh_id99_ar, subh.get_sfid(where = 99))
     subh_tinf_ar = np.append(subh_tinf_ar, all_ages[snap_if_ar[ix]])
-    fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel']
     subh_m200_ar = np.append(subh_m200_ar, subh.get_m200(where = int(snap_if_ar[ix] - 1))) #Append only when there are no errors
     vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(all_ages[subh.snap]), t) #FIXME: Some orbits are not unbound as galpy reports
     mmx_ar = np.append(mmx_ar, mmxf)
@@ -321,6 +621,8 @@ for ix in tqdm(range(len(snap_if_ar))):
         subh_ixs_low_mstar = np.append(subh_ixs_low_mstar, ix)
         ixs_low_mstar = np.append(ixs_low_mstar, int(len(frem_tng_ar) - 1))
     frem_ar = np.append(frem_ar, frem)
+    rperi_ar = np.append(rperi_ar, subh.rperi)
+    rapo_ar = np.append(rapo_ar, subh.rapo)
 
 
 
@@ -390,6 +692,28 @@ plt.loglog()
 plt.tight_layout()
 plt.show()
 
+
+'''
+Plot 1.2: This is to gauge the variation of remanant fraction w.r.t. rperi or rapo
+'''
+ixs_high_mstar = ixs_high_mstar.astype('i')
+ixs_low_mstar = ixs_low_mstar.astype('i')
+ixs_unresol = ixs_unresol.astype('i')
+
+fig, ax = plt.subplots(figsize = (7, 6))
+sc = ax.scatter(rapo_ar, frem_tng_ar/frem_ar, c=subh_tinf_ar, cmap='viridis', marker='o', zorder = 20)
+ax.scatter(rapo_ar[ixs_low_mstar], frem_tng_ar[ixs_low_mstar]/frem_ar[ixs_low_mstar], label = r'Low $f_{\bigstar}$', edgecolors = 'red', s = 100, facecolors = 'white', zorder = 10)
+
+cbar = plt.colorbar(sc)
+# cbar.set_label(r'$\log M_{\rm{200, infall}}$')
+cbar.set_label(r'$t_{\rm{inf}}$')
+ax.set_yscale('log')
+ax.set_xlabel(r'$r_{\rm{apo}}$ (kpc)')
+ax.set_ylabel(r'$M_{\rm{mx, TNG}}/M_{\rm{mx, model}}$')
+ax.axhline(1, ls = '--', color = 'gray')
+ax.legend(fontsize = 8)
+plt.tight_layout()
+plt.show()
 
 
 
@@ -857,6 +1181,8 @@ for ix in tqdm(range(len(msh_sfid))):
     '''
     This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
     ''' 
+    # if ix != 3:
+    #     continue
     if ix in [9, 14, 22]: #weird index, FIXME: #8 Check later
         continue
     # if ix > 25:

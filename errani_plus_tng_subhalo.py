@@ -235,14 +235,15 @@ class ErraniSubhalo():
         vmx = get_vmxbyvmx0(rmx/rmx0) * self.vmx0
         # print(f'frem = {100 * frem:.2f} % ')
         mstar = get_LbyL0(frem, self.get_rh0byrmx0()) * self.mstar0
+        
         # rh0byrmx0 = self.get_rh0byrmx0()
         # rh_now, vd_now = self.get_rh_vd(frem)
 
         # The following part is to get the vd and rh
         rh0byrmx0 = self.get_rh0byrmx0()
 
-        vd_diff = vmx - 10 ** (l10vbyvmx0_1by4_spl(-2.5)) * self.vmx0
-        # print(frem, rh0byrmx0)
+        vd_diff = (get_vmxbyvmx0(get_rmxbyrmx0(10**-2.5)) * self.vmx0) - ((10 ** l10vbyvmx0_1by4_spl(-2.5)) * self.vmx0) #Calculating the difference at frem = 10**-2.5 and assuming it to be a constant
+
         if np.log10(frem) >= -2.5:
             if rh0byrmx0 == 0.25:
                 rh_now = 10 ** (l10rbyrmx0_1by4_spl(np.log10(frem))) * self.rmx0
@@ -261,6 +262,13 @@ class ErraniSubhalo():
         elif np.log10(frem) < -2.5:
             rh_now = rmx 
             vd_now = vmx - vd_diff
+
+
+
+
+        if mstar < 10: #FIXME:Decide #10 on some limit for stellar mass from Errani model
+            mstar = 0
+            rh_now = 0
 
         
 
@@ -290,7 +298,8 @@ class Subhalo(TNG_Subhalo):
             self.merged = False
 
         fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SubfindID', 'SnapNum', 'GroupNsubs', 'SubhaloMassInHalfRadType',
-            'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel', 'SubhaloHalfmassRadType', 'SubhaloMassType', 'SubhaloLenType', 'SubhaloVmaxRad', 'SubhaloMassInMaxRadType']
+            'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel', 'SubhaloHalfmassRadType', 'SubhaloMassType', 'SubhaloLenType', 'SubhaloVmaxRad', 
+            'SubhaloMassInMaxRadType', 'SubhaloIDMostbound', 'SubhaloVelDisp', 'GroupFirstSub']
         if not self.merged:     
             temp_tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = ['SnapNum', 'SubfindID'], onlyMDB = True)
             sfid_99 = temp_tree['SubfindID'][0] #FIXME: This only works for a surviving subhalo
@@ -309,9 +318,9 @@ class Subhalo(TNG_Subhalo):
             self.tree = {key: value[0:msh_if_ix_tree+1] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
 
 
-        self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
+        # self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
         # print(self.rmx0)
-        # self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
+        self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
         self.torb = None 
         self.rperi = None 
         self.rapo = None 
@@ -485,6 +494,7 @@ class Subhalo(TNG_Subhalo):
 
         initial_conditions = [R * u.kpc, vR * u.kilometer/u.second, vPhi * u.kilometer/u.second, Z * u.kpc, vZ * u.kilometer/u.second, Phi * u.radian ] 
         subhalo_orbit = Orbit(initial_conditions)
+        subhalo_orbit2 = Orbit(initial_conditions)
 
         # Integrate the orbit
         if when_te == 'last':
@@ -500,9 +510,12 @@ class Subhalo(TNG_Subhalo):
             rperi = subhalo_orbit.rperi(use_physical = True, type= 'spherical')
         except Exception as e:
             # Following is a weird way to obtain the orbit data since this does not work directly in galpy 1.7
-            fig, = subhalo_orbit.plot(d1 = 't', d2 = 'x')
+            # try:
+            ts2 = np.linspace(0, -10 , 1000)
+            subhalo_orbit2.integrate(ts2 * u.Gyr, potential, method = 'leapfrog')
+            fig, = subhalo_orbit2.plot(d1 = 't', d2 = 'x')
             plt.close()
-            fig2, = subhalo_orbit.plot(d1 = 'y', d2 = 'z')
+            fig2, = subhalo_orbit2.plot(d1 = 'y', d2 = 'z')
             plt.close()
 
             t_gp = fig.get_xdata() + te_time
@@ -515,9 +528,32 @@ class Subhalo(TNG_Subhalo):
             rperi = min(dist_gp) 
             minima_indices = argrelmin(dist_gp)[0]
 
-            # print(rperi)
-            # print(np.diff(t_gp[minima_indices]))
+            if len(minima_indices) == 0:
+                ts2 = np.linspace(0, -50 , 5000)
+                subhalo_orbit2.integrate(ts2 * u.Gyr, potential, method = 'leapfrog')
+                fig, = subhalo_orbit2.plot(d1 = 't', d2 = 'x')
+                plt.close()
+                fig2, = subhalo_orbit2.plot(d1 = 'y', d2 = 'z')
+                plt.close()
+
+                t_gp = fig.get_xdata() + te_time
+                x_gp = fig.get_ydata()
+                y_gp = fig2.get_xdata()
+                z_gp = fig2.get_ydata()
+
+                dist_gp = np.sqrt(x_gp**2 + y_gp**2 + z_gp**2)
+                rapo = max(dist_gp)
+                rperi = min(dist_gp) 
+                minima_indices = argrelmin(dist_gp)[0]
+
+                # print(rperi)
+                # print(np.diff(t_gp[minima_indices]))
             torb = -1 * np.mean(np.diff(t_gp[minima_indices]))
+
+                # print(rperi)
+                # print(np.diff(t_gp[minima_indices]))
+                # torb = -1 * np.mean(np.diff(t_gp[minima_indices]))
+                
             # print(dist_gp[minima_indices])
             # print()
         if torb != torb or torb == None:
@@ -528,7 +564,8 @@ class Subhalo(TNG_Subhalo):
         self.rapo = rapo 
         self.rperi = rperi
 
-        return float(all_ages[99] - all_ages[common_snaps[0]])
+        # return float(all_ages[99] - all_ages[common_snaps[0]])
+        return float(all_ages[99] - all_ages[snap_r200_if])
 
 
     def get_model_values(self, tinf, tevol):

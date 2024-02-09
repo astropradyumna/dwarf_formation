@@ -100,8 +100,9 @@ class TNG_Subhalo():
             self.merged = True
 
         fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 
-        'Group_M_Crit200', 'SubhaloVel', 'SubhaloHalfmassRadType', 'SubhaloMassType', 'SubhaloLenType', 'SubhaloMassInHalfRadType', 'SubhaloVmaxRad', 'SubhaloMassInMaxRadType']
-        if not self.merged:     
+        'Group_M_Crit200', 'SubhaloVel', 'SubhaloHalfmassRadType', 'SubhaloMassType', 'SubhaloLenType', 'SubhaloMassInHalfRadType', 'SubhaloVmaxRad', 
+        'SubhaloMassInMaxRadType', 'SubhaloIDMostbound', 'SubhaloVelDisp', 'GroupFirstSub']
+        if not self.merged:
             temp_tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = ['SnapNum', 'SubfindID'], onlyMDB = True)
             sfid_99 = temp_tree['SubfindID'][0] #FIXME: This only works for a surviving subhalo
             self.tree = il.sublink.loadTree(basePath, 99, sfid_99, fields = fields, onlyMPB = True)
@@ -219,6 +220,26 @@ class TNG_Subhalo():
         mstar = mstar_tree[snap_wanted == self.tree['SnapNum']]
         return mstar
     
+    def get_mbpid(self, where):
+        '''
+        This function is to get the MBP ID of the subhalos that get merged
+        '''
+        snap_wanted = self.__where_to_snap(where)
+        mbpid = self.tree['SubhaloIDMostbound'][snap_wanted == self.tree['SnapNum']]
+        return mbpid
+    
+
+    def get_dist_from_cen(self, where):
+        '''
+        This function gets us the distance from the central subhalo
+        '''
+        snap_wanted = self.__where_to_snap(where)
+        subh_x, subh_y, subh_z = self.tree['SubhaloPos'][snap_wanted == self.tree['SnapNum']][0]/h/(1 + all_redshifts[snap_wanted])
+        cen_id = self.tree['GroupFirstSub'][snap_wanted == self.tree['SnapNum']]
+        cen_x, cen_y, cen_z = il.groupcat.loadSingle(basePath, snap_wanted, subhaloID = cen_id)['SubhaloPos']/h/(1 + all_redshifts[snap_wanted])
+        dist = np.sqrt((cen_x - subh_x) ** 2 + (cen_y - subh_y) ** 2 +  (cen_z - subh_z) ** 2)
+        return dist
+    
 
     def get_rh(self, where, how = 'rh'):
         '''
@@ -245,6 +266,10 @@ class TNG_Subhalo():
             raise ValueError(f'Rh value not found for {self.sfid} at snap {self.snap}, max mstar snap is {snap_wanted}')
         return rh/(1 + all_redshifts[snap_wanted])/h #Setting it to right units, kpc
     
+    def get_vd(self, where):
+        snap_wanted = self.__where_to_snap(where)
+        vd = self.tree['SubhaloVelDisp'][snap_wanted == self.tree['SnapNum']]
+        return vd
 
     def get_sfid(self, where):
         '''
@@ -355,18 +380,24 @@ class TNG_Subhalo():
             gas_masses = np.array(f['PartType0']['Masses'])*1e10/h
         else:
             cg = 0 
+            
 
-        star_coords = f['PartType4']['Coordinates']
-        star_xcoord = star_coords[:, 0]/h/(1+z) - subh_pos_x
-        star_ycoord = star_coords[:, 1]/h/(1+z) - subh_pos_y
-        star_zcoord = star_coords[:, 2]/h/(1+z) - subh_pos_z
+        if 'PartType4' in f.keys():
+            cs = 1 #telling that stars are present
+            star_coords = f['PartType4']['Coordinates']
+            star_xcoord = star_coords[:, 0]/h/(1+z) - subh_pos_x
+            star_ycoord = star_coords[:, 1]/h/(1+z) - subh_pos_y
+            star_zcoord = star_coords[:, 2]/h/(1+z) - subh_pos_z
+            star_masses = np.array(f['PartType4']['Masses'])*1e10/h
 
-
-        star_masses = np.array(f['PartType4']['Masses'])*1e10/h
+            
+        else:
+            cs = 0
 
         dm_rad = np.sqrt(dm_xcoord**2 + dm_ycoord**2 + dm_zcoord**2)
-        star_rad = np.sqrt(star_xcoord**2 + star_ycoord**2 + star_zcoord**2)
+        
         if cg == 1: gas_rad = np.sqrt(gas_xcoord**2 + gas_ycoord**2 + gas_zcoord**2)
+        if cs == 1: star_rad = np.sqrt(star_xcoord**2 + star_ycoord**2 + star_zcoord**2)
         
         mass_arr_plot_cont = np.zeros(0)
         dm_mass_arr_cont = np.zeros(0)
@@ -383,16 +414,20 @@ class TNG_Subhalo():
         # print(rad_plot_cont)
 
         for rad in rad_plot_cont:
-            if cg == 1:
+            if cg == 1 and cs == 1:
                 Min = np.sum(star_masses[star_rad < rad]) + np.sum(gas_masses[gas_rad < rad])
-            else: 
+            elif cg ==1 and cs == 0:
+                Min = np.sum(gas_masses[gas_rad < rad])
+            elif cg == 0 and cs == 1: 
                 Min = np.sum(star_masses[star_rad < rad])
+            else:
+                Min = 0
 
             Min = Min + mass_dm*len(dm_rad[dm_rad< rad])
             mass_arr_plot_cont = np.append(mass_arr_plot_cont, Min)
             dm_mass_arr_cont= np.append(dm_mass_arr_cont, mass_dm*len(dm_rad[dm_rad< rad]))
             if cg == 1: gas_mass_arr_cont = np.append(gas_mass_arr_cont, np.sum(gas_masses[gas_rad < rad]))
-            star_mass_arr_cont = np.append(star_mass_arr_cont, np.sum(star_masses[star_rad < rad]))
+            if cs ==1: star_mass_arr_cont = np.append(star_mass_arr_cont, np.sum(star_masses[star_rad < rad]))
         
 
         if plot:
@@ -411,10 +446,14 @@ class TNG_Subhalo():
             ax.set_xlim(left = 10 * min(dm_rad))
             ax.set_title('Mass profiles for subhalo ID = '+str(shid)+' at z = '+str(round(z, 2)), fontsize = 10)
 
-        if cg == 1: #If there is gas element
+        if cg == 1 and cs == 1: #If there is gas element
             return cg, rad_plot_cont, mass_arr_plot_cont, dm_mass_arr_cont, star_mass_arr_cont, gas_mass_arr_cont
-        else: 
+        elif cg == 0 and cs == 1: 
             return cg, rad_plot_cont, mass_arr_plot_cont, dm_mass_arr_cont, star_mass_arr_cont, np.zeros(len(rad_plot_cont))
+        elif cg == 1 and cs == 0: 
+            return cg, rad_plot_cont, mass_arr_plot_cont, dm_mass_arr_cont, np.zeros(len(rad_plot_cont)), gas_mass_arr_cont
+        else: 
+            return cg, rad_plot_cont, mass_arr_plot_cont, dm_mass_arr_cont, np.zeros(len(rad_plot_cont)), np.zeros(len(rad_plot_cont))
 
 
     def get_rot_curve(self, where = None, plot = False):
@@ -680,3 +719,11 @@ class TNG_Subhalo():
         
         return None
 
+
+
+# class TNG_Halo():
+#     '''
+#     This class is to get all the halo properties. Initialize by the snapshot and central ID or snapshot and GrNr
+#     '''
+#     def __init__(self, ):
+#         self.

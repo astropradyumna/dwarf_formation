@@ -8,6 +8,7 @@ from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
 import IPython
 import warnings
+from testing_errani import get_rmxbyrmx0
 
 
 filepath = '/rhome/psadh003/bigdata/ucd_formation_errani_files/'
@@ -266,9 +267,28 @@ class NFWProfile():
 
         # rs = self.rmx/2.16 #hopeflly in kpc
         vmx_calc= 1.64 * r_s * 1e3 * np.sqrt(4.3e-3 * rho_s/1e9)  #this would be in Msun/kpc^3
-        print(f'Calcuated rmx / input rmx = {2.16 * r_s / self.rmx:.2f} and vmx = {vmx_calc / self.vmx:.2f}')
-
+        # print(f'Calcuated rmx / input rmx = {2.16 * r_s / self.rmx:.2f} and vmx = {vmx_calc / self.vmx:.2f}')
+        assert np.isclose([2.16 * r_s, vmx_calc], [self.rmx, self.vmx]).all(), 'Looks like calculated Mvir and cvir values have not converged!'
         return Mvir, cvir
+    
+    def get_mx_from_vir(self):
+        '''
+        This is to get mx values from virial mass and concentration
+        '''
+        Mvir = self.Mvir
+        cvir = self.cvir 
+
+        r_vir = (3 * Mvir / (4 * np.pi * 200 * get_critical_dens(self.z)))**(1/3)
+        
+        # Calculate scale radius
+        r_s = r_vir / cvir
+        
+        # Calculate scale density
+        rho_s = Mvir / (4 * np.pi * r_s**3 * (np.log(1 + cvir) - cvir / (1 + cvir)))
+
+        vmx_calc= 1.64 * r_s * 1e3 * np.sqrt(4.3e-3 * rho_s/1e9)  #this would be in Msun/kpc^3
+        rmx_calc = 2.16 * r_s
+        return vmx_calc, rmx_calc
 
 
     def density(self, r):
@@ -331,6 +351,48 @@ class NFWProfile():
 
         rho_mean = self.mass(r)/(4./3 * np.pi * r**3)
         return rho_mean
+
+
+
+class TrucatedNFW():
+    '''
+    This is to model Eq. 7 from Errani+21
+
+    '''
+    def __init__(self, Mvir, cvir, frem):
+        self.frem = frem
+        self.Mvir = Mvir 
+        self.cvir = cvir
+        self.nfw_init = NFWProfile(Mvir = Mvir, cvir = cvir)
+        self.vmx, self.rmx = self.nfw_init.get_mx_from_vir()
+
+    def density(self, r):
+        ''''
+        This is direct implementation of Eq. 7 from Errani+21
+        '''
+        frem = self.frem
+        rmx0 = self.rmx 
+        vmx0 = self.vmx 
+        rho_nfw = self.nfw_init.density
+        def get_rcutbyrmx0(frem):
+            rcutbyrmx0 = 0.44 * frem ** 0.44 * (1 - frem ** 0.3)**(-1.1)
+            return rcutbyrmx0
+
+        rcut = get_rcutbyrmx0(frem)*rmx0
+        kappa = 0.3
+        rs = rmx0/2.16 
+        dens =  rho_nfw(r)*np.exp(-r/rcut)/(1 + rs/rcut)**kappa
+        return dens 
+    
+    
+    def mass(self, r):
+        '''
+        Trying to obtain mass to check if this is convergent
+        It is known to be convergent for rcut/rs --> 0
+        '''
+        mass = quad(lambda x:4 * np.pi* x**2 * self.density(x), 0, r)[0]
+        return mass
+
 
 
 
