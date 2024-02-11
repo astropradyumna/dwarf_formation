@@ -158,8 +158,8 @@ dist_f_ar = np.zeros(0)
 for ix in tqdm(range(len(ssh_snap))): #This would run over all the subhalos surviving till z = 0
 
 
-    if ix > 5:
-        break
+    # if ix > 5:
+    #     break
     subh = Subhalo(snap = ssh_snap[ix], sfid = ssh_sfid[ix], last_snap=99)
     try:
         t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
@@ -190,8 +190,10 @@ for ix in tqdm(range(len(ssh_snap))): #This would run over all the subhalos surv
         vd_max_ar = np.append(vd_max_ar, 0) #los vd
 
     
-
-    vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t) #FIXME: Some orbits are not unbound as galpy reports
+    if subh.torb == np.inf:
+        vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.vmx0, subh.rmx0, subh.mmx0, vd_max_ar[-1], rh_max_ar[-1], subh.mstar
+    else:
+        vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t) #FIXME: Some orbits are not unbound as galpy reports
     vmx_f_ar = np.append(vmx_f_ar, vmxf)
     rmx_f_ar = np.append(rmx_f_ar, rmxf)
     mmx_f_ar = np.append(mmx_f_ar, mmxf)

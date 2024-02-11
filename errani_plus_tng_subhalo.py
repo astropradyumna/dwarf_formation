@@ -183,6 +183,7 @@ class ErraniSubhalo():
             '''
             
             if tmx0/tperi >= 2/3: #Heavy mass loss regime
+                # print('Heavy mass loss regime')
                 tasy = 0.22 * tperi
                 y0 = (tmx0 - tasy) / tperi
                 tau_asy = 0.65 * torb
@@ -191,6 +192,7 @@ class ErraniSubhalo():
                 inner_term = 1 + (t/tau)**eta 
                 tmx = tasy + tperi * y0 * (inner_term)**(-1/eta)
             else: #modest mass loss regime
+                # print('Modest mass loss regime')
                 tasyp =  ( tmx0 / (1 + (tmx0/tperi))**2.2)
                 etap = 0.67
                 # yp = (tmx - tasyp)/tperi 
@@ -320,7 +322,10 @@ class Subhalo(TNG_Subhalo):
 
         # self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
         # print(self.rmx0)
-        self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
+        with warnings.catch_warnings(record=True) as w:
+            self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
+            if len(w) > 0:
+                self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
         self.torb = None 
         self.rperi = None 
         self.rapo = None 
@@ -419,7 +424,7 @@ class Subhalo(TNG_Subhalo):
         subh_ages = np.flip(all_ages[common_snaps]) #The ages after flipping will be in descending order
 
 
-        
+        snap_r200_if = None
         for ix, sx in enumerate(common_snaps_des):
             '''
             This loop is to go through all the common indices in descending order
@@ -431,6 +436,8 @@ class Subhalo(TNG_Subhalo):
                 if subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix]]] < subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix - 1]]] and subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix]]] < subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix + 1]]]:
                     first_peri_snap = sx
 
+        if snap_r200_if == None:
+            raise ValueError('This subhalo does not enter Rvir')
         # This is the snapshot at which the input to pericenter estimation codes wll be taken.
         if when_te == 'last':
             te_snap = common_snaps[-1] #This will be the last snapshot, z = 0 for the surviving ones
@@ -527,8 +534,9 @@ class Subhalo(TNG_Subhalo):
             rapo = max(dist_gp)
             rperi = min(dist_gp) 
             minima_indices = argrelmin(dist_gp)[0]
+            time_of_min = t_gp[minima_indices]
 
-            if len(minima_indices) == 0:
+            if len(minima_indices) <= 1: #If we have <= 1 element as list of minima, we cannot find the time period again 
                 ts2 = np.linspace(0, -50 , 5000)
                 subhalo_orbit2.integrate(ts2 * u.Gyr, potential, method = 'leapfrog')
                 fig, = subhalo_orbit2.plot(d1 = 't', d2 = 'x')
@@ -548,7 +556,12 @@ class Subhalo(TNG_Subhalo):
 
                 # print(rperi)
                 # print(np.diff(t_gp[minima_indices]))
-            torb = -1 * np.mean(np.diff(t_gp[minima_indices]))
+                time_of_min = t_gp[minima_indices]
+
+            if len(time_of_min) > 1: #In this case, we can find the time period because we have measured two local minima   
+                torb = -1 * np.mean(np.diff(time_of_min))
+            else:
+                torb = np.inf #This is the case where orbital time is >= 25 Gyrs, we are just going to assume in this case that this is not going to evolve.
 
                 # print(rperi)
                 # print(np.diff(t_gp[minima_indices]))
@@ -556,8 +569,9 @@ class Subhalo(TNG_Subhalo):
                 
             # print(dist_gp[minima_indices])
             # print()
-        if torb != torb or torb == None:
-            raise ValueError('Orbital time not currently available')
+        assert ((torb == torb) and (torb != None)), 'This is unexpected, check torb calculations'
+            
+            # raise ValueError('Orbital time not currently available')
             
 
         self.torb = torb

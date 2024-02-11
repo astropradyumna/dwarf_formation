@@ -39,30 +39,45 @@ star_pos = np.load(fof0_path+'Stars_POS_FoF_0_particle_type_4.npy')
 dm_ids = np.load(fof0_path+'DM_IDs_FoF_0_particle_type_1.npy')
 dm_pos = np.load(fof0_path+'DM_POS_FoF_0_particle_type_1.npy')
 
-pos_ar = np.zeros((len(mbpid_ar), 3))
+pos_ar = np.zeros(0)
 
 popix_ar = np.zeros(0)
 
 IPython.embed()
 
 for (ix, id) in tqdm(enumerate(mbpid_ar)):
-    pos = None
+    pos = [None]
     index = np.where(np.isin(star_ids, mbpid_ar[ix]))[0]
-    if len(index) == 1: pos = star_pos[index]
+    if len(index) == 1: pos = star_pos[index][0]
     if len(index) == 0:
         index = np.where(np.isin(dm_ids, mbpid_ar[ix]))[0]
-        if len(index) == 1: pos = dm_pos[index]
-        if len(pos) == 3:
-            pos_ar=  np.append(pos_ar, pos) 
+        if len(index) == 1: pos = dm_pos[index][0]
+    
+    if len(pos) == 3:
+        if len(pos_ar) == 0:
+            pos_ar = pos.reshape(1, -1)
         else:
-            popix_ar = np.append(popix_ar, ix) #FIXME: #12 Some of the particles are not in the FoF0 particle file
-
-
-# np.where(star_ids == )
-
+            pos_ar = np.append(pos_ar, pos.reshape(1, -1), axis = 0)
+    else:
+        popix_ar = np.append(popix_ar, ix) #FIXME: #12 Some of the particles are not in the FoF0 particle file
 
 
 
+df = df.drop(popix_ar)
+df['pos_f_ar'] = pos_ar.tolist()
+df['dist_f_ar'] = np.sqrt(np.sum(pos_ar**2, axis=1))
+
+df.to_csv(outpath + 'merged_evolved_fof0.csv', index = False)
+
+
+
+#=========================
+dm_dist = np.sqrt(np.sum(dm_pos**2, axis=1))
+
+rpl = np.logspace(1, 3.2, 100)
+Ndm_ar = np.zeros(0) #shmf for merged subhalos
+for (ix, ms) in enumerate(rpl):
+    Ndm_ar = np.append(Ndm_ar, len(dm_dist[dm_dist < ms]))
 
 
 # '''
