@@ -16,6 +16,7 @@ import illustris_python as il
 from matplotlib.backends.backend_pdf import PdfPages
 from subhalo_profiles import ExponentialProfile, NFWProfile
 import warnings
+from populating_stars import *
 
 # Suppress the lzma module warning
 # warnings.filterwarnings("ignore", category=UserWarning, module="pandas.compat")
@@ -164,14 +165,25 @@ for ix in tqdm(range(len(ssh_snap))): #This would run over all the subhalos surv
     try:
         t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
     except Exception as e:
-        print(e)
+        print(e) 
         # ctr = ctr + 1
         # skipped_ixs = np.append(skipped_ixs, ix)
         continue
+    
+    rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')*3./4) #this is the 2d half light radius
+    vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
+
+    print(subh.get_rh(where = 'max')*3./4)
+    # try: #Skip the subhalos which do not have Rh at max Mstar
+    #     rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')*3./4) #this is the 2d half light radius
+    #     vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
+    # except ValueError:
+    #     continue
+
 
     vmx_if_ar = np.append(vmx_if_ar, subh.vmx0)
     rmx_if_ar = np.append(rmx_if_ar, subh.rmx0)
-    mmx_if_ar = np.append(mmx_if_ar, subh.mmx0)
+    mmx_if_ar = np.append(mmx_if_ar, subh.mmx0) 
 
     sfid_if_ar = np.append(sfid_if_ar, ssh_sfid[ix])
     snap_if_ar = np.append(snap_if_ar, ssh_snap[ix])
@@ -181,16 +193,9 @@ for ix in tqdm(range(len(ssh_snap))): #This would run over all the subhalos surv
     tinf_ar = np.append(tinf_ar, all_ages[ssh_snap[ix]])
 
     mstar_max_ar = np.append(mstar_max_ar, subh.mstar)
-    
-    try:
-        rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')/np.sqrt(2)) #this is the 2d half light radius
-        vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
-    except ValueError:
-        rh_max_ar = np.append(rh_max_ar, 0)
-        vd_max_ar = np.append(vd_max_ar, 0) #los vd
 
     
-    if subh.torb == np.inf:
+    if subh.torb == np.inf: #case of no evolution
         vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.vmx0, subh.rmx0, subh.mmx0, vd_max_ar[-1], rh_max_ar[-1], subh.mstar
     else:
         vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t) #FIXME: Some orbits are not unbound as galpy reports
@@ -201,14 +206,17 @@ for ix in tqdm(range(len(ssh_snap))): #This would run over all the subhalos surv
     rh_f_ar = np.append(rh_f_ar, rhf)
     vd_f_ar = np.append(vd_f_ar, vdf)
 
-    vmxf_tng, rmxf_tng, mmxf_tng = subh.get_mx_values(where = int(99))
+    with warnings.catch_warnings(record=True) as w:
+        vmxf_tng, rmxf_tng, mmxf_tng = subh.get_mx_values(where = int(99))
+        if len(w) > 0:
+            vmxf_tng, rmxf_tng, mmxf_tng = subh.get_rot_curve(where= int(99))
     # Following are from TNG
     vmx_f_ar_tng = np.append(vmx_f_ar_tng, vmxf_tng)
     rmx_f_ar_tng = np.append(rmx_f_ar_tng, rmxf_tng)
     mmx_f_ar_tng = np.append(mmx_f_ar_tng, mmxf_tng)
     mstar_f_ar_tng = np.append(mstar_f_ar_tng, subh.get_mstar(where = 99, how = 'total'))
     try:
-        rh_f_ar_tng = np.append(rh_f_ar_tng, subh.get_rh(where = 99))
+        rh_f_ar_tng = np.append(rh_f_ar_tng, subh.get_rh(where = 99)*3./4)
         vd_f_ar_tng = np.append(vd_f_ar_tng, subh.get_vd(where = 99))
     except ValueError:
         rh_f_ar_tng = np.append(rh_f_ar_tng, 0)
@@ -294,6 +302,7 @@ torb_ar = np.zeros(0)
 tinf_ar = np.zeros(0)
 
 mbpid_ar = np.zeros(0)
+mbpidp_ar = np.zeros(0) #this is the MBP ID of the previous snapshot
 
 
 for ix in tqdm(range(len(msh_snap))):
@@ -311,7 +320,18 @@ for ix in tqdm(range(len(msh_snap))):
         # ctr = ctr + 1
         # skipped_ixs = np.append(skipped_ixs, ix)
         continue
-    
+
+    rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')*3./4) #this is the 2d half light radius
+    vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
+
+    print(subh.get_rh(where = 'max')*3./4)
+    # try: #If we do not have Rh at maximum stellar mass, then we are just skipping the subhalo
+    #     rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')*3./4) #this is the 2d half light radius
+    #     vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
+    # except ValueError:
+    #     continue
+
+
     vmx_if_ar = np.append(vmx_if_ar, subh.vmx0)
     rmx_if_ar = np.append(rmx_if_ar, subh.rmx0)
     mmx_if_ar = np.append(mmx_if_ar, subh.mmx0)
@@ -325,14 +345,13 @@ for ix in tqdm(range(len(msh_snap))):
 
     mstar_max_ar = np.append(mstar_max_ar, subh.mstar)
 
-    try:
-        rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')/np.sqrt(2)) #this is the 2d half light radius
-        vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
-    except ValueError:
-        rh_max_ar = np.append(rh_max_ar, 0)
-        vd_max_ar = np.append(vd_max_ar, 0) #los vd
 
-    vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t) #FIXME: Some orbits are not unbound as galpy reports
+
+    if subh.torb == np.inf:
+        vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.vmx0, subh.rmx0, subh.mmx0, vd_max_ar[-1], rh_max_ar[-1], subh.mstar
+    else:
+        vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t)
+
     vmx_f_ar = np.append(vmx_f_ar, vmxf)
     rmx_f_ar = np.append(rmx_f_ar, rmxf)
     mmx_f_ar = np.append(mmx_f_ar, mmxf)
@@ -340,7 +359,16 @@ for ix in tqdm(range(len(msh_snap))):
     rh_f_ar = np.append(rh_f_ar, rhf)
     vd_f_ar = np.append(vd_f_ar, vdf)
 
-    mbpid_ar = np.append(mbpid_ar, subh.get_mbpid(where = subh.snap)) #Get the MBP ID at infall
+    mbpid_ar = np.append(mbpid_ar, subh.get_mbpid(where = subh.last_snap)) #Get the MBP ID at infall
+    mbpidp =  np.array(subh.get_mbpid(where = subh.last_snap-1))
+    # print(mbpid_ar[-1], mbpidp)
+    # print(len(mbpidp), mbpidp.shape)
+    if len(mbpidp) != 0:
+        mbpidp_ar = np.append(mbpidp_ar, mbpidp)
+    else:
+        mbpidp_ar = np.append(mbpidp_ar, -1)
+    # print(mbpidp_ar[-1])
+
 
 
 df = pd.DataFrame()
@@ -369,6 +397,7 @@ df['torb_ar'] = torb_ar
 df['tinf_ar'] = tinf_ar
 
 df['mbpid_ar'] = mbpid_ar  #These are the final positions
+df['mbpidp_ar'] = mbpidp_ar #MBP IDs of the snapshot before the final snapshot
 
 df.to_csv(outpath + 'merged_evolved_fof0.csv', index = False)
 
@@ -403,18 +432,21 @@ Plot 0.1: This is to plot all the half mass radius of stars according to TNG, an
 fig, ax = plt.subplots(figsize = (5, 5))
 
 
-for ix in tqdm(range(len(snap_if_ar))):
+for ix in tqdm(range(len(ssh_snap))):
     '''
     This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
     ''' 
-    subh  = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99 )
+    subh  = Subhalo(snap = ssh_snap[ix], sfid = ssh_sfid[ix], last_snap = 99 )
     # subh.get_infall_properties()
-
-    Rh_tng_max = subh.get_rh(where = 'max')/np.sqrt(2)
-    Rh_model = subh.get_rh0byrmx0() * subh.rmx0 #This is the assumption
+    try:
+        Rh_tng_max = subh.get_rh(where = 'max')/np.sqrt(2)
+        Rh_model = subh.get_rh0byrmx0() * subh.rmx0 #This is the assumption
+    except:
+        continue
     # if subh.get_rh0byrmx0() == 0.5:
     #     print('Jai')
-    ax.plot(Rh_model/subh.rmx0, Rh_tng_max/subh.rmx0, 'ko', ms = 3.5)
+    # ax.plot(Rh_model/subh.rmx0, Rh_tng_max/subh.rmx0, 'ko', ms = 3.5)
+    ax.plot(Rh_model, Rh_tng_max, 'ko', ms = 3.5)
     # if ix in [30, 49, 56, 68, 84, 85, 89, 95]: 
     #     ax.plot(Rh_model, Rh_tng_max, 'ro')
     #     if ix == 30:ax.plot(Rh_model, Rh_tng_max, 'ro', label = r'Low $f_{\bigstar}$')
@@ -424,11 +456,12 @@ for ix in tqdm(range(len(snap_if_ar))):
 
 ax.set_xlabel(r'$R_{\rm{h, inf}}/r_{\rm{mx0}}$ model (kpc)')
 ax.set_ylabel(r'$R_{\rm{h, max\, M_\bigstar}}/r_{\rm{mx0}}$ from TNG (kpc)')
-ax.set_xlim(0, 8)
-ax.set_ylim(0, 8)
+# ax.set_xlim(0, 8)
+# ax.set_ylim(0, 8)
 x_vals = np.array(ax.get_xlim())    
 ax.plot(x_vals, x_vals, 'k--', lw = 0.5)
 ax.legend(fontsize = 8)
+plt.loglog()
 plt.tight_layout()
 plt.show()
 

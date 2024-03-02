@@ -14,12 +14,12 @@ from galpy.orbit import Orbit
 from astropy import units as u
 from testing_errani import get_rot_curve, get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0, l10rbyrmx0_1by4_spl,l10rbyrmx0_1by2_spl, l10rbyrmx0_1by8_spl, l10rbyrmx0_1by16_spl, l10vbyvmx0_1by2_spl, l10vbyvmx0_1by4_spl, l10vbyvmx0_1by8_spl, l10vbyvmx0_1by16_spl
 from tng_subhalo_and_halo import TNG_Subhalo
-from errani_subhalo import ErraniSubhalo
 from matplotlib import gridspec
 from colossus.cosmology import cosmology
 from colossus.halo import concentration
 from scipy.signal import argrelmin
 import warnings
+from populating_stars import *
 
 
 cosmology.setCosmology('planck18')
@@ -40,56 +40,6 @@ all_snaps = np.array(ages_df['snapshot'])
 all_redshifts = np.array(ages_df['redshift'])
 all_ages = np.array(ages_df['age(Gyr)'])
 
-
-'''
-Following is the dataset of the entire list of subhalos which infalled after z = 3 and survived
-'''
-survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1.csv')
-
-ssh_sfid = survived_df['SubfindID']
-ssh_sfid = np.array([s.strip('[]') for s in ssh_sfid], dtype = int)
-ssh_snap = np.array(survived_df['SnapNum'], dtype = int)
-ssh_ift = all_ages[ssh_snap]
-
-
-ssh_sfid1 = survived_df['inf1_subid']
-ssh_sfid1 = np.array([s.strip('[]') for s in ssh_sfid1], dtype = int)
-ssh_snap1 = np.array(survived_df['inf1_snap'], dtype = int)
-ssh_tinf1 = all_ages[ssh_snap1] #This is the infall time 1
-
-
-ssh_mstar = survived_df['Mstar']
-ssh_mstar = [s.strip('[]') for s in ssh_mstar]
-ssh_mstar = np.array(ssh_mstar, dtype = float)
-ssh_max_mstar = np.array(survived_df['max_Mstar'], dtype = float)
-ssh_max_mstar_snap = np.array(survived_df['max_Mstar_snap'], dtype = int)
-ssh_max_mstar_id = np.array(survived_df['max_Mstar_id'], dtype = int)
-
-'''
-Following is the dataset of the entire list of subhalos which infalled after z = 3 and merged
-'''
-merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1.csv')
-
-msh_sfid = merged_df['SubfindID']
-msh_sfid = np.array([s.strip('[]') for s in msh_sfid], dtype = int) #snap ID at infall
-msh_snap = np.array(merged_df['SnapNum'], dtype = int) #Snap at infall
-msh_ift = all_ages[msh_snap]
-
-msh_sfid1 = merged_df['inf1_subid']
-msh_sfid1 = np.array([s.strip('[]') for s in msh_sfid1], dtype = int)
-msh_snap1 = merged_df['inf1_snap']
-msh_tinf1 = all_ages[msh_snap1] 
-
-
-msh_merger_snap = np.array(merged_df['MergerSnapNum'], dtype = int) #SnapNum at the last snapshot of survival
-msh_merger_sfid = np.array(merged_df['MergerSubfindID'], dtype = int) #this is the subfind ID at the last snapshot of survival
-msh_mt = all_ages[msh_merger_snap] #The time of merger
-# print(msh_merger_snap)
-msh_mstar = merged_df['Mstar']
-msh_mstar = [s.strip('[]') for s in msh_mstar]
-msh_mstar = np.array(msh_mstar, dtype = float)
-msh_max_mstar = np.array(merged_df['max_Mstar'], dtype = float)
-msh_max_mstar_snap = np.array(merged_df['max_Mstar_snap'], dtype = int)
 
 
 '''
@@ -301,23 +251,34 @@ class Subhalo(TNG_Subhalo):
 
         fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SubfindID', 'SnapNum', 'GroupNsubs', 'SubhaloMassInHalfRadType',
             'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel', 'SubhaloHalfmassRadType', 'SubhaloMassType', 'SubhaloLenType', 'SubhaloVmaxRad', 
-            'SubhaloMassInMaxRadType', 'SubhaloIDMostbound', 'SubhaloVelDisp', 'GroupFirstSub']
+            'SubhaloMassInMaxRadType', 'SubhaloIDMostbound', 'SubhaloVelDisp', 'GroupFirstSub', 'SubhaloVmax']
         if not self.merged:     
             temp_tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = ['SnapNum', 'SubfindID'], onlyMDB = True)
             sfid_99 = temp_tree['SubfindID'][0] #FIXME: This only works for a surviving subhalo
             self.tree = il.sublink.loadTree(basePath, 99, sfid_99, fields = fields, onlyMPB = True)
         else: #If it merged
-            infall_ix = np.where((msh_snap == snap) & (msh_sfid == sfid))[0] #This is to get the index of the current subhalo in the merger dataframe
-            # print(infall_ix)
-            msh_last_snap = int(msh_merger_snap[infall_ix]) #This is the infall snapshot
-            msh_last_sfid = int(msh_merger_sfid[infall_ix]) #This is the infall subfind ID
-
-            tree = il.sublink.loadTree(basePath, msh_last_snap, msh_last_sfid, fields = fields, onlyMPB = True) #Getting all the progenitors from the last snapshot of survival
+            tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = fields, onlyMDB = True) #From this we obtain all the desencdants of the subhalo at infall
             tree.pop('count') #removing a useless key from the dictionary
             snaps_temp = tree['SnapNum']
             sfids_temp = tree['SubfindID']
-            msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
-            self.tree = {key: value[0:msh_if_ix_tree+1] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
+
+            merger_index = np.where(snaps_temp == self.last_snap)[0][-1] #this is the index of the merger in the tree
+            # msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
+            self.tree = {key: value[merger_index:] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
+
+            print(self.snap, self.sfid, merger_index, self.tree['SnapNum'])
+
+            # infall_ix = np.where((msh_snap == snap) & (msh_sfid == sfid))[0] #This is to get the index of the current subhalo in the merger dataframe
+            # # print(infall_ix)
+            # msh_last_snap = int(msh_merger_snap[infall_ix]) #This is the merger snapshot
+            # msh_last_sfid = int(msh_merger_sfid[infall_ix]) #This is the merger subfind ID
+
+            # tree = il.sublink.loadTree(basePath, msh_last_snap, msh_last_sfid, fields = fields, onlyMPB = True) #Getting all the progenitors from the last snapshot of survival
+            # tree.pop('count') #removing a useless key from the dictionary
+            # snaps_temp = tree['SnapNum']
+            # sfids_temp = tree['SubfindID']
+            # msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
+            # self.tree = {key: value[0:msh_if_ix_tree+1] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
 
 
         # self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
@@ -332,6 +293,11 @@ class Subhalo(TNG_Subhalo):
         
         # assert len(temp_tree) <= 100, 'Probably getting merged, you are yet to write the code' #This is probably getting merged
         self.mstar = max(self.tree['SubhaloMassType'][:, 4][self.tree['SnapNum'] >= self.snap]) * 1e10 / h #This is the maximum stellar mass at infall
+        self.vmax = self.get_vmax(where = 'max')
+        if self.mstar < 5e6: #If we have stellar mass < 5e6 Msun, we take stellar mass from Vmax
+            self.mstar = get_mstar_co(np.log10(self.vmax)) #This would be the stellar mass in Msun after application of scatter
+
+
 
     def get_infall_properties(self):
         '''
@@ -361,9 +327,10 @@ class Subhalo(TNG_Subhalo):
         This is a function to calculate the initial rh0burmx0 for the subhalo
         '''
         values = [1/2, 1/4, 1/8, 1/16]
-        Rh0 = self.get_rh(where = 'max')
+        Rh0 = self.get_rh(where = 'max')*3./4
+
         
-        closest_value = min(values, key=lambda x: abs(x - Rh0/self.rmx0))
+        closest_value = min(values, key=lambda x: abs(np.log(x) - np.log(Rh0/self.rmx0)))
         # print(closest_value)
         return closest_value
 
@@ -390,16 +357,25 @@ class Subhalo(TNG_Subhalo):
         if not merged:
             tree = il.sublink.loadTree(basePath, snap, sfid, fields = fields, onlyMDB = True) #This only works for surviving subhalos
         else: #If it merges
-            infall_ix = np.where((msh_snap == snap) & (msh_sfid == sfid))[0] #This is to get the index of the current subhalo in the merger dataframe
-            msh_last_snap = msh_merger_snap[infall_ix] #This is the infall snapshot
-            msh_last_sfid = msh_merger_sfid[infall_ix] #This is the infall subfind ID
-
-            tree = il.sublink.loadTree(basePath, int(msh_last_snap), int(msh_last_sfid), fields = fields, onlyMPB = True) #Getting all the progenitors from the last snapshot of survival
+            tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = fields, onlyMDB = True) #From this we obtain all the desencdants of the subhalo at infall
             tree.pop('count') #removing a useless key from the dictionary
             snaps_temp = tree['SnapNum']
             sfids_temp = tree['SubfindID']
-            msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
-            tree = {key: value[0:msh_if_ix_tree+1] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
+
+            merger_index = np.where(snaps_temp == self.last_snap)[0][-1] #this is the index of the merger in the tree
+            # msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
+            tree = {key: value[merger_index:] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
+
+            # infall_ix = np.where((msh_snap == snap) & (msh_sfid == sfid))[0] #This is to get the index of the current subhalo in the merger dataframe
+            # msh_last_snap = msh_merger_snap[infall_ix] #This is the infall snapshot
+            # msh_last_sfid = msh_merger_sfid[infall_ix] #This is the infall subfind ID
+
+            # tree = il.sublink.loadTree(basePath, int(msh_last_snap), int(msh_last_sfid), fields = fields, onlyMPB = True) #Getting all the progenitors from the last snapshot of survival
+            # tree.pop('count') #removing a useless key from the dictionary
+            # snaps_temp = tree['SnapNum']
+            # sfids_temp = tree['SubfindID']
+            # msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
+            # tree = {key: value[0:msh_if_ix_tree+1] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
 
             # IPython.embed()
         subh_snap = tree['SnapNum']
@@ -437,7 +413,7 @@ class Subhalo(TNG_Subhalo):
                     first_peri_snap = sx
 
         if snap_r200_if == None:
-            raise ValueError('This subhalo does not enter Rvir')
+            raise ValueError('This subhalo does not enter Rvir') #FIXME: #14 Some subhalos do not enter the virial radius
         # This is the snapshot at which the input to pericenter estimation codes wll be taken.
         if when_te == 'last':
             te_snap = common_snaps[-1] #This will be the last snapshot, z = 0 for the surviving ones
@@ -537,7 +513,7 @@ class Subhalo(TNG_Subhalo):
             time_of_min = t_gp[minima_indices]
 
             if len(minima_indices) <= 1: #If we have <= 1 element as list of minima, we cannot find the time period again 
-                ts2 = np.linspace(0, -50 , 5000)
+                ts2 = np.linspace(0, -27 , 2700)
                 subhalo_orbit2.integrate(ts2 * u.Gyr, potential, method = 'leapfrog')
                 fig, = subhalo_orbit2.plot(d1 = 't', d2 = 'x')
                 plt.close()
@@ -561,7 +537,7 @@ class Subhalo(TNG_Subhalo):
             if len(time_of_min) > 1: #In this case, we can find the time period because we have measured two local minima   
                 torb = -1 * np.mean(np.diff(time_of_min))
             else:
-                torb = np.inf #This is the case where orbital time is >= 25 Gyrs, we are just going to assume in this case that this is not going to evolve.
+                torb = np.inf #This is the case where orbital time is >= 13.8 Gyrs, we are just going to assume in this case that this is not going to evolve.
 
                 # print(rperi)
                 # print(np.diff(t_gp[minima_indices]))
@@ -583,10 +559,12 @@ class Subhalo(TNG_Subhalo):
 
 
     def get_model_values(self, tinf, tevol):
-        errani_start_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, self.get_rh(where = int(self.snap)), self.vmx0, self.rmx0, self.mmx0, self.mstar)
+        errani_start_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, self.get_rh(where = 'max')*3./4, self.vmx0, self.rmx0, self.mmx0, self.mstar)
         tinf = 10 #FIXME: update this after you are done with testing
         if tinf > 9:
-            vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = central_v0[0]) #just assume a constant V0
+            # vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = central_v0[0]) #just assume a constant V0
+            avg_v0_b4_9 = (central_v0[central_snaps == self.snap] + central_v0[central_snaps == 99])/2.
+            vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9) #just assume a constant V0
         elif tevol + tinf <  9:
             avg_v0_b4_9 = (central_v0[central_snaps == self.snap] + central_v0[central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.
             vmxf, rmxf, mmxf, vdf, rhf, mstarf = errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9)
@@ -653,9 +631,18 @@ class Subhalo(TNG_Subhalo):
         if not merged:
             tree = il.sublink.loadTree(basePath, snap, sfid, fields = fields, onlyMDB = True) #This only works for surviving subhalos
         else: #If it merges
-            infall_ix = np.where((msh_snap == snap) & (msh_sfid == sfid))[0] #This is to get the index of the current subhalo in the merger dataframe
-            msh_last_snap = msh_merger_snap[infall_ix] #This is the infall snapshot
-            msh_last_sfid = msh_merger_sfid[infall_ix] #This is the infall subfind ID
+            tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = fields, onlyMDB = True) #From this we obtain all the desencdants of the subhalo at infall
+            tree.pop('count') #removing a useless key from the dictionary
+            snaps_temp = tree['SnapNum']
+            sfids_temp = tree['SubfindID']
+
+            merger_index = np.where(snaps_temp == self.last_snap)[0][-1] #this is the index of the merger in the tree
+            # msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
+            tree = {key: value[merger_index:] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
+
+            # infall_ix = np.where((msh_snap == snap) & (msh_sfid == sfid))[0] #This is to get the index of the current subhalo in the merger dataframe
+            # msh_last_snap = msh_merger_snap[infall_ix] #This is the infall snapshot
+            # msh_last_sfid = msh_merger_sfid[infall_ix] #This is the infall subfind ID
 
             tree = il.sublink.loadTree(basePath, int(msh_last_snap), int(msh_last_sfid), fields = fields, onlyMPB = True) #Getting all the progenitors from the last snapshot of survival
             tree.pop('count') #removing a useless key from the dictionary

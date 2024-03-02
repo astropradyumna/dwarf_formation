@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import os 
 # os.environ["USE_LZMA"] = "0"
 import pandas as pd
-from errani_plus_tng_subhalo import Subhalo
+# from errani_plus_tng_subhalo import Subhalo
 from tqdm import tqdm
 # import galpy
 import IPython
@@ -27,11 +27,12 @@ from matplotlib.backends.backend_pdf import PdfPages
 # This is currently being used for finding the position of the MBP 
 
 
-fof0_path = '/mainvol/psadh003/FoF0_TNG50_redshift0/'
+fof0_path = '/home/psadh003/FoF0_TNG50_redshift0/'
 outpath  = '/home/psadh003/tng50/output_files/'
 
 df = pd.read_csv(outpath + 'merged_evolved_fof0.csv', delimiter = ',')
 mbpid_ar = df['mbpid_ar']
+mbpidp_ar = df['mbpidp_ar'] #MBP ID of one snapshot before 
 
 star_ids = np.load(fof0_path+'Stars_IDs_FoF_0_particle_type_4.npy')
 star_pos = np.load(fof0_path+'Stars_POS_FoF_0_particle_type_4.npy')
@@ -43,21 +44,40 @@ pos_ar = np.zeros(0)
 
 popix_ar = np.zeros(0)
 
-IPython.embed()
+# IPython.embed()
 
 for (ix, id) in tqdm(enumerate(mbpid_ar)):
     pos = [None]
+    pos2 = [None]
     index = np.where(np.isin(star_ids, mbpid_ar[ix]))[0]
     if len(index) == 1: pos = star_pos[index][0]
     if len(index) == 0:
         index = np.where(np.isin(dm_ids, mbpid_ar[ix]))[0]
         if len(index) == 1: pos = dm_pos[index][0]
+
+    index2 = np.where(np.isin(star_ids, mbpidp_ar[ix]))[0]
+    if len(index2) == 1: pos2 = star_pos[index2][0]
+    if len(index2) == 0:
+        index2 = np.where(np.isin(dm_ids, mbpidp_ar[ix]))[0]
+        if len(index2) == 1: pos2 = dm_pos[index2][0]
     
-    if len(pos) == 3:
+    # posavg = pos + pos2 #This is the average position of the subhalo
+
+    # In the case of having a position for MBP ID of the merger snapshot and the previous snapshot, 
+        # the position would be the average of both positions, else, it is only one of these positions. 
+        # It should either be a stellar particle or a DM particle
+    if len(pos) == 3 and len(pos2) == 3:
+        posavg = np.array(pos + pos2)/2.
+    elif len(pos) ==3 and len(pos2) == 0:
+        posavg = np.array(pos)
+    elif len(pos2) == 3 and len(pos) == 0:
+        posavg = np.array(pos2)
+
+    if len(posavg) == 3:
         if len(pos_ar) == 0:
-            pos_ar = pos.reshape(1, -1)
+            pos_ar = posavg.reshape(1, -1)
         else:
-            pos_ar = np.append(pos_ar, pos.reshape(1, -1), axis = 0)
+            pos_ar = np.append(pos_ar, posavg.reshape(1, -1), axis = 0)
     else:
         popix_ar = np.append(popix_ar, ix) #FIXME: #12 Some of the particles are not in the FoF0 particle file
 
@@ -67,19 +87,22 @@ df = df.drop(popix_ar)
 df['pos_f_ar'] = pos_ar.tolist()
 df['dist_f_ar'] = np.sqrt(np.sum(pos_ar**2, axis=1))
 
-df.to_csv(outpath + 'merged_evolved_fof0.csv', index = False)
+df.to_csv(outpath + 'merged_evolved_fof0_wmbp.csv', index = False)
 
 
 
 #=========================
-dm_dist = np.sqrt(np.sum(dm_pos**2, axis=1))
+# dm_dist = np.sqrt(np.sum(dm_pos**2, axis=1))
 
-rpl = np.logspace(1, 3.2, 100)
-Ndm_ar = np.zeros(0) #shmf for merged subhalos
-for (ix, ms) in enumerate(rpl):
-    Ndm_ar = np.append(Ndm_ar, len(dm_dist[dm_dist < ms]))
+# rpl = np.logspace(1, 3.2, 100)
+# Ndm_ar = np.zeros(0) #shmf for merged subhalos
+# for (ix, ms) in enumerate(rpl):
+#     Ndm_ar = np.append(Ndm_ar, len(dm_dist[dm_dist < ms]))
 
 
+
+
+# =================================
 # '''
 # file import
 # '''

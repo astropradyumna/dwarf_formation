@@ -60,7 +60,7 @@ ssh_max_mstar_id = np.array(survived_df['max_Mstar_id'], dtype = int)
 '''
 Following is the dataset of the entire list of subhalos which infalled after z = 3 and merged
 '''
-merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1.csv')
+merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1_everything.csv')
 
 msh_sfid = merged_df['SubfindID']
 msh_sfid = np.array([s.strip('[]') for s in msh_sfid], dtype = int) #snap ID at infall
@@ -95,19 +95,20 @@ class TNG_Subhalo():
         self.snap = snap 
         self.last_snap = last_snap
         if self.last_snap != 99:
-            self.merged = False
-        else:
             self.merged = True
+        else:
+            self.merged = False
 
         fields = ['SubhaloMassInRadType', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 
         'Group_M_Crit200', 'SubhaloVel', 'SubhaloHalfmassRadType', 'SubhaloMassType', 'SubhaloLenType', 'SubhaloMassInHalfRadType', 'SubhaloVmaxRad', 
-        'SubhaloMassInMaxRadType', 'SubhaloIDMostbound', 'SubhaloVelDisp', 'GroupFirstSub']
-        if not self.merged:
+        'SubhaloMassInMaxRadType', 'SubhaloIDMostbound', 'SubhaloVelDisp', 'GroupFirstSub', 'SubhaloVmax', 'SubfindID']
+        if not self.merged:     
             temp_tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = ['SnapNum', 'SubfindID'], onlyMDB = True)
             sfid_99 = temp_tree['SubfindID'][0] #FIXME: This only works for a surviving subhalo
             self.tree = il.sublink.loadTree(basePath, 99, sfid_99, fields = fields, onlyMPB = True)
         else: #If it merged
             infall_ix = np.where((msh_snap == snap) & (msh_sfid == sfid))[0] #This is to get the index of the current subhalo in the merger dataframe
+            # print(infall_ix)
             msh_last_snap = int(msh_merger_snap[infall_ix]) #This is the infall snapshot
             msh_last_sfid = int(msh_merger_sfid[infall_ix]) #This is the infall subfind ID
 
@@ -117,7 +118,7 @@ class TNG_Subhalo():
             sfids_temp = tree['SubfindID']
             msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
             self.tree = {key: value[0:msh_if_ix_tree+1] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
-        
+
 
     def __where_to_snap(self, where):
         '''
@@ -213,12 +214,26 @@ class TNG_Subhalo():
         This is to get the dark matter mass from the TNG
         '''
         snap_wanted = self.__where_to_snap(where)
-        if how == '2rh': mstar_tree = self.tree['SubhaloMassInRadType'][:, 1]*1e10/h
-        elif how == 'total': mstar_tree = self.tree['SubhaloMassType'][:, 1]*1e10/h
-        elif how == 'rh': mstar_tree = self.tree['SubhaloMassInHalfRadType'][:, 1]*1e10/h
-        elif how == 'vmax': mstar_tree = self.tree['SubhaloMassInMaxRadType'][:, 1]*1e10/h
-        mstar = mstar_tree[snap_wanted == self.tree['SnapNum']]
-        return mstar
+        if how == '2rh': mdm_tree = self.tree['SubhaloMassInRadType'][:, 1]*1e10/h
+        elif how == 'total': mdm_tree = self.tree['SubhaloMassType'][:, 1]*1e10/h
+        elif how == 'rh': mdm_tree = self.tree['SubhaloMassInHalfRadType'][:, 1]*1e10/h
+        elif how == 'vmax': mdm_tree = self.tree['SubhaloMassInMaxRadType'][:, 1]*1e10/h
+        mdm = mdm_tree[snap_wanted == self.tree['SnapNum']]
+        return mdm
+    
+
+    def get_mtot(self, where, how = 'total'):
+        '''
+        This is to get the sum of all the kinds of particles from TNG in a given way
+        '''
+        snap_wanted = self.__where_to_snap(where)
+        if how == '2rh': mtot_tree = np.sum(self.tree['SubhaloMassInRadType'], axis = 1)*1e10/h
+        elif how == 'total': mtot_tree = np.sum(self.tree['SubhaloMassType'], axis = 1)*1e10/h
+        elif how == 'rh': mtot_tree = np.sum(self.tree['SubhaloMassInHalfRadType'], axis = 1)*1e10/h
+        elif how == 'vmax': mtot_tree = np.sum(self.tree['SubhaloMassInMaxRadType'], axis = 1)*1e10/h
+        mtot = mtot_tree[snap_wanted == self.tree['SnapNum']]
+        return mtot
+    
     
     def get_mbpid(self, where):
         '''
@@ -239,6 +254,15 @@ class TNG_Subhalo():
         cen_x, cen_y, cen_z = il.groupcat.loadSingle(basePath, snap_wanted, subhaloID = cen_id)['SubhaloPos']/h/(1 + all_redshifts[snap_wanted])
         dist = np.sqrt((cen_x - subh_x) ** 2 + (cen_y - subh_y) ** 2 +  (cen_z - subh_z) ** 2)
         return dist
+    
+    def get_vmax(self, where):
+        '''
+        This function gives the vmax of the subhalo at a given time
+        '''
+        snap_wanted = self.__where_to_snap(where)
+        vmax = self.tree['SubhaloVmax'][snap_wanted == self.tree['SnapNum']]
+        return vmax
+
     
 
     def get_rh(self, where, how = 'rh'):
@@ -265,6 +289,7 @@ class TNG_Subhalo():
         if np.array(rh).shape[0] == 0:
             raise ValueError(f'Rh value not found for {self.sfid} at snap {self.snap}, max mstar snap is {snap_wanted}')
         return rh/(1 + all_redshifts[snap_wanted])/h #Setting it to right units, kpc
+    
     
     def get_vd(self, where):
         snap_wanted = self.__where_to_snap(where)

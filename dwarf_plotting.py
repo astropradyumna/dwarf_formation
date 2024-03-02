@@ -1,3 +1,8 @@
+'''
+This is code to plot the dwarfs in Virgo and LG
+- can plot velocity dispersion, Rh and stellar mass
+'''
+
 import matplotlib.pyplot as plt 
 import pandas as pd
 import numpy as np 
@@ -49,7 +54,8 @@ rh_proj = data[:,1]   #half-light
 ell = data[:,4]
 rh_proj *= np.sqrt(1.-ell)
 ## ---------
-rh = rh_proj * 4./3.   #still light, but 3D
+# rh = rh_proj * 4./3.   #still light, but 3D
+rh = rh_proj #plotting the projected radius
 err_mstr = data[:,2]
 err_rh = data[:,3]
 err_rh *= 4./3.
@@ -118,3 +124,20 @@ def plot_lg_virgo(ax):
     # ax.errorbar(get_mag_from_ms(np.log10(mstr)), rh*1e3, yerr=err_rh, xerr=err_mstr,marker='o',ms=8, mfc='white', mec = 'black', mew=1,ecolor='darkgray',ls='none',zorder=-32, alpha = 0.8, label = 'LG')ax.errorbar(get_mag_from_ms(np.log10(mstr)), rh*1e3, yerr=err_rh, xerr=err_mstr,marker='o',ms=8, mfc='white', mec = 'black', mew=1,ecolor='darkgray',ls='none',zorder=-32, alpha = 0.8, label = 'LG')
     ax.plot(mstr, rh*1e3,marker='o',ms=4, mfc='white', mec = 'black',ls='none', alpha = alpha, label = 'LG')
 
+
+# The following lines involve data import from LG data for velocity dispersion
+
+filein = filepath + 'LGdata_withErrors.dat'  
+data = np.loadtxt(filein,usecols=[1,3])
+
+#pdb.set_trace()
+mstr1 = data[:,0]
+vd = data[:,1] #This is the velocity dispersion
+non_nan_indices = np.where(~np.isnan(vd))[0]
+
+mstr_cut = mstr1[non_nan_indices]
+vd_cut = vd[non_nan_indices]
+
+def plot_lg_vd(ax):
+    ax.plot(mstr_cut, vd_cut,marker='o',ms=4, mfc='white', mec = 'black',ls='none', alpha = alpha, label = 'LG')
+    

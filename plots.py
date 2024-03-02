@@ -2,7 +2,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import IPython
 import numpy as np 
-from dwarf_plotting import plot_lg_virgo
+from dwarf_plotting import plot_lg_virgo, plot_lg_vd
+import matplotlib
+
+font = {'family' : 'DejaVu Sans',
+        'weight' : 'normal',
+        'size' : 14}
+
+plt.figure()
+plt.close()
+matplotlib.rc('font', **font)
 
 
 
@@ -11,6 +20,11 @@ rvir_fof0 = 811.66/0.6744
 
 dfs = pd.read_csv(outpath + 'surviving_evolved_fof0.csv', delimiter = ',')
 dfs = dfs[dfs['dist_f_ar']<rvir_fof0]
+dfs1 = dfs
+dfs = dfs[(dfs['mstar_f_ar']>1e1) & (dfs['mstar_max_ar']<1e10)]
+# dfs = dfs[(dfs['vd_f_ar']>1e1) & (dfs['mstar_max_ar']<1e10)]
+
+
 
 sdist_f_ar = dfs['dist_f_ar']
 spos_f_ar = dfs['pos_f_ar']
@@ -49,8 +63,10 @@ svmx_if_ar = dfs['vmx_if_ar']
 
 
 
-dfm = pd.read_csv(outpath + 'merged_evolved_fof0.csv', delimiter = ',')
+dfm = pd.read_csv(outpath + 'merged_evolved_fof0_wmbp.csv', delimiter = ',')
 dfm = dfm[dfm['dist_f_ar']<rvir_fof0]
+dfm1 = dfm 
+dfm = dfm[(dfm['mstar_f_ar']>1e1) & (dfm['mstar_max_ar']<1e10)]
 
 mdist_f_ar = dfm['dist_f_ar']
 mmbpid_ar = dfm['mbpid_ar']
@@ -102,10 +118,10 @@ def get_moster_shm(mmx):
 
 
 fig, ax = plt.subplots(figsize = (5.5, 5))
-ax.scatter(mmmx_f_ar, mmstar_f_ar, alpha = 0.3, color = 'purple', s = 2, label = 'Merged')
-ax.scatter(smmx_f_ar, smstar_f_ar, alpha = 0.3, s = 2, color = 'darkgreen', label = 'Surviving')
+ax.scatter(mmmx_f_ar, mmstar_f_ar, alpha = 0.3, color = 'purple', s = 6, label = 'merged - model')
+ax.scatter(smmx_f_ar, smstar_f_ar, alpha = 0.3, s = 6, color = 'darkgreen', label = 'surviving - model')
 ax.set_xlim(left = 1e4)
-ax.set_ylim(bottom  = 1e2)
+ax.set_ylim(bottom  = 1e1)
 
 mmxpl = np.logspace(2, 12, 100)
 ax.plot(mmxpl, get_moster_shm(mmxpl), 'k--', label = 'Moster+13')
@@ -113,6 +129,7 @@ ax.set_xlabel(r'$M_{\rm{mx}}\,\rm{(M_\odot)}$ ')
 ax.set_ylabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
 ax.set_title('z=0 from the model')
 ax.legend(fontsize = 8)
+plt.tight_layout()
 plt.loglog()
 plt.show()
 
@@ -121,7 +138,7 @@ plt.show()
 Plot 2: Subhalo mass functtion for the subhalos of the given file
 '''
 
-mstarpl = np.logspace(2, 11, 100)
+mstarpl = np.logspace(1, 11, 100)
 Nm_ar = np.zeros(0) #shmf for merged subhalos
 Ns_ar = np.zeros(0) #shmf for surviving subhalos 
 Ntng_ar = np.zeros(0)
@@ -139,10 +156,10 @@ ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
 ax.set_ylabel(r'$N(>M_{\bigstar})$')
 ax.set_xscale('log')
 ax.set_yscale('log')
-ax.set_xlim(left = 1e2)
+ax.set_xlim(left = 1e1)
 ax.set_title('z=0 from the model')
 
-
+plt.tight_layout()
 plt.show()
 
 
@@ -156,9 +173,9 @@ ax.scatter(mmstar_f_ar, mdist_f_ar, color = 'purple', alpha = 0.5, s = 2, label 
 ax.scatter(smstar_f_ar, sdist_f_ar, color = 'darkgreen', alpha = 0.5, s = 2, label = 'Surviving')
 ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
 ax.set_ylabel('Distance from center (kpc)')
-ax.set_xlim(left = 1e2)
-ax.set_ylim(bottom = 1e1)
-
+ax.set_xlim(left = 1e1)
+# ax.set_ylim(bottom = 1e1)
+ax.legend(fontsize = 8)
 plt.loglog()
 plt.tight_layout()
 plt.show()
@@ -170,6 +187,7 @@ Plot 4: N(<r)
 '''
 rpl = np.logspace(1, 3.2, 100)
 Nm_ar = np.zeros(0) #shmf for merged subhalos
+N_all_ar = np.zeros(0) #This is for all the subhalos inside virial radius
 Ns_ar = np.zeros(0) #shmf for surviving subhalos 
 Ntng_ar = np.zeros(0)
 Ndm_ar = np.array([7.26007000e+05, 7.83449000e+05, 8.45384000e+05, 9.11628000e+05,
@@ -199,15 +217,17 @@ Ndm_ar = np.array([7.26007000e+05, 7.83449000e+05, 8.45384000e+05, 9.11628000e+0
        3.66029020e+08, 3.76169617e+08, 3.84308554e+08, 3.91530595e+08])
 Ndm_ar = Ndm_ar/Ndm_ar[-1]
 
-for (ix, ms) in enumerate(rpl):
+for (ix, ms) in enumerate(rpl): #ms is still radius
     Nm_ar = np.append(Nm_ar, len(mmstar_f_ar[mdist_f_ar < ms]))
     Ns_ar = np.append(Ns_ar, len(smstar_f_ar[sdist_f_ar < ms]))
+    N_all_ar = np.append(N_all_ar, len(dfs1[dfs1['dist_f_ar']<ms]) + len(dfm1[dfm1['dist_f_ar']<ms]))
     # Ntng_ar = np.append()
 
 Ndm_ar = Ndm_ar * (Nm_ar[-1] + Ns_ar[-1])
 fig, ax = plt.subplots(figsize = (5.5, 5))
-ax.plot(rpl, Ns_ar, color = 'darkgreen', label = 'Surviving')
-ax.plot(rpl, Ns_ar + Nm_ar, color = 'purple', label = 'Model (all)')
+ax.plot(rpl, Ns_ar, color = 'blue', label = 'Surviving')
+ax.plot(rpl, Ns_ar + Nm_ar, color = 'purple', label = r'Model ($>10\,\rm{M_\odot}$)')
+ax.plot(rpl, N_all_ar, color = 'purple', ls = '--', lw = 0.5, label = r'Model (all)')
 ax.plot(rpl, Ndm_ar, color = 'black', ls = '--', label = 'DM in TNG', alpha = 0.5)
 ax.legend(fontsize = 8)
 ax.set_xlabel('Distance from center (kpc)')
@@ -226,17 +246,355 @@ Plot 5: Rh vs Mstar
 '''
 fig, ax = plt.subplots(figsize = (10, 6.5))
 plot_lg_virgo(ax)
-ax.scatter(mmstar_f_ar, mrh_f_ar * 1e3, marker = 's', color = 'purple', alpha = 0.7, s = 25, label = 'Merged', zorder = 200)
-ax.scatter(smstar_f_ar, srh_f_ar * 1e3, marker = 's', color = 'darkgreen', alpha = 0.7, s = 25, label = 'Survived', zorder = 200)
-ax.set_xlim(left = 1e2)
+ax.scatter(mmstar_f_ar, mrh_f_ar * 1e3, marker = 's', color = 'purple', alpha = 0.7, s = 25, label = 'Merged', zorder = 200, edgecolor = 'black', linewidth = 0.7)
+ax.scatter(smstar_f_ar, srh_f_ar * 1e3, marker = 's', color = 'darkgreen', alpha = 0.7, s = 25, label = 'Survived', zorder = 200, edgecolor = 'black', linewidth = 0.7)
+ax.set_xlim(left = 1e1)
 ax.set_ylim(bottom = 10)
 ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
-ax.set_ylabel(r'$r_{\rm{h}}$ (pc)')
+ax.set_ylabel(r'$R_{\rm{h}}$ (pc)')
+ax.set_title('At z=0')
 ax.legend(fontsize = 8)
 plt.loglog()
 plt.tight_layout()
 plt.show()
 
 
+'''
+Plot 5.1: Rh vs Mstar at infall
+'''
+fig, ax = plt.subplots(figsize = (10, 6.5))
+plot_lg_virgo(ax)
+ax.scatter(mmstar_max_ar, mrh_max_ar * 1e3, marker = 's', color = 'purple', alpha = 0.7, s = 25, label = 'Merged', zorder = 200, edgecolor = 'black', linewidth = 0.7)
+ax.scatter(smstar_max_ar, srh_max_ar * 1e3, marker = 's', color = 'darkgreen', alpha = 0.7, s = 25, label = 'Survived', zorder = 200, edgecolor = 'black', linewidth = 0.7)
+ax.set_xlim(left = 1e1)
+ax.set_ylim(bottom = 10)
+ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
+ax.set_ylabel(r'$R_{\rm{h}}$ (pc)')
+ax.legend(fontsize = 8)
+ax.set_title('At infall')
+plt.loglog()
+plt.tight_layout()
+plt.show()
 
+
+'''
+PLot 6: Mstar - sigma relation
+'''
+fig, ax = plt.subplots(figsize = (6, 6))
+# plot_lg_virgo(ax)
+
+mvd_f_ar[mvd_f_ar < 0] = 0
+svd_f_ar[svd_f_ar < 0] = 0
+ax.scatter(mmstar_f_ar , mvd_f_ar, marker = 's', color = 'purple', alpha = 0.3, s = 15, label = 'Merged (model)', zorder = 0, edgecolor = 'black', linewidth = 0.5)
+ax.scatter(smstar_f_ar , svd_f_ar, marker = 's', color = 'darkgreen', alpha = 0.3, s = 15, label = 'Survived (model)', zorder = 0, edgecolor = 'black', linewidth = 0.5)
+plot_lg_vd(ax)
+# ax.set_xlim(left = 1e1)
+ax.set_ylim(bottom = 1)
+ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
+ax.set_ylabel(r'$\sigma$ (km/s)')
+ax.legend(fontsize = 8)
+dummy = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 3) 
+# ax.plot( 10**(4 * np.log10(dummy) + 3.1), dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+# ax.set_xscale('log')
+plt.loglog()
+plt.tight_layout()
+plt.show()
+
+
+'''
+Plot 7: This is to compare the Rh values at the beginning and at the end 
+'''
+fig, ax = plt.subplots(figsize = (6, 5))
+# col_ar = np.log10(smmx_f_ar/smmx_if_ar)
+# col_label = r'$\log (M_{\rm{mmx, z = 0}}/M_{\rm{mmx, inf}})$'
+col_ar = np.log10(smstar_f_ar)
+col_label = r'$\log (M_{\bigstar, z = 0}/M_\odot)$'
+# plot_lg_virgo(ax)
+
+# mvd_f_ar[mvd_f_ar < 0] = 0
+# svd_f_ar[svd_f_ar < 0] = 0
+
+# ax.scatter(mmstar_f_ar , mvd_f_ar, marker = 's', color = 'purple', alpha = 0.6, s = 15, label = 'Merged', zorder = 200, edgecolor = 'black', linewidth = 0.5)
+sc = ax.scatter(srh_max_ar*1e3 , srh_f_ar*1e3, marker = 'o', c=col_ar, cmap='viridis', alpha = 0.6, s = 15, label = 'Survived', zorder = 200, edgecolor = 'black', linewidth = 0.5)
+# sc = ax.scatter(srh_max_ar*1e3 , srh_f_ar_tng*1e3, marker = 's', c=col_ar, cmap='viridis', alpha = 0.6, s = 15, label = 'Survived', zorder = 200, edgecolor = 'black', linewidth = 0.5)
+cbar = plt.colorbar(sc, ax = ax)
+cbar.set_label(col_label)
+# ax.set_xlim(left = 1e1)
+# ax.set_ylim(bottom = 1)
+ax.set_xlabel(r'$R_{\rm{h}}$ at infall (pc)')
+ax.set_ylabel(r'$R_{\rm{h}}$ at z = 0 (pc)')
+ax.legend(fontsize = 8)
+dummy = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 3) 
+ax.plot( dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+# ax.set_xscale('log')
+plt.loglog()
+plt.tight_layout()
+plt.show()
+
+
+
+
+# =========================
+# These are the comparison plots for surviving subhalos
+# =========================
+
+'''
+One master plot to compare all six quantities predicted by the model
+'''
+fig, axs = plt.subplots(nrows = 2, ncols = 3, figsize = (12, 6))
+((ax1, ax2, ax3), (ax4, ax5, ax6)) = axs 
+alpha = 0.8
+msize = 2
+# col_ar = stinf_ar
+# col_label = r'$t_{\rm{inf}}$'
+col_ar = np.log10(smstar_max_ar)
+col_label = r'$\log M_{\rm{\bigstar, max}}$'
+
+sc = ax1.scatter(smmx_f_ar, smmx_f_ar_tng, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax1)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax1.get_xlim()[0], ax1.get_xlim()[1], 3) 
+ax1.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax1.set_xlabel(r'$M_{\rm{mx}}$ from model')
+ax1.set_ylabel(r'$M_{\rm{mx}}$ from TNG')
+ax1.set_xscale('log')
+ax1.set_yscale('log')
+
+
+
+
+
+# =======================
+
+sc = ax4.scatter(smstar_f_ar, smstar_f_ar_tng, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax4)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax4.get_xlim()[0], ax4.get_xlim()[1], 3) 
+ax4.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax4.set_xlabel(r'$M_{\rm{\bigstar}}$ from model')
+ax4.set_ylabel(r'$M_{\rm{\bigstar}}$ from TNG')
+ax4.set_xscale('log')
+ax4.set_yscale('log')
+
+ax4.set_xlim(1e2, 1e10)
+ax4.set_ylim(1e2, 1e10)
+
+
+# =======================
+
+sc = ax2.scatter(srmx_f_ar, srmx_f_ar_tng, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax2)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], 3) 
+ax2.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax2.set_xlabel(r'$r_{\rm{mx}}$ from model')
+ax2.set_ylabel(r'$r_{\rm{mx}}$ from TNG')
+ax2.set_xscale('log')
+ax2.set_yscale('log')
+
+# ==========================
+
+
+sc = ax3.scatter(svmx_f_ar, svmx_f_ar_tng, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax3)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax3.get_xlim()[0], ax3.get_xlim()[1], 3) 
+ax3.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax3.set_xlabel(r'$v_{\rm{mx}}$ from model')
+ax3.set_ylabel(r'$v_{\rm{mx}}$ from TNG')
+ax3.set_xscale('log')
+ax3.set_yscale('log')
+
+
+
+# ============================
+
+sc = ax5.scatter(srh_f_ar, srh_f_ar_tng, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax5)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax5.get_xlim()[0], ax5.get_xlim()[1], 3) 
+ax5.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax5.set_xlabel(r'$R_{\rm{h}}$ from model')
+ax5.set_ylabel(r'$R_{\rm{h}}$ from TNG')
+# ax5.set_xscale('log')
+# ax5.set_yscale('log')
+
+
+# ===========================
+
+sc = ax6.scatter(svd_f_ar, svd_f_ar_tng, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax6)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax6.get_xlim()[0], ax6.get_xlim()[1], 3) 
+
+ax6.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax6.set_xlabel(r'$\sigma$ from model')
+ax6.set_ylabel(r'$\sigma$ from TNG')
+# ax6.set_xscale('log')
+# ax6.set_yscale('log')
+
+
+
+# plt.loglog()
+plt.tight_layout()
+plt.savefig(outpath+'surviving_fof0_comparison.pdf')
+plt.show()
+
+
+
+'''
+Same as above but now fractions for a more relevant comparison
+'''
+fig, axs = plt.subplots(nrows = 2, ncols = 3, figsize = (12, 6))
+((ax1, ax2, ax3), (ax4, ax5, ax6)) = axs 
+alpha = 0.8
+msize = 2
+# col_ar = stinf_ar
+# col_label = r'$t_{\rm{inf}}$'
+col_ar = np.log10(smstar_max_ar)
+col_label = r'$\log M_{\rm{\bigstar, max}}$'
+
+sc = ax1.scatter(smmx_f_ar/smmx_if_ar, smmx_f_ar_tng/smmx_if_ar, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax1)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax1.get_xlim()[0], ax1.get_xlim()[1], 3) 
+ax1.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax1.set_xlabel(r'$M_{\rm{mx}}/M_{\rm{mx0}}$ from model')
+ax1.set_ylabel(r'$M_{\rm{mx}}/M_{\rm{mx0}}$ from TNG')
+ax1.set_xscale('log')
+ax1.set_yscale('log')
+min_axes = min(ax1.get_xlim()[0], ax1.get_ylim()[0])
+ax1.set_xlim(left = min_axes, right = 1)
+ax1.set_ylim(bottom = min_axes, top = 1)
+
+
+
+
+
+# =======================
+
+sc = ax4.scatter(smstar_f_ar/smstar_max_ar, smstar_f_ar_tng/smstar_max_ar, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax4)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax4.get_xlim()[0], ax4.get_xlim()[1], 3) 
+ax4.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax4.set_xlabel(r'$M_{\rm{\bigstar}}/M_{\rm{\bigstar 0}}$ from model')
+ax4.set_ylabel(r'$M_{\rm{\bigstar}}/M_{\rm{\bigstar 0}}$ from TNG')
+ax4.set_xscale('log')
+ax4.set_yscale('log')
+min_axes = min(ax4.get_xlim()[0], ax4.get_ylim()[0])
+ax4.set_xlim(left = min_axes, right = 1)
+ax4.set_ylim(bottom = min_axes, top = 1)
+# ax4.set_xlim(1e2, 1e10)
+# ax4.set_ylim(1e2, 1e10)
+
+
+# =======================
+
+sc = ax2.scatter(srmx_f_ar/srmx_if_ar, srmx_f_ar_tng/srmx_if_ar, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax2)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], 3) 
+ax2.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax2.set_xlabel(r'$r_{\rm{mx}}/r_{\rm{mx0}}$ from model')
+ax2.set_ylabel(r'$r_{\rm{mx}}/r_{\rm{mx0}}$ from TNG')
+ax2.set_xscale('log')
+ax2.set_yscale('log')
+min_axes = min(ax2.get_xlim()[0], ax2.get_ylim()[0])
+ax2.set_xlim(left = min_axes, right = 1)
+ax2.set_ylim(bottom = min_axes, top = 1)
+
+# ==========================
+
+
+sc = ax3.scatter(svmx_f_ar/svmx_if_ar, svmx_f_ar_tng/svmx_if_ar, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax3)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax3.get_xlim()[0], ax3.get_xlim()[1], 3) 
+ax3.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax3.set_xlim(left = 2e-2)
+ax3.set_ylim(bottom = 1e-1)
+ax3.set_xlabel(r'$v_{\rm{mx}}/v_{\rm{mx0}}$ from model')
+ax3.set_ylabel(r'$v_{\rm{mx}}/v_{\rm{mx0}}$ from TNG')
+# ax3.set_xscale('log')
+# ax3.set_yscale('log')
+min_axes = min(ax3.get_xlim()[0], ax3.get_ylim()[0])
+ax3.set_xlim(left = min_axes, right = 1)
+ax3.set_ylim(bottom = min_axes, top = 1)
+
+
+# ============================
+
+sc = ax5.scatter(srh_f_ar/srh_max_ar, srh_f_ar_tng/srh_max_ar, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax5)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax5.get_xlim()[0], ax5.get_xlim()[1], 3) 
+ax5.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax5.set_xlabel(r'$R_{\rm{h}}/R_{\rm{h0}}$ from model')
+ax5.set_ylabel(r'$R_{\rm{h}}/R_{\rm{h0}}$ from TNG')
+# ax5.set_xscale('log')
+# ax5.set_yscale('log')
+min_axes = min(ax5.get_xlim()[0], ax5.get_ylim()[0])
+ax5.set_xlim(left = min_axes)
+ax5.set_ylim(bottom = min_axes)
+
+
+# ===========================
+
+sc = ax6.scatter(svd_f_ar/svd_max_ar, svd_f_ar_tng/svd_max_ar, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+
+cbar = plt.colorbar(sc, ax = ax6)
+cbar.set_label(col_label)
+
+dummy = np.linspace(ax6.get_xlim()[0], ax6.get_xlim()[1], 3) 
+
+ax6.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+ax6.set_xlabel(r'$\sigma/\sigma_0$ from model')
+ax6.set_ylabel(r'$\sigma/\sigma_0$ from TNG')
+min_axes = min(ax6.get_xlim()[0], ax6.get_ylim()[0])
+ax6.set_xlim(left = min_axes, right = 1)
+ax6.set_ylim(bottom = min_axes, top = 1)
+# ax6.set_xscale('log')
+# ax6.set_yscale('log')
+
+
+
+# plt.loglog()
+plt.tight_layout()
+plt.savefig(outpath+'surviving_fof0_comparison.pdf')
+plt.show()
 
