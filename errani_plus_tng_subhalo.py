@@ -42,30 +42,6 @@ all_ages = np.array(ages_df['age(Gyr)'])
 
 
 
-'''
-Getting the position, etc. of the central subhalo
-'''
-central_id_at99 = 0
-central_fields = ['GroupFirstSub', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel']
-central_tree = il.sublink.loadTree(basePath, 99, central_id_at99, fields = central_fields, onlyMPB = True)
-central_snaps = central_tree['SnapNum']
-central_redshift = all_redshifts[central_snaps]
-central_x =  central_tree['SubhaloPos'][:, 0]/(1 + central_redshift)/h
-central_y =  central_tree['SubhaloPos'][:, 1]/(1 + central_redshift)/h
-central_z =  central_tree['SubhaloPos'][:, 2]/(1 + central_redshift)/h
-central_r200 = central_tree['Group_R_Crit200']/(1 + central_redshift)/h #This is the virial radius of the group
-ages_rvir = all_ages[central_snaps] #Ages corresponding to the virial radii
-central_grnr = central_tree['SubhaloGrNr']
-central_gr_m200 = central_tree['Group_M_Crit200']*1e10/h #This is the M200 of the central group
-central_vx = central_tree['SubhaloVel'][:, 0] #km/s
-central_vy = central_tree['SubhaloVel'][:, 1]
-central_vz = central_tree['SubhaloVel'][:, 2]
-central_v0 = np.sqrt(4.3e-6 * central_gr_m200 / central_r200) #this is the isothermal speed of the FoF halo for all snapshots
-
-
-
-
-
 class ErraniSubhalo():
     def __init__(self, torb, rperi, rapo, Rh, vmx0, rmx0, mmx0, mstar0):
         self.torb = torb 
@@ -233,17 +209,20 @@ class Subhalo(TNG_Subhalo):
     This class is for a subhalo in general which we are using for evolution, has to be something in TNG
     '''
     #FIXME: #9 Extend Subhalo class and the TNG_Subhalo class to non FoF0 cases
-    def __init__(self, sfid, snap, last_snap):
+    def __init__(self, sfid, snap, last_snap, central_sfid_99):
         '''
         Args:
         sfid: The subfind ID at infall snapshot
         snap: The snapshot of infall
         last_snap: has to be passed, this is the last snapshot of survival for the subhalo
+        central_sfid_99: This is the SubfindID of the subhalos at z = 0. Used to get all the FoF properties for orbit calc, etc.
         '''
         self.sfid = sfid
         self.snap = snap 
         self.last_snap = last_snap
-        # print(last_snap == 99)
+        self.central_sfid_99 = central_sfid_99
+        self.__initialize_central_props() #this is to have all the central subhalos properties as instance attributes
+
         if last_snap != 99:
             self.merged = True
         else:
@@ -263,26 +242,8 @@ class Subhalo(TNG_Subhalo):
             sfids_temp = tree['SubfindID']
 
             merger_index = np.where(snaps_temp == self.last_snap)[0][-1] #this is the index of the merger in the tree
-            # msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
             self.tree = {key: value[merger_index:] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
 
-            print(self.snap, self.sfid, merger_index, self.tree['SnapNum'])
-
-            # infall_ix = np.where((msh_snap == snap) & (msh_sfid == sfid))[0] #This is to get the index of the current subhalo in the merger dataframe
-            # # print(infall_ix)
-            # msh_last_snap = int(msh_merger_snap[infall_ix]) #This is the merger snapshot
-            # msh_last_sfid = int(msh_merger_sfid[infall_ix]) #This is the merger subfind ID
-
-            # tree = il.sublink.loadTree(basePath, msh_last_snap, msh_last_sfid, fields = fields, onlyMPB = True) #Getting all the progenitors from the last snapshot of survival
-            # tree.pop('count') #removing a useless key from the dictionary
-            # snaps_temp = tree['SnapNum']
-            # sfids_temp = tree['SubfindID']
-            # msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
-            # self.tree = {key: value[0:msh_if_ix_tree+1] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
-
-
-        # self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
-        # print(self.rmx0)
         with warnings.catch_warnings(record=True) as w:
             self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
             if len(w) > 0:
@@ -291,11 +252,35 @@ class Subhalo(TNG_Subhalo):
         self.rperi = None 
         self.rapo = None 
         
-        # assert len(temp_tree) <= 100, 'Probably getting merged, you are yet to write the code' #This is probably getting merged
         self.mstar = max(self.tree['SubhaloMassType'][:, 4][self.tree['SnapNum'] >= self.snap]) * 1e10 / h #This is the maximum stellar mass at infall
         self.vmax = self.get_vmax(where = 'max')
         if self.mstar < 5e6: #If we have stellar mass < 5e6 Msun, we take stellar mass from Vmax
             self.mstar = get_mstar_co(np.log10(self.vmax)) #This would be the stellar mass in Msun after application of scatter
+
+
+
+
+    def __initialize_central_props(self):
+        central_id_at99 = self.central_sfid_99
+
+
+        self.central_fields = ['GroupFirstSub', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel']
+        self.central_tree = il.sublink.loadTree(basePath, 99, central_id_at99, fields = self.central_fields, onlyMPB = True)
+        self.central_snaps = self.central_tree['SnapNum']
+        self.central_redshift = all_redshifts[self.central_snaps]
+        self.central_x =  self.central_tree['SubhaloPos'][:, 0]/(1 + self.central_redshift)/h
+        self.central_y =  self.central_tree['SubhaloPos'][:, 1]/(1 + self.central_redshift)/h
+        self.central_z =  self.central_tree['SubhaloPos'][:, 2]/(1 + self.central_redshift)/h
+        self.central_r200 = self.central_tree['Group_R_Crit200']/(1 + self.central_redshift)/h #This is the virial radius of the group
+        self.ages_rvir = all_ages[self.central_snaps] #Ages corresponding to the virial radii
+        self.central_grnr = self.central_tree['SubhaloGrNr']
+        self.central_gr_m200 = self.central_tree['Group_M_Crit200']*1e10/h #This is the M200 of the central group
+        self.central_vx = self.central_tree['SubhaloVel'][:, 0] #km/s
+        self.central_vy = self.central_tree['SubhaloVel'][:, 1]
+        self.central_vz = self.central_tree['SubhaloVel'][:, 2]
+        self.central_v0 = np.sqrt(4.3e-6 * self.central_gr_m200 / self.central_r200) #this is the isothermal speed of the FoF halo for all snapshots
+
+        return None
 
 
 
@@ -327,7 +312,7 @@ class Subhalo(TNG_Subhalo):
         This is a function to calculate the initial rh0burmx0 for the subhalo
         '''
         values = [1/2, 1/4, 1/8, 1/16]
-        Rh0 = self.get_rh(where = 'max')*3./4
+        Rh0 = self.get_rh(where = 'max')*3./4 #FIXME: This needs to accound for the subhalos without measured Rh
 
         
         closest_value = min(values, key=lambda x: abs(np.log(x) - np.log(Rh0/self.rmx0)))
@@ -389,14 +374,14 @@ class Subhalo(TNG_Subhalo):
         subh_mstar = tree['SubhaloMassType'][:, 4]*1e10/h #Stellar mass of the subhalo
 
 
-        common_snaps = np.intersect1d(subh_snap, central_snaps) #This is in acsending order. Descending order after flipping
-        common_snaps_des = np.flip(common_snaps) #This will be in descending order to get the indices in central_is and subh_ix
-        central_ixs = np.where(np.isin(central_snaps, common_snaps))[0] #getting the indices of common snaps in the central suhalo. The indices are in such a way that the snaps are again in descending order.
+        common_snaps = np.intersect1d(subh_snap, self.central_snaps) #This is in acsending order. Descending order after flipping
+        common_snaps_des = np.flip(common_snaps) #This will be in descending order to get the indices in self.central_is and subh_ix
+        central_ixs = np.where(np.isin(self.central_snaps, common_snaps))[0] #getting the indices of common snaps in the central suhalo. The indices are in such a way that the snaps are again in descending order.
         subh_ixs = np.where(np.isin(subh_snap, common_snaps))[0]
 
 
         subh_z_if = all_redshifts[common_snaps[0]] #This is the redshift of infall
-        subh_dist = np.sqrt((subh_x[subh_ixs] - central_x[central_ixs])**2 + (subh_y[subh_ixs] - central_y[central_ixs])**2 + (subh_z[subh_ixs] - central_z[central_ixs])**2)
+        subh_dist = np.sqrt((subh_x[subh_ixs] - self.central_x[central_ixs])**2 + (subh_y[subh_ixs] - self.central_y[central_ixs])**2 + (subh_z[subh_ixs] - self.central_z[central_ixs])**2)
         subh_ages = np.flip(all_ages[common_snaps]) #The ages after flipping will be in descending order
 
 
@@ -406,7 +391,7 @@ class Subhalo(TNG_Subhalo):
             This loop is to go through all the common indices in descending order
             '''
             # print(ix)
-            if subh_dist[subh_ixs[common_snaps_des == sx]] < central_r200[central_snaps == sx]: # As weird as it sounds, this is the first when the subhalos distance is below the virial radius (on completing the loop)
+            if subh_dist[subh_ixs[common_snaps_des == sx]] < self.central_r200[self.central_snaps == sx]: # As weird as it sounds, this is the first when the subhalos distance is below the virial radius (on completing the loop)
                 snap_r200_if = sx 
             if ix > 0 and ix < len(common_snaps_des) - 1:
                 if subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix]]] < subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix - 1]]] and subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix]]] < subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix + 1]]]:
@@ -433,19 +418,19 @@ class Subhalo(TNG_Subhalo):
         te_subh_ix = subh_ixs[te_snap_ix] #Subhalo index for this infall time. 
         te_central_ix = central_ixs[te_snap_ix]
 
-        subh_vx_cen = subh_vx[te_subh_ix] - central_vx[te_central_ix]
-        subh_vy_cen = subh_vy[te_subh_ix] - central_vy[te_central_ix]
-        subh_vz_cen = subh_vz[te_subh_ix] - central_vz[te_central_ix]    
+        subh_vx_cen = subh_vx[te_subh_ix] - self.central_vx[te_central_ix]
+        subh_vy_cen = subh_vy[te_subh_ix] - self.central_vy[te_central_ix]
+        subh_vz_cen = subh_vz[te_subh_ix] - self.central_vz[te_central_ix]    
 
 
-        subh_x_cen = subh_x[te_subh_ix] - central_x[te_central_ix]
-        subh_y_cen = subh_y[te_subh_ix] - central_y[te_central_ix]
-        subh_z_cen = subh_z[te_subh_ix] - central_z[te_central_ix]
+        subh_x_cen = subh_x[te_subh_ix] - self.central_x[te_central_ix]
+        subh_y_cen = subh_y[te_subh_ix] - self.central_y[te_central_ix]
+        subh_z_cen = subh_z[te_subh_ix] - self.central_z[te_central_ix]
+
+        
 
 
-
-
-        mvir = central_gr_m200[te_central_ix].item() #this would be the virial mass of the FoF halo infall time 
+        mvir = self.central_gr_m200[te_central_ix].item() #this would be the virial mass of the FoF halo infall time 
         
         # This is method 3: Using galpy. For codes using other methods, look at subhalo_time_evolution.py
         # def get_nfw_at_t(t):
@@ -563,16 +548,16 @@ class Subhalo(TNG_Subhalo):
         tinf = 10 #FIXME: update this after you are done with testing
         if tinf > 9:
             # vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = central_v0[0]) #just assume a constant V0
-            avg_v0_b4_9 = (central_v0[central_snaps == self.snap] + central_v0[central_snaps == 99])/2.
-            vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9) #just assume a constant V0
+            avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == 99])/2.
+            vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9) #just assume a constant V0, but we are taking an average here 
         elif tevol + tinf <  9:
-            avg_v0_b4_9 = (central_v0[central_snaps == self.snap] + central_v0[central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.
+            avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.
             vmxf, rmxf, mmxf, vdf, rhf, mstarf = errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9)
         else:
-            avg_v0_b4_9 = (central_v0[central_snaps == self.snap] + central_v0[central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.
+            avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.
             vmx1, rmx1, mmx1, vd1, rh1, mstar1 = errani_start_subh.evolve(9 - tinf, V0 = avg_v0_b4_9)
             errani_last_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, rh1, vmx1, rmx1, mmx1, mstar1)
-            vmxf, rmxf, mmxf, vdf, rhf, mstarf = errani_last_subh.evolve(tevol - (9 - tinf), V0 = central_v0[0])
+            vmxf, rmxf, mmxf, vdf, rhf, mstarf = errani_last_subh.evolve(tevol - (9 - tinf), V0 = self.central_v0[0])
             # frem = mmxf/self.mmx0
             #first run for the first half,
             #then use that output for the input of second half
@@ -663,14 +648,14 @@ class Subhalo(TNG_Subhalo):
         subh_mstar = tree['SubhaloMassType'][:, 4]*1e10/h #Stellar mass of the subhalo
 
 
-        common_snaps = np.intersect1d(subh_snap, central_snaps) #This is in acsending order. Descending order after flipping
+        common_snaps = np.intersect1d(subh_snap, self.central_snaps) #This is in acsending order. Descending order after flipping
         common_snaps_des = np.flip(common_snaps) #This will be in descending order to get the indices in central_ix and subh_ix
-        central_ixs = np.where(np.isin(central_snaps, common_snaps))[0] #getting the indices of common snaps in the central suhalo. The indices are in such a way that the snaps are again in descending order.
+        central_ixs = np.where(np.isin(self.central_snaps, common_snaps))[0] #getting the indices of common snaps in the central suhalo. The indices are in such a way that the snaps are again in descending order.
         subh_ixs = np.where(np.isin(subh_snap, common_snaps))[0]
 
 
         subh_z_if = all_redshifts[common_snaps[0]] #This is the redshift of infall
-        subh_dist = np.sqrt((subh_x[subh_ixs] - central_x[central_ixs])**2 + (subh_y[subh_ixs] - central_y[central_ixs])**2 + (subh_z[subh_ixs] - central_z[central_ixs])**2)
+        subh_dist = np.sqrt((subh_x[subh_ixs] - self.central_x[central_ixs])**2 + (subh_y[subh_ixs] - self.central_y[central_ixs])**2 + (subh_z[subh_ixs] - self.central_z[central_ixs])**2)
         subh_ages = np.flip(all_ages[common_snaps]) #The ages after flipping will be in descending order
 
 
@@ -680,7 +665,7 @@ class Subhalo(TNG_Subhalo):
             This loop is to go through all the common indices in descending order
             '''
             # print(ix)
-            if subh_dist[subh_ixs[common_snaps_des == sx]] < central_r200[central_snaps == sx]: # As weird as it sounds, this is the first when the subhalos distance is below the virial radius (on completing the loop)
+            if subh_dist[subh_ixs[common_snaps_des == sx]] < self.central_r200[self.central_snaps == sx]: # As weird as it sounds, this is the first when the subhalos distance is below the virial radius (on completing the loop)
                 snap_r200_if = sx 
             if ix > 0 and ix < len(common_snaps_des) - 1:
                 if subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix]]] < subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix - 1]]] and subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix]]] < subh_dist[subh_ixs[common_snaps_des == common_snaps_des[ix + 1]]]:
@@ -706,19 +691,19 @@ class Subhalo(TNG_Subhalo):
         te_snap_ix = te_snap == common_snaps_des
         # Discovery of the day: This index has to be input to subh_x itself or central_x itself. Not any subset of it!
         te_subh_ix = subh_ixs[te_snap_ix] #Subhalo index for this infall time. 
-        te_central_ix = central_ixs[te_snap_ix]
+        te_central_ix = self.central_ixs[te_snap_ix]
 
-        subh_vx_cen = subh_vx[te_subh_ix] - central_vx[te_central_ix]
-        subh_vy_cen = subh_vy[te_subh_ix] - central_vy[te_central_ix]
-        subh_vz_cen = subh_vz[te_subh_ix] - central_vz[te_central_ix]    
-
-
-        subh_x_cen = subh_x[te_subh_ix] - central_x[te_central_ix]
-        subh_y_cen = subh_y[te_subh_ix] - central_y[te_central_ix]
-        subh_z_cen = subh_z[te_subh_ix] - central_z[te_central_ix]
+        subh_vx_cen = subh_vx[te_subh_ix] - self.central_vx[te_central_ix]
+        subh_vy_cen = subh_vy[te_subh_ix] - self.central_vy[te_central_ix]
+        subh_vz_cen = subh_vz[te_subh_ix] - self.central_vz[te_central_ix]    
 
 
-        mvir = central_gr_m200[te_central_ix].item() 
+        subh_x_cen = subh_x[te_subh_ix] - self.central_x[te_central_ix]
+        subh_y_cen = subh_y[te_subh_ix] - self.central_y[te_central_ix]
+        subh_z_cen = subh_z[te_subh_ix] - self.central_z[te_central_ix]
+
+
+        mvir = self.central_gr_m200[te_central_ix].item() 
 
         # Following part is for galpy
 
@@ -834,7 +819,7 @@ class Subhalo(TNG_Subhalo):
         
 
         ax.plot(np.flip(subh_ages), np.flip(subh_dist), lw = 1, color = 'blue', label = r'Orbit')
-        ax.plot(all_ages[central_snaps[central_ixs]], central_r200[central_ixs], c = 'gray', ls = '--',label = r'$R_{200}$', lw = 0.3)
+        ax.plot(all_ages[self.central_snaps[central_ixs]], self.central_r200[central_ixs], c = 'gray', ls = '--',label = r'$R_{200}$', lw = 0.3)
         ax.plot(t_gp, dist_gp, lw = 0.5, alpha = 0.8, label = 'galpy orbit', color = 'r')
         ax.set_ylabel('Distance (kpc)')
         ax.set_xlabel('Time (Gyr)')
@@ -864,18 +849,18 @@ class Subhalo(TNG_Subhalo):
         pe_ar_gp = np.zeros(0) #This is calculation of the potential energy for galpy orbit same as above
         for (ix, dist) in enumerate(subh_dist):
             snap = common_snaps_des[ix]
-            pe_ar = np.append(pe_ar, get_nfw_potential(dist, central_gr_m200[central_ixs[ix]], 8, all_redshifts[snap]))
+            pe_ar = np.append(pe_ar, get_nfw_potential(dist, self.central_gr_m200[central_ixs[ix]], 8, all_redshifts[snap]))
 
         dist_gp = np.sqrt(x_gp**2 + y_gp**2 + z_gp**2)
         # print(t_gp)
         for (ix, t) in enumerate(t_gp): #This is a loop over galpy
             snap = np.searchsorted(all_ages, t) - 1 #index of the snapshot that has age lower than this time
             # print(f'{len(pe_ar_gp)} out of {len(t_gp)}')
-            pe_ar_gp = np.append(pe_ar_gp, get_nfw_potential(dist_gp[ix], central_gr_m200[central_snaps == snap], 8, all_redshifts[snap])) 
+            pe_ar_gp = np.append(pe_ar_gp, get_nfw_potential(dist_gp[ix], self.central_gr_m200[self.central_snaps == snap], 8, all_redshifts[snap])) 
 
             
 
-        ke_ar = 0.5 *((subh_vx[subh_ixs] - central_vx[central_ixs])**2 + (subh_vy[subh_ixs] - central_vy[central_ixs])**2 + (subh_vz[subh_ixs] - central_vz[central_ixs])**2)
+        ke_ar = 0.5 *((subh_vx[subh_ixs] - self.central_vx[central_ixs])**2 + (subh_vy[subh_ixs] - self.central_vy[central_ixs])**2 + (subh_vz[subh_ixs] - self.central_vz[central_ixs])**2)
         ke_ar_gp = 0.5 * (vx_gp**2 + vy_gp**2 + vz_gp**2)
 
         ax_sub1.plot(t_gp, E_gp, color = 'red', alpha = 0.5, label = 'galpy')

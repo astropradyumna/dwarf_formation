@@ -311,7 +311,7 @@ for ix in tqdm(range(len(msh_snap))):
     '''
     if ix in [5, 9, 14, 22]: continue #takes lot of time to get compiled
 
-    subh  = Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = int(msh_merger_snap[ix])) #these are at infall
+    subh  = Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = int(msh_merger_snap[ix]), central_sfid_99=0) #these are at infall
 
     try:
         t = subh.get_orbit(merged = True, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
