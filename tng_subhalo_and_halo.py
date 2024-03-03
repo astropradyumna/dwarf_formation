@@ -127,7 +127,7 @@ class TNG_Subhalo():
         if where == 'last':
             snap_wanted = self.last_snap
         if where == 'max': #maximum stellar mass after the infall
-            snaps_after_infall = np.flip(np.arange(self.snap, self.last_snap)) #These are the snapshots after infall
+            snaps_after_infall = np.flip(np.arange(self.snap, self.last_snap + 1)) #These are the snapshots after infall
             snap_arr = self.tree['SnapNum']
             mstar_ar = self.tree['SubhaloMassInRadType'][:, 4] * 1e10/h
             ms_after_infall = np.zeros(0)
@@ -153,6 +153,11 @@ class TNG_Subhalo():
         dmrh = self.get_rh(where, how = 'dmrh')
         mdmrh = self.get_mdm(where)/2
 
+        r1 = r_vmax
+        m1 = mdm_vmax
+        r2 = dmrh
+        m2 = mdmrh
+
         
         # print(rh, mdm_rh, mdm_2rh)
         def nfw_mass(r, lrhos, lrs):
@@ -163,7 +168,7 @@ class TNG_Subhalo():
 
         def simul_func(params):
             lrhos, lrs = params
-            result = np.array([np.log10(nfw_mass(2 * rh, lrhos, lrs)) - np.log10(float(mdm_2rh)), np.log10(nfw_mass(dmrh, lrhos, lrs)) - np.log10(float(mdmrh))]).ravel()
+            result = np.array([np.log10(nfw_mass(r1, lrhos, lrs)) - np.log10(float(m1)), np.log10(nfw_mass(r2, lrhos, lrs)) - np.log10(float(m2))]).ravel()
             # result = np.array([np.log10(nfw_mass(rh, lrhos, lrs)) - np.log10(float(mdm_rh)), np.log10(nfw_mass(r_vmax, lrhos, lrs)) - np.log10(float(mdm_vmax)), 
             #                    np.log10(nfw_mass(2 * rh, lrhos, lrs)) - np.log10(float(mdm_2rh))]).ravel()
             # print(f"Params: {params}, Result: {result}")
@@ -290,7 +295,7 @@ class TNG_Subhalo():
             raise ValueError(f'Rh value not found for {self.sfid} at snap {self.snap}, max mstar snap is {snap_wanted}')
         return rh/(1 + all_redshifts[snap_wanted])/h #Setting it to right units, kpc
     
-    
+
     def get_vd(self, where):
         snap_wanted = self.__where_to_snap(where)
         vd = self.tree['SubhaloVelDisp'][snap_wanted == self.tree['SnapNum']]

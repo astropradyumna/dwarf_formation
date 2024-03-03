@@ -88,6 +88,8 @@ class ErraniSubhalo():
         vmx0 = self.vmx0
         rperi = self.rperi
         rapo = self.rapo
+
+        
         
         if rmx0 != rmx0:
             raise ValueError('rmx0 is NaN!')
@@ -244,18 +246,56 @@ class Subhalo(TNG_Subhalo):
             merger_index = np.where(snaps_temp == self.last_snap)[0][-1] #this is the index of the merger in the tree
             self.tree = {key: value[merger_index:] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
 
-        with warnings.catch_warnings(record=True) as w:
-            self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
-            if len(w) > 0:
-                self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
+        
         self.torb = None 
         self.rperi = None 
         self.rapo = None 
         
         self.mstar = max(self.tree['SubhaloMassType'][:, 4][self.tree['SnapNum'] >= self.snap]) * 1e10 / h #This is the maximum stellar mass at infall
-        self.vmax = self.get_vmax(where = 'max')
-        if self.mstar < 5e6: #If we have stellar mass < 5e6 Msun, we take stellar mass from Vmax
-            self.mstar = get_mstar_co(np.log10(self.vmax)) #This would be the stellar mass in Msun after application of scatter
+        # try:
+        #     self.vmax = self.get_vmax(where = 'max')
+        #     self.Rh = self.get_rh(where = 'max')
+        # except Exception as e:
+        #     print(e)
+        #     self.vmax = self.get_vmax(where = 'max')
+        #     self.Rh = self.get_rh(where = 'max')
+
+
+        if self.mstar >= 5e6: #If we have stellar mass < 5e6 Msun, we take stellar mass from Vmax
+            #in this case, assuming there are sufficient stars to give us valid values for Rh and M*
+            try:
+                self.Rh = self.get_rh(where = 'max')*3/4
+                self.vd = self.get_vd(where = 'max')
+            except Exception as e:
+                print(e)
+                self.Rh = self.get_rh(where = int(self.snap))*3/4
+                self.vd = self.get_vd(where = int(self.snap))
+
+            with warnings.catch_warnings(record=True) as w:
+                self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
+                if len(w) > 0:
+                    print(w)
+                    self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
+        else:
+            try:
+                self.vmax = self.get_vmax(where = 'max')
+            except Exception as e:
+                print(e)
+                self.vmax = self.get_vmax(where = int(self.snap))
+            self.mstar = get_mstar_co_wsc(np.log10(self.vmax)) #This would be the stellar mass in Msun after application of scatter
+            if self.mstar < 0:
+                self.mstar = np.array([1e-20])
+            self.Rh = get_rh_wsc(np.log10(self.mstar)) #This would be the half light radius. 
+            self.vd = self.get_vd(where = int(self.snap)) #guessing we wouldn't have a max for some subhalos, just use it at infall
+            with warnings.catch_warnings(record=True) as w:
+                self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
+                if len(w) > 0:
+                    for warning in w:
+                        print(warning.message)
+                    self.vmx0 = self.get_vmax(where = int(self.snap))
+                    self.rmx0 = self.get_rh(where = int(self.snap), how = 'vmax')
+                    self.mmx0 = self.get_mdm(where = int(self.snap), how = 'vmax')
+        
 
 
 
@@ -283,41 +323,20 @@ class Subhalo(TNG_Subhalo):
         return None
 
 
-
-    def get_infall_properties(self):
-        '''
-        This function is to obtain the properties of the subhalo at infall and then update it to the Subhalo object.
-        Checks if the subhalo cutout file is downloaded. If it is not, it downloads it. 
-
-        Args: None
-
-        Returns: None
-        '''
-        snap = self.snap
-        sfid = self.sfid
-
-        vmx, rmx, mmx = self.get_rot_curve(shid= sfid, shsnap= snap) #FIXME: This assumes that we are passing the infall snapshot and subfindIDs, this might not be always true
-
-        # Following are the infall details
-        self.vmx0 = vmx 
-        self.rmx0 = rmx 
-        self.mmx0 = mmx
-
-        return None
-    
-    
-    
+  
     def get_rh0byrmx0(self):
         '''
         This is a function to calculate the initial rh0burmx0 for the subhalo
         '''
         values = [1/2, 1/4, 1/8, 1/16]
+        
         Rh0 = self.get_rh(where = 'max')*3./4 #FIXME: This needs to accound for the subhalos without measured Rh
 
         
         closest_value = min(values, key=lambda x: abs(np.log(x) - np.log(Rh0/self.rmx0)))
         # print(closest_value)
         return closest_value
+
 
 
     def get_orbit(self, merged, when_te = 'last'):
@@ -427,7 +446,7 @@ class Subhalo(TNG_Subhalo):
         subh_y_cen = subh_y[te_subh_ix] - self.central_y[te_central_ix]
         subh_z_cen = subh_z[te_subh_ix] - self.central_z[te_central_ix]
 
-        
+
 
 
         mvir = self.central_gr_m200[te_central_ix].item() #this would be the virial mass of the FoF halo infall time 
@@ -544,11 +563,14 @@ class Subhalo(TNG_Subhalo):
 
 
     def get_model_values(self, tinf, tevol):
-        errani_start_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, self.get_rh(where = 'max')*3./4, self.vmx0, self.rmx0, self.mmx0, self.mstar)
+        if self.torb == np.inf: #If the orbital time is ttoo big, then just assume there is evolution
+            return self.vmx0, self.rmx0, self.mmx0, self.vd, self.Rh, self.mstar
+        errani_start_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, self.Rh, self.vmx0, self.rmx0, self.mmx0, self.mstar)
         tinf = 10 #FIXME: update this after you are done with testing
         if tinf > 9:
             # vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = central_v0[0]) #just assume a constant V0
             avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == 99])/2.
+            # print(avg_v0_b4_9)
             vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9) #just assume a constant V0, but we are taking an average here 
         elif tevol + tinf <  9:
             avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.

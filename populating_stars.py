@@ -70,6 +70,7 @@ def get_mstar_co_wsc(lvmaxar):
     mu_mstar = get_mstar_co(lvmaxar) #this will be the mean for the gaussian distribution
     sig_mstar = get_scatter(lvmaxar) #this will be the scatter in the relation which is considered to be a gaussian
     mstar = np.random.normal(mu_mstar, sig_mstar, size = len(lvmaxar))
+    
     return 10**mstar
 
 
@@ -81,6 +82,7 @@ def get_lrh(lmstar_ar, m1 = 0.178, m2 = 0.31, b = -1.49):
     0.17832722702850887, 0.30555128418263083, -1.4929324569613338
     '''
     lrh_ar = np.zeros(0)
+    # print(lmstar_ar)
     for lmstar in lmstar_ar:
         if lmstar > 6.5:
             lrh = m1 * lmstar + b 

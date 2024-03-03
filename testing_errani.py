@@ -19,7 +19,7 @@ from tqdm import tqdm
 import time
 from matplotlib.backends.backend_pdf import PdfPages
 
-response = requests.get('https://www.tng-project.org/api/TNG50-1/', verify=False) #Set warnings  off
+# response = requests.get('https://www.tng-project.org/api/TNG50-1/', verify=False) #Set warnings  off
 
 font = {'family' : 'serif',
         'weight' : 'normal',
