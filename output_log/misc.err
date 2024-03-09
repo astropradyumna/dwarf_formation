@@ -1,0 +1,21 @@
+/home/psadh003/python3/lib/python3.6/site-packages/pandas/compat/__init__.py:120: UserWarning: Could not import the lzma module. Your installed Python is incomplete. Attempting to use lzma compression will result in a RuntimeError.
+  warnings.warn(msg)
+Traceback (most recent call last):
+  File "main.py", line 11, in <module>
+    from errani_plus_tng_subhalo import Subhalo
+  File "/home/psadh003/tng50/dwarf_formation/errani_plus_tng_subhalo.py", line 15, in <module>
+    from testing_errani import get_rot_curve, get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0, l10rbyrmx0_1by4_spl,l10rbyrmx0_1by2_spl, l10rbyrmx0_1by8_spl, l10rbyrmx0_1by16_spl, l10vbyvmx0_1by2_spl, l10vbyvmx0_1by4_spl, l10vbyvmx0_1by8_spl, l10vbyvmx0_1by16_spl
+  File "/home/psadh003/tng50/dwarf_formation/testing_errani.py", line 56, in <module>
+    central_tree = il.sublink.loadTree(basePath, 99, central_id_at99, fields = central_fields, onlyMPB = True)
+  File "/home/psadh003/python3/lib/python3.6/site-packages/illustris_python/sublink.py", line 101, in loadTree
+    RowNum, LastProgID, SubhaloID = treeOffsets(basePath, snapNum, id, treeName)
+  File "/home/psadh003/python3/lib/python3.6/site-packages/illustris_python/sublink.py", line 41, in treeOffsets
+    with h5py.File(offsetPath(basePath, snapNum), 'r') as f:
+  File "/home/psadh003/python3/lib/python3.6/site-packages/h5py/_hl/files.py", line 427, in __init__
+    swmr=swmr)
+  File "/home/psadh003/python3/lib/python3.6/site-packages/h5py/_hl/files.py", line 190, in make_fid
+    fid = h5f.open(name, flags, fapl=fapl)
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper
+  File "h5py/h5f.pyx", line 96, in h5py.h5f.open
+OSError: Unable to open file (unable to open file: name = '/mainvol/jdopp001/L35n2160TNG_fixed/output/../postprocessing/offsets/offsets_099.hdf5', errno = 2, error message = 'No such file or directory', flags = 0, o_flags = 0)

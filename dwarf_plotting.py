@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np 
 
-filepath = '/home/psadh003/dwarf_data/'
+filepath = '/rhome/psadh003/bigdata/dwarf_data/'
 
 '''
 This cell is for data import of Kaixiang data

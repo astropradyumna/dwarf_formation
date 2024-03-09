@@ -26,10 +26,16 @@ font = {'family' : 'serif',
         'size' : 14}
 matplotlib.rc('font', **font)
 
+# baseUrl = 'https://www.tng-project.org/api/TNG50-1/'
+# headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
+# basePath = '/mainvol/jdopp001/L35n2160TNG_fixed/output'
+# filepath  = '/home/psadh003/tng50/tng_files/' #update this according to the need
+
+filepath = '/rhome/psadh003/bigdata/tng50/tng_files/'
+outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 baseUrl = 'https://www.tng-project.org/api/TNG50-1/'
 headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
-basePath = '/mainvol/jdopp001/L35n2160TNG_fixed/output'
-filepath  = '/home/psadh003/tng50/tng_files/' #update this according to the need
+basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
 
 h = 0.6774
 # G = 4.300917270038e-06 # This is in kpc, (km/s)^2 and seconds 
@@ -68,7 +74,7 @@ central_gr_m200 = central_tree['Group_M_Crit200']*1e10/h #This is the M200 of th
 '''
 The following is to plot the datasets that have been digitized for Rh values
 '''
-errani_fp = '/home/psadh003/errani23_data/'
+errani_fp = '/rhome/psadh003/bigdata/errani23_data/'
 rh1by4_df = pd.read_csv(errani_fp + 'rh1by4_errani22.csv') # Rh/rmx0 = 1/4 from digitization
 rh1by2_df = pd.read_csv(errani_fp + 'rh1by2_errani22.csv') # Rh/rmx0 = 1/2 from digitization
 rh1by8_df = pd.read_csv(errani_fp + 'rh1by8_errani22.csv')

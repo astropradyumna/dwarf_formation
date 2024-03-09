@@ -4,6 +4,7 @@ import IPython
 import numpy as np 
 from dwarf_plotting import plot_lg_virgo, plot_lg_vd
 import matplotlib
+from populating_stars import *
 
 font = {'family' : 'DejaVu Sans',
         'weight' : 'normal',
@@ -15,10 +16,11 @@ matplotlib.rc('font', **font)
 
 
 
-outpath  = '/home/psadh003/tng50/output_files/'
+outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 rvir_fof0 = 811.66/0.6744
 
-dfs = pd.read_csv(outpath + 'surviving_evolved_fof0.csv', delimiter = ',')
+dfs = pd.read_csv(outpath + 'surviving_evolved_fof0_everything.csv', delimiter = ',')
+# dfs = pd.read_csv(outpath + 'surviving_evolved_fof0.csv', delimiter = ',')
 dfs = dfs[dfs['dist_f_ar']<rvir_fof0]
 dfs1 = dfs
 dfs = dfs[(dfs['mstar_f_ar']>1e1) & (dfs['mstar_max_ar']<1e10)]
@@ -63,7 +65,8 @@ svmx_if_ar = dfs['vmx_if_ar']
 
 
 
-dfm = pd.read_csv(outpath + 'merged_evolved_fof0_wmbp.csv', delimiter = ',')
+dfm = pd.read_csv(outpath + 'merged_evolved_fof0_everything_wmbp.csv', delimiter = ',')
+# dfm = pd.read_csv(outpath + 'merged_evolved_fof0_wmbp.csv', delimiter = ',')
 dfm = dfm[dfm['dist_f_ar']<rvir_fof0]
 dfm1 = dfm 
 dfm = dfm[(dfm['mstar_f_ar']>1e1) & (dfm['mstar_max_ar']<1e10)]
@@ -118,13 +121,14 @@ def get_moster_shm(mmx):
 
 
 fig, ax = plt.subplots(figsize = (5.5, 5))
-ax.scatter(mmmx_f_ar, mmstar_f_ar, alpha = 0.3, color = 'purple', s = 6, label = 'merged - model')
-ax.scatter(smmx_f_ar, smstar_f_ar, alpha = 0.3, s = 6, color = 'darkgreen', label = 'surviving - model')
-ax.set_xlim(left = 1e4)
-ax.set_ylim(bottom  = 1e1)
+ax.scatter(smmx_f_ar, smstar_f_ar, alpha = 0.1, s = 6, color = 'darkgreen', label = 'surviving - model')
+ax.scatter(mmmx_f_ar, mmstar_f_ar, alpha = 0.1, color = 'purple', s = 6, label = 'merged - model')
+# ax.set_xlim(left = 1e4)
+# ax.set_ylim(bottom  = 1e1)
 
 mmxpl = np.logspace(2, 12, 100)
 ax.plot(mmxpl, get_moster_shm(mmxpl), 'k--', label = 'Moster+13')
+ax.plot(mmxpl, 10**get_mstar_co(np.log10(get_Mmx_from_Vmax(mmxpl))), 'k-.', label = 'cutoff')
 ax.set_xlabel(r'$M_{\rm{mx}}\,\rm{(M_\odot)}$ ')
 ax.set_ylabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
 ax.set_title('z=0 from the model')
@@ -169,12 +173,12 @@ Plot 3: Distance from the center vs M*
 '''
 fig, ax = plt.subplots(figsize = (5.5, 5))
 
-ax.scatter(mmstar_f_ar, mdist_f_ar, color = 'purple', alpha = 0.5, s = 2, label = 'Merged')
-ax.scatter(smstar_f_ar, sdist_f_ar, color = 'darkgreen', alpha = 0.5, s = 2, label = 'Surviving')
+ax.scatter(mmstar_f_ar, mdist_f_ar, color = 'purple', alpha = 0.1, s = 2, label = 'Merged')
+ax.scatter(smstar_f_ar, sdist_f_ar, color = 'darkgreen', alpha = 0.1, s = 2, label = 'Surviving')
 ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
 ax.set_ylabel('Distance from center (kpc)')
 ax.set_xlim(left = 1e1)
-# ax.set_ylim(bottom = 1e1)
+ax.set_ylim(bottom = 1e1)
 ax.legend(fontsize = 8)
 plt.loglog()
 plt.tight_layout()
@@ -245,9 +249,11 @@ plt.show()
 Plot 5: Rh vs Mstar
 '''
 fig, ax = plt.subplots(figsize = (10, 6.5))
+mspl_log = np.linspace(1, 11, 100)
 plot_lg_virgo(ax)
-ax.scatter(mmstar_f_ar, mrh_f_ar * 1e3, marker = 's', color = 'purple', alpha = 0.7, s = 25, label = 'Merged', zorder = 200, edgecolor = 'black', linewidth = 0.7)
-ax.scatter(smstar_f_ar, srh_f_ar * 1e3, marker = 's', color = 'darkgreen', alpha = 0.7, s = 25, label = 'Survived', zorder = 200, edgecolor = 'black', linewidth = 0.7)
+ax.scatter(smstar_f_ar, srh_f_ar * 1e3, marker = 's', color = 'darkgreen', alpha = 0.15, s = 10, label = 'Survived', zorder = 200, edgecolor = 'black', linewidth = 0.7)
+ax.scatter(mmstar_f_ar, mrh_f_ar * 1e3, marker = 's', color = 'purple', alpha = 0.15, s = 10, label = 'Merged', zorder = 200, edgecolor = 'black', linewidth = 0.7)
+ax.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k')
 ax.set_xlim(left = 1e1)
 ax.set_ylim(bottom = 10)
 ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
@@ -262,10 +268,12 @@ plt.show()
 '''
 Plot 5.1: Rh vs Mstar at infall
 '''
+mspl_log = np.linspace(1, 11, 100)
 fig, ax = plt.subplots(figsize = (10, 6.5))
 plot_lg_virgo(ax)
-ax.scatter(mmstar_max_ar, mrh_max_ar * 1e3, marker = 's', color = 'purple', alpha = 0.7, s = 25, label = 'Merged', zorder = 200, edgecolor = 'black', linewidth = 0.7)
-ax.scatter(smstar_max_ar, srh_max_ar * 1e3, marker = 's', color = 'darkgreen', alpha = 0.7, s = 25, label = 'Survived', zorder = 200, edgecolor = 'black', linewidth = 0.7)
+ax.scatter(smstar_max_ar, srh_max_ar * 1e3, marker = 's', color = 'darkgreen', alpha = 0.15, s = 10, label = 'Survived', zorder = 200, edgecolor = 'black', linewidth = 0.7)
+ax.scatter(mmstar_max_ar, mrh_max_ar * 1e3, marker = 's', color = 'purple', alpha = 0.15, s = 10, label = 'Merged', zorder = 200, edgecolor = 'black', linewidth = 0.7)
+ax.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k')
 ax.set_xlim(left = 1e1)
 ax.set_ylim(bottom = 10)
 ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
@@ -331,6 +339,92 @@ plt.loglog()
 plt.tight_layout()
 plt.show()
 
+
+
+'''
+Plot 7.1: This is to compare the values of Rh/rmx0 from the originav values vs that assumed in the simulation
+'''
+
+def get_rh0byrmx0(Rh0, rmx0):
+    '''
+    This is a function to calculate the initial rh0burmx0 for the subhalo
+    '''
+    values = [1/2, 1/4, 1/8, 1/16]
+    closest_value = min(values, key=lambda x: abs(np.log(x) - np.log(Rh0/rmx0)))
+    return closest_value
+
+
+fig, ax = plt.subplots(figsize = (5, 5))
+
+for ix in tqdm(range(len(ssh_snap))):
+    '''
+    This is to loop over all the surviving subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+    ''' 
+    subh  = Subhalo(snap = ssh_snap[ix], sfid = ssh_sfid[ix], last_snap = 99 )
+    # subh.get_infall_properties()
+    try:
+        Rh_tng_max = subh.get_rh(where = 'max')/np.sqrt(2)
+        Rh_model = subh.get_rh0byrmx0() * subh.rmx0 #This is the assumption
+    except:
+        continue
+    # if subh.get_rh0byrmx0() == 0.5:
+    #     print('Jai')
+    # ax.plot(Rh_model/subh.rmx0, Rh_tng_max/subh.rmx0, 'ko', ms = 3.5)
+    ax.plot(Rh_model, Rh_tng_max, 'ko', ms = 3.5)
+    # if ix in [30, 49, 56, 68, 84, 85, 89, 95]: 
+    #     ax.plot(Rh_model, Rh_tng_max, 'ro')
+    #     if ix == 30:ax.plot(Rh_model, Rh_tng_max, 'ro', label = r'Low $f_{\bigstar}$')
+    # elif ix in [83, 93, 94, 98, 100, 102, 103, 106]:
+    #     ax.plot(Rh_model, Rh_tng_max, 'bo')
+    #     if ix == 83: ax.plot(Rh_model, Rh_tng_max, 'bo', label = r'High $f_{\bigstar}$')
+
+ax.set_xlabel(r'$R_{\rm{h, inf}}/r_{\rm{mx0}}$ model (kpc)')
+ax.set_ylabel(r'$R_{\rm{h, max\, M_\bigstar}}/r_{\rm{mx0}}$ from TNG (kpc)')
+# ax.set_xlim(0, 8)
+# ax.set_ylim(0, 8)
+x_vals = np.array(ax.get_xlim())    
+ax.plot(x_vals, x_vals, 'k--', lw = 0.5)
+ax.legend(fontsize = 8)
+plt.loglog()
+plt.tight_layout()
+plt.show()
+
+
+
+
+'''
+Plot 7.2: This is to plot the rmx0 against the Mmx0 to check if there are some weird outliers
+'''
+fig, ax = plt.subplots(figsize = (7, 7))
+
+ax.scatter(smstar_max_ar, srh_max_ar/srmx_if_ar, marker = 'o', color = 'darkgreen', s = 10, alpha = 0.2, label = 'surviving')
+ax.scatter(mmstar_max_ar, mrh_max_ar/mrmx_if_ar, marker = 'o', color = 'purple', s = 10, alpha = 0.2, label = 'merged')
+
+rh0_by_rmx0_ar = np.concatenate([np.array(srh_max_ar/srmx_if_ar), np.array(mrh_max_ar/mrmx_if_ar)])
+mstar_ar = np.concatenate([np.array(smstar_max_ar), np.array(mmstar_max_ar)])
+ixs = np.where(rh0_by_rmx0_ar<1/32)[0]
+
+rh0_by_rmx0_ar = rh0_by_rmx0_ar[ixs]
+mstar_ar = mstar_ar[ixs]
+
+new_rh0_by_rmx0 = np.logspace(np.log10(np.quantile(rh0_by_rmx0_ar, 0.05)), np.log10(np.quantile(rh0_by_rmx0_ar, 0.95)), 3)
+
+for ix, frac in enumerate(new_rh0_by_rmx0):
+    if ix == 0: 
+        ax.axhline(frac, ls = '--', c = 'blue', label = r'required $R_{h0}/r_{\rm{mx0}}$')
+    else:
+        ax.axhline(frac, ls = '--', c = 'blue')
+
+ax.axhline(0.5, ls = '--', c = 'gray', label = r'Errani+22 $R_{h0}/r_{\rm{mx0}}$')
+ax.axhline(0.25, ls = '--', c = 'gray')
+ax.axhline(0.125, ls = '--', c = 'gray')
+ax.axhline(0.0625, ls = '--', c = 'gray')
+ax.set_xlabel(r'$M_\bigstar(M_\odot)$')
+ax.set_ylabel(r'$R_{h0}/r_{\rm{mx0}}$')
+ax.legend(fontsize = 8)
+plt.loglog()
+plt.tight_layout()
+plt.show()
 
 
 

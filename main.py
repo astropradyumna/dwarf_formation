@@ -26,11 +26,11 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 '''
 file import
 '''
-filepath = '/home/psadh003/tng50/tng_files/'
-outpath  = '/home/psadh003/tng50/output_files/'
+filepath = '/rhome/psadh003/bigdata/tng50/tng_files/'
+outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 baseUrl = 'https://www.tng-project.org/api/TNG50-1/'
 headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
-basePath = '/mainvol/jdopp001/L35n2160TNG_fixed/output'
+basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
 
 h = 0.6744
 
@@ -43,8 +43,8 @@ all_ages = np.array(ages_df['age(Gyr)'])
 '''
 Following is the dataset of the entire list of subhalos which infalled after z = 3 and survived
 '''
-# survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1.csv')
-survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1_everything.csv') #This does not have 100 particle restriction as well
+survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1.csv')
+# survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1_everything.csv') #This does not have 100 particle restriction as well
 
 
 ssh_sfid = survived_df['SubfindID'] #is this at infall?
@@ -71,8 +71,8 @@ ssh_max_mstar_id = np.array(survived_df['max_Mstar_id'], dtype = int)
 '''
 Following is the dataset of the entire list of subhalos which infalled after z = 3 and merged
 '''
-# merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1.csv')
-merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1_everything.csv')
+merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1.csv')
+# merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1_everything.csv')
 
 msh_sfid = merged_df['SubfindID']
 msh_sfid = np.array([s.strip('[]') for s in msh_sfid], dtype = int) #snap ID at infall
@@ -162,12 +162,12 @@ dist_f_ar = np.zeros(0)
 for ix in tqdm(range(len(ssh_snap))): #This would run over all the subhalos surviving till z = 0
 
 
-    # if ix < 290:
+    # if ix > 10:
     #     continue
     subh = Subhalo(snap = ssh_snap[ix], sfid = ssh_sfid[ix], last_snap=99, central_sfid_99 = 0)
     # print(subh.mstar)
 
-    if subh.mstar < 1e3:
+    if subh.mstar < 1e3 or subh.mstar.size == 0:
         continue
     try:
         t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
@@ -277,11 +277,11 @@ df['vd_f_ar_tng'] = vd_f_ar_tng
 df['pos_f_ar'] = pos_f_ar.tolist()  #These are the final positions
 df['dist_f_ar'] = dist_f_ar #This is the distance of the subhalo at z = 0
 
-df.to_csv(outpath + 'surviving_evolved_fof0_everything.csv', index = False)
-# df.to_csv(outpath + 'surviving_evolved_fof0.csv', index = False)
+# df.to_csv(outpath + 'surviving_evolved_fof0_everything.csv', index = False)
+df.to_csv(outpath + 'surviving_evolved_fof0.csv', index = False)
 
 
-IPython.embed()
+# IPython.embed()
 
 # '''
 # Merging subhalos from FoF0
@@ -326,7 +326,7 @@ for ix in tqdm(range(len(msh_snap))):
     subh  = Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = int(msh_merger_snap[ix]), central_sfid_99=0) #these are at infall
 
 
-    if subh.mstar < 1e3: #this would be the mass cutoff at infall for the subhalos
+    if subh.mstar < 1e3 or subh.mstar.size == 0: #this would be the mass cutoff at infall for the subhalos
         continue
 
     try:
@@ -415,8 +415,8 @@ df['tinf_ar'] = tinf_ar
 df['mbpid_ar'] = mbpid_ar  #These are the final positions
 df['mbpidp_ar'] = mbpidp_ar #MBP IDs of the snapshot before the final snapshot
 
-# df.to_csv(outpath + 'merged_evolved_fof0.csv', index = False)
-df.to_csv(outpath + 'merged_evolved_fof0_everything.csv', index = False)
+df.to_csv(outpath + 'merged_evolved_fof0.csv', index = False)
+# df.to_csv(outpath + 'merged_evolved_fof0_everything.csv', index = False)
 
 
 

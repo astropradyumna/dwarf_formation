@@ -20,10 +20,16 @@ h = 0.6774
 mass_dm = 3.07367708626464e-05 * 1e10/h #This is for TNG50-1
 G = 4.5390823753559603e-39 #This is in kpc, Msun and seconds
 
-filepath = '/home/psadh003/tng50/tng_files/'
+# filepath = '/home/psadh003/tng50/tng_files/'
+# baseUrl = 'https://www.tng-project.org/api/TNG50-1/'
+# headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
+# basePath = '/mainvol/jdopp001/L35n2160TNG_fixed/output'
+
+filepath = '/rhome/psadh003/bigdata/tng50/tng_files/'
+outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 baseUrl = 'https://www.tng-project.org/api/TNG50-1/'
 headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
-basePath = '/mainvol/jdopp001/L35n2160TNG_fixed/output'
+basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
 
 ages_df = pd.read_csv(filepath + 'ages_tng.csv', comment = '#')
 

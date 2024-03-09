@@ -70,7 +70,6 @@ def get_mstar_co_wsc(lvmaxar):
     mu_mstar = get_mstar_co(lvmaxar) #this will be the mean for the gaussian distribution
     sig_mstar = get_scatter(lvmaxar) #this will be the scatter in the relation which is considered to be a gaussian
     mstar = np.random.normal(mu_mstar, sig_mstar, size = len(lvmaxar))
-    
     return 10**mstar
 
 
@@ -78,7 +77,7 @@ def get_mstar_co_wsc(lvmaxar):
 
 def get_lrh(lmstar_ar, m1 = 0.178, m2 = 0.31, b = -1.49):
     '''
-    This function returns the log rh for a given Mstar
+    This function returns the log rh for a given Mstar -- in what units?
     0.17832722702850887, 0.30555128418263083, -1.4929324569613338
     '''
     lrh_ar = np.zeros(0)
@@ -100,3 +99,42 @@ def get_rh_wsc(lmstar_ar):
     sig_lrh = 0.2
     lrh =  np.random.normal(mu_lrh, sig_lrh, size = len(lmstar_ar))
     return 10**lrh
+
+
+G = 4.5390823753559603e-39 #This is in kpc, Msun and seconds
+
+def get_H(z, h = 0.6774):
+    '''
+    Calculates the Hubble constant as a function of redshift z in km/s/Mpc
+    '''
+    # Cosmological model parameters
+    hubble_constant = h*100  # Hubble constant in km/s/Mpc
+    matter_density = 0.31  # Density of matter in the universe
+    dark_energy_density = 0.69  # Density of dark energy in the universe
+
+    # Calculate the Hubble parameter
+    hubble_parameter = hubble_constant * np.sqrt(matter_density * (1 + z)**3 + dark_energy_density)
+
+    return hubble_parameter
+
+
+def get_critical_dens(z):
+    '''
+    Returns the critical density of the universe at a given redshift in Msun/kpc^3
+    '''
+    H = get_H(z)*3.24078e-20 #in s^-1
+    
+    return 3*H**2/(8*np.pi*G) #Msun, kpc
+
+
+def get_Mmx_from_Vmax(Mmx):
+    '''
+    This is a very bad way to get Mmx from Vmax using lots of assumptioons
+    Just to plot the assumed laws on the Mstar vs Mmx relation
+    '''
+    Mvir = Mmx/0.2
+    rvir = (Mvir / ((4/3)* np.pi * 200 * get_critical_dens(0))) ** 1/3.
+    vvir = rvir * np.sqrt((4/3.) * np.pi * G * 200 * get_critical_dens(0)) * 3.086e+16
+    vmax = 1.5 * vvir 
+    
+    return vmax

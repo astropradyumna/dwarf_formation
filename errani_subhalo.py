@@ -1,36 +1,39 @@
-import numpy as np
-import matplotlib.pyplot as plt 
-import os 
-os.environ["USE_LZMA"] = "0"
-import pandas as pd
-from errani_plus_tng_subhalo import Subhalo
-from tqdm import tqdm
+'''
+This is a file to have a class for the subhalo that can be evolved using the Errani+21, 22 models
+'''
+import numpy as np 
 from scipy.optimize import fsolve
-import IPython
-from testing_errani import get_rot_curve, get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0, l10rbyrmx0_1by4_spl,l10rbyrmx0_1by2_spl, l10rbyrmx0_1by8_spl, l10rbyrmx0_1by16_spl
+from testing_errani import get_rot_curve, get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0, l10rbyrmx0_1by4_spl,l10rbyrmx0_1by2_spl, l10rbyrmx0_1by8_spl, l10rbyrmx0_1by16_spl, l10vbyvmx0_1by2_spl, l10vbyvmx0_1by4_spl, l10vbyvmx0_1by8_spl, l10vbyvmx0_1by16_spl
+
 
 
 class ErraniSubhalo():
-    def __init__(self, rmx0, vmx0, mmx0,  rperi, rapo, torb):
-        self.rmx0 = rmx0 
-        self.vmx0 = vmx0 
-        self.mmx0 = mmx0
+    def __init__(self, torb, rperi, rapo, rh0byrmx0, vmx0, rmx0, mmx0, mstar0):
+        self.torb = torb 
         self.rperi = rperi 
         self.rapo = rapo 
-        self.torb = torb
+        self.vmx0 = vmx0
+        self.rmx0 = rmx0
+        self.mmx0 = mmx0
+        self.mstar0 = mstar0
+        self.rh0byrmx0 = rh0byrmx0
+        
 
     def evolve(self, tevol, V0):
         '''
         This is a function that evolves the subhalo using Errani models
 
         Args:
-        t (float): The time for which evolution must take place
+        tinf: The infall time in Gyr of the subhalo  
+        tevol (float): The time for which evolution must take place
         V0: This is a parameter of the host whn paramterized using the isothermal profile
+
         '''
         rmx0 = self.rmx0
         vmx0 = self.vmx0
         rperi = self.rperi
         rapo = self.rapo
+        
 
         if any([rmx0, vmx0, rperi, rapo]) == None:
             raise ValueError('Some of the required values are None, recheck if they have been updated in the Object')
@@ -84,15 +87,14 @@ class ErraniSubhalo():
         
         tmx = get_tmx_t(tevol)
         rmx = fsolve(lambda rmx: get_tmx(rmx) - tmx, rmx0/100)[0]
-        print(rmx/rmx0)
         frem = get_mxbymx0(rmx/rmx0) 
+        mmx = frem * self.mmx0
+        vmx = get_vmxbyvmx0(rmx/rmx0) * self.vmx0
         # print(f'frem = {100 * frem:.2f} % ')
-        
-        return frem
-    
-IPython.embed()
+        mstar = get_LbyL0(frem, self.rh0byrmx0) * self.mstar0
+        return  vmx, rmx, mmx, mstar
 
-subh = ErraniSubhalo(mmx0 = 1e6, rmx0 = 0.47, rapo = 200, rperi = 40, vmx0 = 3, torb = 2.5)
-frem = subh.evolve(tevol = 5 * subh.torb, V0 = 220)
-print(f'This is the resultant Rh = {10 ** (l10rbyrmx0_1by2_spl(np.log10(frem)))}')
-print(get_LbyL0())
+    
+    
+
+    

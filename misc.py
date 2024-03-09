@@ -27,9 +27,10 @@ from matplotlib.backends.backend_pdf import PdfPages
 # This is currently being used for finding the position of the MBP 
 
 
-fof0_path = '/home/psadh003/FoF0_TNG50_redshift0/'
-outpath  = '/home/psadh003/tng50/output_files/'
+fof0_path = '/rhome/psadh003/bigdata/FoF0_TNG50_redshift0/'
+outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 
+# df = pd.read_csv(outpath + 'merged_evolved_fof0_everything.csv', delimiter = ',')
 df = pd.read_csv(outpath + 'merged_evolved_fof0.csv', delimiter = ',')
 mbpid_ar = df['mbpid_ar']
 mbpidp_ar = df['mbpidp_ar'] #MBP ID of one snapshot before 
@@ -87,6 +88,7 @@ df = df.drop(popix_ar)
 df['pos_f_ar'] = pos_ar.tolist()
 df['dist_f_ar'] = np.sqrt(np.sum(pos_ar**2, axis=1))
 
+# df.to_csv(outpath + 'merged_evolved_fof0_everything_wmbp.csv', index = False)
 df.to_csv(outpath + 'merged_evolved_fof0_wmbp.csv', index = False)
 
 

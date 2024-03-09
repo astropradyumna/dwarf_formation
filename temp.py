@@ -234,18 +234,19 @@ for ix in tqdm(range(len(msh_snap))):
     '''
     This is to loop over all the merging subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
     '''
-    # if msh_mstar[ix] > 1e10: continue #takes lot of time to get compiled
+    if msh_mstar[ix] > 1e10: continue #takes lot of time to get compiled
 
     subh  = TNG_Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = int(msh_merger_snap[ix]))
     mmvir_tng = np.append(mmvir_tng, subh.get_m200(where = subh.snap - 1))
     mmdm_tot_tng = np.append(mmdm_tot_tng, subh.get_mdm(where = subh.snap))
     mmtot_tng = np.append(mmtot_tng, subh.get_mtot(where = subh.snap))
     this_vmax = subh.get_vmax(where = subh.snap)
-    mvmax_tng = np.append(mvmax_tng, this_vmax)
-    this_Rh = subh.get_rh(where = subh.snap)*3/4
-    mrh_tng = np.append(mrh_tng, this_Rh)
+    if len(this_vmax) == 0: #Some of them have no vmax, accounting for that
+        mvmax_tng = np.append(mvmax_tng, 0)
+    else:
+        mvmax_tng = np.append(mvmax_tng, this_vmax)
         
-    
+    mrh_tng = np.append(mrh_tng, subh.get_rh(where = subh.snap)*3/4)
 
 
 
@@ -358,13 +359,13 @@ def get_scatter(lvmaxar, sigma0 = 0.24, kappa = -1.26, V0 = 88.6):
     return sigma_ar
 
 
-vmax_tng_cut = vmax_tng[ssh_mstar > 5e6]
-ssh_mstar_cut = ssh_mstar[ssh_mstar > 5e6]  #currently only considering the subhalos which have stellar mass to calibrate the relation
+vmax_tng_cut = vmax_tng[ssh_mstar > 1e3]
+ssh_mstar_cut = ssh_mstar[ssh_mstar > 1e3]  #currently only considering the subhalos which have stellar mass to calibrate the relation
 
 log_vmax = np.log10(vmax_tng_cut)
 log_mstar = np.log10(ssh_mstar_cut)
 
-bins = np.array([vmax_tng_cut.min(), 40,60, 80, 100, 175, 250, vmax_tng_cut.max()+1]) #choosing bins manually
+bins = np.array([vmax_tng_cut.min(), 30, 40,60, 80, 100,175, 250, vmax_tng_cut.max()+1]) #choosing bins manually
 num_bins = len(bins)
 # Digitize x into logarithmic bins
 bin_indices = np.digitize(vmax_tng_cut, bins)
@@ -724,8 +725,8 @@ vmax_tng_ur_cut = mvmax_tng[cond] #These would be the subhalos which are conside
 mstar_tng_ur_cut = get_mstar_pl_wsc(np.log10(vmax_tng_ur_cut))
 mstar_tng_ur_cut_co = get_mstar_co_wsc(np.log10(vmax_tng_ur_cut))
 
-vmax_tng_cut = mvmax_tng[msh_mstar > 1e3]
-msh_mstar_cut = msh_mstar[msh_mstar > 1e3]  #currently only considering the subhalos which have stellar mass to calibrate the relation
+vmax_tng_cut = mvmax_tng[ssh_mstar > 1e3]
+msh_mstar_cut = msh_mstar[ssh_mstar > 1e3]  #currently only considering the subhalos which have stellar mass to calibrate the relation
 
 log_vmax = np.log10(vmax_tng_cut)
 log_mstar = np.log10(msh_mstar_cut)

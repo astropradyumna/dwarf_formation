@@ -28,11 +28,11 @@ h = 0.6774
 mass_dm = 3.07367708626464e-05 * 1e10/h #This is for TNG50-1
 G = 4.5390823753559603e-39 #This is in kpc, Msun and seconds
 
-filepath = '/home/psadh003/tng50/tng_files/'
-outpath  = '/home/psadh003/tng50/output_files/'
+filepath = '/rhome/psadh003/bigdata/tng50/tng_files/'
+outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 baseUrl = 'https://www.tng-project.org/api/TNG50-1/'
 headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
-basePath = '/mainvol/jdopp001/L35n2160TNG_fixed/output'
+basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
 
 ages_df = pd.read_csv(filepath + 'ages_tng.csv', comment = '#')
 
@@ -289,7 +289,8 @@ class Subhalo(TNG_Subhalo):
             self.vd = self.get_vd(where = int(self.snap)) #guessing we wouldn't have a max for some subhalos, just use it at infall
             with warnings.catch_warnings(record=True) as w:
                 self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
-                if len(w) > 0:
+                rmax = self.get_rh(where = int(self.snap), how = 'vmax')
+                if len(w) > 0 or self.rmx0 > 3*rmax or self.rmx0 < rmax/3:
                     for warning in w:
                         print(warning.message)
                     self.vmx0 = self.get_vmax(where = int(self.snap))
@@ -568,10 +569,11 @@ class Subhalo(TNG_Subhalo):
         errani_start_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, self.Rh, self.vmx0, self.rmx0, self.mmx0, self.mstar)
         tinf = 10 #FIXME: update this after you are done with testing
         if tinf > 9:
-            # vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = central_v0[0]) #just assume a constant V0
-            avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == 99])/2.
+            vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = self.central_v0[0]) #just assume a constant V0
+            # avg_v0_b4_9 = 200
+            # avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == 99])/2.
             # print(avg_v0_b4_9)
-            vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9) #just assume a constant V0, but we are taking an average here 
+            # vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9) #just assume a constant V0, but we are taking an average here 
         elif tevol + tinf <  9:
             avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.
             vmxf, rmxf, mmxf, vdf, rhf, mstarf = errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9)
