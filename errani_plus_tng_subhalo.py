@@ -12,7 +12,7 @@ from orbit_calculator_preamble import *
 from galpy.potential import NFWPotential, TimeDependentAmplitudeWrapperPotential
 from galpy.orbit import Orbit
 from astropy import units as u
-from testing_errani import get_rot_curve, get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0, l10rbyrmx0_1by4_spl,l10rbyrmx0_1by2_spl, l10rbyrmx0_1by8_spl, l10rbyrmx0_1by16_spl, l10vbyvmx0_1by2_spl, l10vbyvmx0_1by4_spl, l10vbyvmx0_1by8_spl, l10vbyvmx0_1by16_spl
+from testing_errani import get_rot_curve, get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0, l10rbyrmx0_1by4_spl,l10rbyrmx0_1by2_spl, l10rbyrmx0_1by8_spl, l10rbyrmx0_1by16_spl, l10vbyvmx0_1by2_spl, l10vbyvmx0_1by4_spl, l10vbyvmx0_1by8_spl, l10vbyvmx0_1by16_spl, l10rbyrmx0_1by66_spl, l10rbyrmx0_1by250_spl, l10rbyrmx0_1by1000_spl, l10vbyvmx0_1by66_spl, l10vbyvmx0_1by250_spl, l10vbyvmx0_1by1000_spl
 from tng_subhalo_and_halo import TNG_Subhalo
 from matplotlib import gridspec
 from colossus.cosmology import cosmology
@@ -57,7 +57,7 @@ class ErraniSubhalo():
         '''
         This is a function to calculate the initial rh0burmx0 for the subhalo
         '''
-        values = [1/2, 1/4, 1/8, 1/16]
+        values = [1/2, 1/4, 1/8, 1/16, 1/66, 1/250, 1/1000]
         Rh0 = self.Rh
         
         closest_value = min(values, key=lambda x: abs(np.log10(x) - np.log10(Rh0/self.rmx0)))
@@ -74,7 +74,7 @@ class ErraniSubhalo():
     
 
 
-    def evolve(self, tevol, V0):
+    def evolve(self, tevol, V0, min_mstarf = 10):
         '''
         This is a function that evolves the subhalo using Errani models
 
@@ -174,29 +174,48 @@ class ErraniSubhalo():
 
         vd_diff = (get_vmxbyvmx0(get_rmxbyrmx0(10**-2.5)) * self.vmx0) - ((10 ** l10vbyvmx0_1by4_spl(-2.5)) * self.vmx0) #Calculating the difference at frem = 10**-2.5 and assuming it to be a constant
 
-        if np.log10(frem) >= -2.5:
-            if rh0byrmx0 == 0.25:
-                rh_now = 10 ** (l10rbyrmx0_1by4_spl(np.log10(frem))) * self.rmx0
-                vd_now = 10 ** (l10vbyvmx0_1by4_spl(np.log10(frem))) * self.vmx0
-            elif rh0byrmx0 == 0.125:
-                rh_now = 10 ** (l10rbyrmx0_1by8_spl(np.log10(frem))) * self.rmx0
-                vd_now = 10 ** (l10vbyvmx0_1by8_spl(np.log10(frem))) * self.vmx0
-            elif rh0byrmx0 == 0.5:
-                rh_now = 10 ** (l10rbyrmx0_1by2_spl(np.log10(frem))) * self.rmx0
-                vd_now = 10 ** (l10vbyvmx0_1by2_spl(np.log10(frem))) * self.vmx0
-            elif rh0byrmx0 == 0.0625:
-                rh_now = 10 ** (l10rbyrmx0_1by16_spl(np.log10(frem))) * self.rmx0
-                vd_now = 10 ** (l10vbyvmx0_1by16_spl(np.log10(frem))) * self.vmx0
+        if rh0byrmx0 in [1/2, 1/4, 1/8, 1/16]:
+            if np.log10(frem) >= -2.5:
+                if rh0byrmx0 == 0.25:
+                    rh_now = 10 ** (l10rbyrmx0_1by4_spl(np.log10(frem))) * self.Rh/rh0byrmx0
+                    vd_now = 10 ** (l10vbyvmx0_1by4_spl(np.log10(frem))) * self.vmx0
+                elif rh0byrmx0 == 0.125:
+                    rh_now = 10 ** (l10rbyrmx0_1by8_spl(np.log10(frem))) * self.Rh/rh0byrmx0
+                    vd_now = 10 ** (l10vbyvmx0_1by8_spl(np.log10(frem))) * self.vmx0
+                elif rh0byrmx0 == 0.5:
+                    rh_now = 10 ** (l10rbyrmx0_1by2_spl(np.log10(frem))) * self.Rh/rh0byrmx0
+                    vd_now = 10 ** (l10vbyvmx0_1by2_spl(np.log10(frem))) * self.vmx0
+                elif rh0byrmx0 == 0.0625:
+                    rh_now = 10 ** (l10rbyrmx0_1by16_spl(np.log10(frem))) * self.Rh/rh0byrmx0
+                    vd_now = 10 ** (l10vbyvmx0_1by16_spl(np.log10(frem))) * self.vmx0
 
 
-        elif np.log10(frem) < -2.5:
-            rh_now = rmx 
-            vd_now = vmx - vd_diff
+            elif np.log10(frem) < -2.5:
+                rh_now = rmx 
+                vd_now = vmx - vd_diff
+
+        elif rh0byrmx0 in [1/66, 1/250, 1/1000]:
+            if np.log10(frem) >= -5:
+                if rh0byrmx0 == 1/66:
+                    rh_now = 10 ** (l10rbyrmx0_1by66_spl(np.log10(frem))) * self.Rh/rh0byrmx0
+                    vd_now = 10 ** (l10vbyvmx0_1by66_spl(np.log10(frem))) * self.vmx0
+                elif rh0byrmx0 == 1/250:
+                    rh_now = 10 ** (l10rbyrmx0_1by250_spl(np.log10(frem))) * self.Rh/rh0byrmx0
+                    vd_now = 10 ** (l10vbyvmx0_1by250_spl(np.log10(frem))) * self.vmx0
+                elif rh0byrmx0 == 1/1000:
+                    rh_now = 10 ** (l10rbyrmx0_1by1000_spl(np.log10(frem))) * self.Rh/rh0byrmx0
+                    vd_now = 10 ** (l10vbyvmx0_1by1000_spl(np.log10(frem))) * self.vmx0
+
+
+            elif np.log10(frem) < -5:
+                rh_now = rmx 
+                vd_now = vmx - vd_diff
 
 
 
 
-        if mstar < 10: #FIXME:Decide #10 on some limit for stellar mass from Errani model
+
+        if mstar < min_mstarf: #FIXME:Decide #10 on some limit for stellar mass from Errani model
             mstar = 0
             rh_now = 0
 
@@ -259,10 +278,16 @@ class Subhalo(TNG_Subhalo):
         #     print(e)
         #     self.vmax = self.get_vmax(where = 'max')
         #     self.Rh = self.get_rh(where = 'max')
-
+        self.Rh = -1
+        self.Rh_co = -1
+        self.Rh_pl = -1
 
         if self.mstar >= 5e6: #If we have stellar mass < 5e6 Msun, we take stellar mass from Vmax
             #in this case, assuming there are sufficient stars to give us valid values for Rh and M*
+            self.mstar_co = -1 #just so that the main code doen't break
+            self.mstar_pl = -1
+            self.resolved = True #This variable can be used to test anywhere else if the subhalo is considerd resolved or not
+            # Above variable is used so that we can have condition only at one place instead of testing with the mass at several places
             try:
                 self.Rh = self.get_rh(where = 'max')*3/4
                 self.vd = self.get_vd(where = 'max')
@@ -277,20 +302,23 @@ class Subhalo(TNG_Subhalo):
                     print(w)
                     self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
         else:
+            self.resolved = False 
             try:
                 self.vmax = self.get_vmax(where = 'max')
             except Exception as e:
                 print(e)
                 self.vmax = self.get_vmax(where = int(self.snap))
-            self.mstar = get_mstar_co_wsc(np.log10(self.vmax)) #This would be the stellar mass in Msun after application of scatter
-            if self.mstar < 0:
-                self.mstar = np.array([1e-20])
-            self.Rh = get_rh_wsc(np.log10(self.mstar)) #This would be the half light radius. 
+            self.mstar_co = get_mstar_co_wsc(np.log10(self.vmax)) #This would be the stellar mass in Msun after application of scatter
+            self.mstar_pl = get_mstar_pl_wsc(np.log10(self.vmax)) #This would be the stellar mass in Msun after application of scatter
+            if self.mstar_co < 0: self.mstar_co = np.array([1e-20])
+            if self.mstar_pl < 0: self.mstar_pl = np.array([1e-20])
+            self.Rh_co = get_rh_wsc(np.log10(self.mstar_co)) #This would be the half light radius. 
+            self.Rh_pl = get_rh_wsc(np.log10(self.mstar_pl)) #This would be the half light radius. 
             self.vd = self.get_vd(where = int(self.snap)) #guessing we wouldn't have a max for some subhalos, just use it at infall
             with warnings.catch_warnings(record=True) as w:
                 self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
                 rmax = self.get_rh(where = int(self.snap), how = 'vmax')
-                if len(w) > 0 or self.rmx0 > 3*rmax or self.rmx0 < rmax/3:
+                if len(w) > 0 or self.rmx0 > 2.5*rmax or self.rmx0 < rmax/2.5:
                     for warning in w:
                         print(warning.message)
                     self.vmx0 = self.get_vmax(where = int(self.snap))
@@ -329,7 +357,8 @@ class Subhalo(TNG_Subhalo):
         '''
         This is a function to calculate the initial rh0burmx0 for the subhalo
         '''
-        values = [1/2, 1/4, 1/8, 1/16]
+        values = [1/2, 1/4, 1/8, 1/16, 1/66, 1/250, 1/1000]
+
         
         Rh0 = self.get_rh(where = 'max')*3./4 #FIXME: This needs to accound for the subhalos without measured Rh
 
@@ -563,34 +592,53 @@ class Subhalo(TNG_Subhalo):
         return float(all_ages[99] - all_ages[snap_r200_if])
 
 
-    def get_model_values(self, tinf, tevol):
+    def get_model_values(self, tinf, tevol, porc = None, min_mstarf = 10):
         if self.torb == np.inf: #If the orbital time is ttoo big, then just assume there is evolution
-            return self.vmx0, self.rmx0, self.mmx0, self.vd, self.Rh, self.mstar
-        errani_start_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, self.Rh, self.vmx0, self.rmx0, self.mmx0, self.mstar)
-        tinf = 10 #FIXME: update this after you are done with testing
-        if tinf > 9:
-            vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = self.central_v0[0]) #just assume a constant V0
+            if self.resolved:
+                return self.vmx0, self.rmx0, self.mmx0, self.vd, self.Rh, self.mstar
+            else:
+                if porc == 'p':
+                    return self.vmx0, self.rmx0, self.mmx0, self.vd, self.Rh_pl, self.mstar_pl
+                elif porc == 'c':
+                    return self.vmx0, self.rmx0, self.mmx0, self.vd, self.Rh_co, self.mstar_co
+
+        if self.resolved:
+            errani_start_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, self.Rh, self.vmx0, self.rmx0, self.mmx0, self.mstar)
+            vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = self.central_v0[0], min_mstarf = min_mstarf) #just assume a constant V0
+        else:
+            if porc == 'p':
+                errani_start_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, self.Rh_pl, self.vmx0, self.rmx0, self.mmx0, self.mstar_pl)
+                vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = self.central_v0[0], min_mstarf = min_mstarf) #just assume a constant V0
+            elif porc == 'c':
+                errani_start_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, self.Rh_co, self.vmx0, self.rmx0, self.mmx0, self.mstar_co)
+                vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = self.central_v0[0], min_mstarf = min_mstarf) #just assume a constant V0
+
+        return vmxf, rmxf, mmxf, vdf, rhf, mstarf
+        
+        # tinf = 10 #FIXME: update this after you are done with testing
+        
+        
+        # if tinf > 9:
             # avg_v0_b4_9 = 200
             # avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == 99])/2.
             # print(avg_v0_b4_9)
             # vmxf, rmxf, mmxf, vdf, rhf, mstarf =  errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9) #just assume a constant V0, but we are taking an average here 
-        elif tevol + tinf <  9:
-            avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.
-            vmxf, rmxf, mmxf, vdf, rhf, mstarf = errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9)
-        else:
-            avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.
-            vmx1, rmx1, mmx1, vd1, rh1, mstar1 = errani_start_subh.evolve(9 - tinf, V0 = avg_v0_b4_9)
-            errani_last_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, rh1, vmx1, rmx1, mmx1, mstar1)
-            vmxf, rmxf, mmxf, vdf, rhf, mstarf = errani_last_subh.evolve(tevol - (9 - tinf), V0 = self.central_v0[0])
-            # frem = mmxf/self.mmx0
-            #first run for the first half,
-            #then use that output for the input of second half
-            # errani_last_subh = ErraniSubalo()
-            #evolve the last subh again
-            #get the required values out of this
-            #do not use Mmx/Mmx0 to calculate anything because it is nomore a single evolution
+        # elif tevol + tinf <  9:
+        #     avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.
+        #     vmxf, rmxf, mmxf, vdf, rhf, mstarf = errani_start_subh.evolve(tevol, V0 = avg_v0_b4_9)
+        # else:
+        #     avg_v0_b4_9 = (self.central_v0[self.central_snaps == self.snap] + self.central_v0[self.central_snaps == np.searchsorted(all_ages, tevol+tinf) - 1])/2.
+        #     vmx1, rmx1, mmx1, vd1, rh1, mstar1 = errani_start_subh.evolve(9 - tinf, V0 = avg_v0_b4_9)
+        #     errani_last_subh = ErraniSubhalo(self.torb, self.rperi, self.rapo, rh1, vmx1, rmx1, mmx1, mstar1)
+        #     vmxf, rmxf, mmxf, vdf, rhf, mstarf = errani_last_subh.evolve(tevol - (9 - tinf), V0 = self.central_v0[0])
+        #     # frem = mmxf/self.mmx0
+        #     #first run for the first half,
+        #     #then use that output for the input of second half
+        #     # errani_last_subh = ErraniSubalo()
+        #     #evolve the last subh again
+        #     #get the required values out of this
+        #     #do not use Mmx/Mmx0 to calculate anything because it is nomore a single evolution
 
-        return vmxf, rmxf, mmxf, vdf, rhf, mstarf
     
 
     def get_tng_values(self, where):

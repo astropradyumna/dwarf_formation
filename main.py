@@ -17,6 +17,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 from subhalo_profiles import ExponentialProfile, NFWProfile
 import warnings
 from populating_stars import *
+from joblib import Parallel, delayed #This is to parallelize the code
+import sys
 
 # Suppress the lzma module warning
 # warnings.filterwarnings("ignore", category=UserWarning, module="pandas.compat")
@@ -33,6 +35,7 @@ headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
 basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
 
 h = 0.6744
+min_mstar = 1e2
 
 ages_df = pd.read_csv(filepath + 'ages_tng.csv', comment = '#')
 
@@ -40,11 +43,19 @@ all_snaps = np.array(ages_df['snapshot'])
 all_redshifts = np.array(ages_df['redshift'])
 all_ages = np.array(ages_df['age(Gyr)'])
 
+
+fof_no = int(sys.argv[1])
+fof_str = 'fof' + str(fof_no)
+
+this_fof = il.groupcat.loadSingle(basePath, 99, haloID = fof_no)
+central_sfid_99 = this_fof['GroupFirstSub']
+# print(central_sfid_99)
+
 '''
 Following is the dataset of the entire list of subhalos which infalled after z = 3 and survived
 '''
-survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1.csv')
-# survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1_everything.csv') #This does not have 100 particle restriction as well
+# survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1.csv')
+survived_df = pd.read_csv(filepath + fof_str + '_sh_survived_after_z3_tng50_1_everything.csv') #This does not have 100 particle restriction as well
 
 
 ssh_sfid = survived_df['SubfindID'] #is this at infall?
@@ -71,8 +82,8 @@ ssh_max_mstar_id = np.array(survived_df['max_Mstar_id'], dtype = int)
 '''
 Following is the dataset of the entire list of subhalos which infalled after z = 3 and merged
 '''
-merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1.csv')
-# merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1_everything.csv')
+# merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1.csv')
+merged_df = pd.read_csv(filepath + fof_str + '_sh_merged_after_z3_tng50_1_everything.csv')
 
 msh_sfid = merged_df['SubfindID']
 msh_sfid = np.array([s.strip('[]') for s in msh_sfid], dtype = int) #snap ID at infall
@@ -101,11 +112,11 @@ Following is to get the dataset which has the relevant SubfindIDs
 '''
 
 # id_df = pd.read_csv('errani_checking_dataset.csv', comment = '#')
-id_df = pd.read_csv(filepath + 'errani_checking_dataset_more1e9msun.csv', comment = '#')
+# id_df = pd.read_csv(filepath + 'errani_checking_dataset_more1e9msun.csv', comment = '#')
 
-snap_if_ar = id_df['snap_at_infall']
-sfid_if_ar = id_df['id_at_infall']
-ms_by_mdm = id_df['ms_by_mdm']
+# snap_if_ar = id_df['snap_at_infall']
+# sfid_if_ar = id_df['id_at_infall']
+# ms_by_mdm = id_df['ms_by_mdm']
 
 
 
@@ -120,214 +131,134 @@ Data import ends here
 # IPython.embed()
 
 
-
-
 '''
-Surviving subhalos from FoF0
+Surviving subhalos with parallelization. Working!
 '''
-vmx_if_ar = np.zeros(0)
-rmx_if_ar = np.zeros(0)
-mmx_if_ar = np.zeros(0)
-vmx_f_ar = np.zeros(0)
-rmx_f_ar = np.zeros(0)
-mmx_f_ar = np.zeros(0)
-
-sfid_if_ar = np.zeros(0)
-snap_if_ar = np.zeros(0)
-
-mstar_max_ar = np.zeros(0)
-rh_max_ar = np.zeros(0)
-vd_max_ar = np.zeros(0)
-
-mstar_f_ar = np.zeros(0)
-rh_f_ar = np.zeros(0)
-vd_f_ar = np.zeros(0)
-
-rperi_ar = np.zeros(0)
-rapo_ar = np.zeros(0)
-torb_ar = np.zeros(0)
-tinf_ar = np.zeros(0)
-
-vmx_f_ar_tng = np.zeros(0)
-rmx_f_ar_tng = np.zeros(0)
-mmx_f_ar_tng = np.zeros(0)
-mstar_f_ar_tng = np.zeros(0)
-rh_f_ar_tng = np.zeros(0)
-vd_f_ar_tng = np.zeros(0)
-
-pos_f_ar = np.zeros(0) #These are the final positions
-dist_f_ar = np.zeros(0)
 
 
-for ix in tqdm(range(len(ssh_snap))): #This would run over all the subhalos surviving till z = 0
 
+def save_surviving_subhalos(ix):
+    # global vmx_if_ar, rmx_if_ar, mmx_if_ar, vmx_f_ar, rmx_f_ar, mmx_f_ar, sfid_if_ar, snap_if_ar, mstar_max_ar, rh_max_ar, vd_max_ar, mstar_f_ar, rh_f_ar, vd_f_ar, rperi_ar, rapo_ar, torb_ar, tinf_ar, vmx_f_ar_tng, rmx_f_ar_tng, mmx_f_ar_tng, mstar_f_ar_tng, rh_f_ar_tng, vd_f_ar_tng, pos_f_ar, dist_f_ar
+    vmx_f_ar, rmx_f_ar, mmx_f_ar, mstar_f_ar, rh_f_ar, vd_f_ar = -1 * np.ones(6, dtype = int)
+    mstar_f_pl_ar, rh_f_pl_ar, vd_f_pl_ar = -1 * np.ones(3, dtype = int)
+    mstar_f_co_ar, rh_f_co_ar, vd_f_co_ar = -1 * np.ones(3, dtype = int)
 
-    # if ix > 10:
-    #     continue
-    subh = Subhalo(snap = ssh_snap[ix], sfid = ssh_sfid[ix], last_snap=99, central_sfid_99 = 0)
-    # print(subh.mstar)
-
-    if subh.mstar < 1e3 or subh.mstar.size == 0:
-        continue
+    subh = Subhalo(snap = ssh_snap[ix], sfid = ssh_sfid[ix], last_snap = 99, central_sfid_99 = central_sfid_99)
+    
+    if max(subh.mstar, subh.mstar_co, subh.mstar_pl) < min_mstar or np.array(subh.mstar).size * np.array(subh.mstar_pl).size * np.array(subh.mstar_co).size  == 0 :
+        return 
     try:
         t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
     except Exception as e:
         print(e) 
-        # ctr = ctr + 1
-        # skipped_ixs = np.append(skipped_ixs, ix)
-        continue
-    
-    rh_max_ar = np.append(rh_max_ar, subh.Rh) #this is the 2d half light radius
-    vd_max_ar = np.append(vd_max_ar, subh.vd) #los vd
+        return 
+
+    rh_max_ar = subh.Rh  # this is the 2d half light radius
+    vd_max_ar = subh.vd  # los vd
+    mstar_max_ar = subh.mstar
+
+    rh_max_pl_ar = subh.Rh_pl
+    rh_max_co_ar = subh.Rh_co
+
+    mstar_max_co_ar = subh.mstar_co
+    mstar_max_pl_ar = subh.mstar_pl
+
+    vmx_if_ar = subh.vmx0
+    rmx_if_ar = subh.rmx0
+    mmx_if_ar = subh.mmx0
 
 
-    # print(subh.get_rh(where = 'max')*3./4)
-    # try: #Skip the subhalos which do not have Rh at max Mstar
-    #     rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')*3./4) #this is the 2d half light radius
-    #     vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
-    # except ValueError:
-    #     continue
+    sfid_if_ar = subh.sfid
+    snap_if_ar = subh.snap
+    rperi_ar = subh.rperi
+    rapo_ar = subh.rapo
+    torb_ar = subh.torb
+    tinf_ar = all_ages[int(subh.snap)]
 
 
-    vmx_if_ar = np.append(vmx_if_ar, subh.vmx0)
-    rmx_if_ar = np.append(rmx_if_ar, subh.rmx0)
-    mmx_if_ar = np.append(mmx_if_ar, subh.mmx0) 
+    if subh.resolved == True:
+        vmx_f_ar, rmx_f_ar, mmx_f_ar, vd_f_ar, rh_f_ar, mstar_f_ar = subh.get_model_values(float(tinf_ar), t)  # FIXME: Some orbits are not unbound as galpy reports
+    else: #If unresolved, we calculate the power law and cutoff model stellar masses. Note that mmx, vmx, rmx would still be the same
+        vmx_f_ar, rmx_f_ar, mmx_f_ar, vd_f_pl_ar, rh_f_pl_ar, mstar_f_pl_ar = subh.get_model_values(float(tinf_ar), t, porc = 'p')
+        vmx_f_ar, rmx_f_ar, mmx_f_ar, vd_f_co_ar, rh_f_co_ar, mstar_f_co_ar = subh.get_model_values(float(tinf_ar), t, porc = 'c')
 
-    sfid_if_ar = np.append(sfid_if_ar, ssh_sfid[ix])
-    snap_if_ar = np.append(snap_if_ar, ssh_snap[ix])
-    rperi_ar = np.append(rperi_ar, subh.rperi)
-    rapo_ar = np.append(rapo_ar, subh.rapo)
-    torb_ar = np.append(torb_ar, subh.torb)
-    tinf_ar = np.append(tinf_ar, all_ages[ssh_snap[ix]])
-
-    mstar_max_ar = np.append(mstar_max_ar, subh.mstar)
-
-    
-    # if subh.torb == np.inf: #case of no evolution
-    #     vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.vmx0, subh.rmx0, subh.mmx0, vd_max_ar[-1], rh_max_ar[-1], subh.mstar
-    # else:
-    vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t) #FIXME: Some orbits are not unbound as galpy reports
-    vmx_f_ar = np.append(vmx_f_ar, vmxf)
-    rmx_f_ar = np.append(rmx_f_ar, rmxf)
-    mmx_f_ar = np.append(mmx_f_ar, mmxf)
-    mstar_f_ar = np.append(mstar_f_ar, mstarf)
-    rh_f_ar = np.append(rh_f_ar, rhf)
-    vd_f_ar = np.append(vd_f_ar, vdf)
+    # # FIXME: mstarf would be from tng. change accordingly
+    # vmx_f_ar = vmxf
+    # rmx_f_ar = rmxf
+    # mmx_f_ar = mmxf
+    # mstar_f_ar = mstarf
+    # rh_f_ar = rhf
+    # vd_f_ar = vdf
 
     with warnings.catch_warnings(record=True) as w:
-        vmxf_tng, rmxf_tng, mmxf_tng = subh.get_mx_values(where = int(99))
+        vmxf_tng, rmxf_tng, mmxf_tng = subh.get_mx_values(where=int(99))
         if len(w) > 0:
-            vmxf_tng, rmxf_tng, mmxf_tng = subh.get_rot_curve(where= int(99))
+            vmxf_tng, rmxf_tng, mmxf_tng = subh.get_rot_curve(where=int(99))
     # Following are from TNG
-    vmx_f_ar_tng = np.append(vmx_f_ar_tng, vmxf_tng)
-    rmx_f_ar_tng = np.append(rmx_f_ar_tng, rmxf_tng)
-    mmx_f_ar_tng = np.append(mmx_f_ar_tng, mmxf_tng)
-    mstar_f_ar_tng = np.append(mstar_f_ar_tng, subh.get_mstar(where = 99, how = 'total'))
+    vmx_f_ar_tng = vmxf_tng
+    rmx_f_ar_tng = rmxf_tng
+    mmx_f_ar_tng = mmxf_tng
+    mstar_f_ar_tng = subh.get_mstar(where=99, how='total')
     try:
-        rh_f_ar_tng = np.append(rh_f_ar_tng, subh.get_rh(where = 99)*3./4)
-        vd_f_ar_tng = np.append(vd_f_ar_tng, subh.get_vd(where = 99))
+        rh_f_ar_tng = subh.get_rh(where=99) * 3. / 4
+        vd_f_ar_tng = subh.get_vd(where=99)
     except ValueError:
-        rh_f_ar_tng = np.append(rh_f_ar_tng, 0)
-        vd_f_ar_tng = np.append(vd_f_ar_tng, 0)
-    
-    if len(pos_f_ar) == 0:
-        pos_f_ar = subh.tree['SubhaloPos'][-1, :]/h
-        pos_f_ar = pos_f_ar.reshape(1, -1)
-    else:
-        this_pos = np.array(subh.tree['SubhaloPos'][-1, :]/h)
-        pos_f_ar = np.append(pos_f_ar, this_pos.reshape(1, -1), axis = 0)
+        rh_f_ar_tng = 0
+        vd_f_ar_tng = 0
 
-    dist_f_ar = np.append(dist_f_ar, subh.get_dist_from_cen(where = 99))
-    # print(dist_f_ar[-1], 'kpc')
+    # if len(pos_f_ar) == 0:
+    pos_f_ar = subh.tree['SubhaloPos'][-1, :] / h
+    pos_f_ar = pos_f_ar.reshape(1, -1)
+    # else:
+    #     this_pos = np.array(subh.tree['SubhaloPos'][-1, :] / h)
+    #     pos_f_ar = np.append(pos_f_ar, this_pos.reshape(1, -1), axis=0)
 
-
-
-df = pd.DataFrame()
-
-df['vmx_if_ar'] = vmx_if_ar
-df['rmx_if_ar'] = rmx_if_ar
-df['mmx_if_ar'] = mmx_if_ar
-df['vmx_f_ar'] = vmx_f_ar
-df['rmx_f_ar'] = rmx_f_ar
-df['mmx_f_ar'] = mmx_f_ar
-
-df['sfid_if_ar'] = sfid_if_ar
-df['snap_if_ar'] = snap_if_ar
-
-df['mstar_max_ar'] = mstar_max_ar
-df['rh_max_ar'] = rh_max_ar
-df['vd_max_ar'] = vd_max_ar
-
-df['mstar_f_ar'] = mstar_f_ar
-df['rh_f_ar'] = rh_f_ar
-df['vd_f_ar'] = vd_f_ar
-
-df['rperi_ar'] = rperi_ar
-df['rapo_ar'] = rapo_ar
-df['torb_ar'] = torb_ar
-df['tinf_ar'] = tinf_ar
-
-df['vmx_f_ar_tng'] = vmx_f_ar_tng
-df['rmx_f_ar_tng'] = rmx_f_ar_tng
-df['mmx_f_ar_tng'] = mmx_f_ar_tng
-df['mstar_f_ar_tng'] = mstar_f_ar_tng
-df['rh_f_ar_tng'] = rh_f_ar_tng
-df['vd_f_ar_tng'] = vd_f_ar_tng
-
-df['pos_f_ar'] = pos_f_ar.tolist()  #These are the final positions
-df['dist_f_ar'] = dist_f_ar #This is the distance of the subhalo at z = 0
-
-# df.to_csv(outpath + 'surviving_evolved_fof0_everything.csv', index = False)
-df.to_csv(outpath + 'surviving_evolved_fof0.csv', index = False)
+    dist_f_ar = subh.get_dist_from_cen(where=99)
+    return vmx_if_ar, rmx_if_ar, mmx_if_ar, vmx_f_ar, rmx_f_ar, mmx_f_ar,sfid_if_ar, snap_if_ar, mstar_max_ar, rh_max_ar, vd_max_ar, mstar_f_ar, rh_f_ar, vd_f_ar,  rperi_ar, rapo_ar, torb_ar, tinf_ar, vmx_f_ar_tng, rmx_f_ar_tng, mmx_f_ar_tng, mstar_f_ar_tng, rh_f_ar_tng, vd_f_ar_tng, pos_f_ar.tolist()[0], dist_f_ar, vd_f_pl_ar, rh_f_pl_ar, mstar_f_pl_ar, vd_f_co_ar, rh_f_co_ar, mstar_f_co_ar, rh_max_pl_ar, rh_max_co_ar, mstar_max_pl_ar, mstar_max_co_ar 
 
 
-# IPython.embed()
-
-# '''
-# Merging subhalos from FoF0
-# '''
-
-vmx_if_ar = np.zeros(0)
-rmx_if_ar = np.zeros(0)
-mmx_if_ar = np.zeros(0)
-vmx_f_ar = np.zeros(0)
-rmx_f_ar = np.zeros(0)
-mmx_f_ar = np.zeros(0)
-
-sfid_if_ar = np.zeros(0)
-snap_if_ar = np.zeros(0)
-
-mstar_max_ar = np.zeros(0)
-rh_max_ar = np.zeros(0)
-vd_max_ar = np.zeros(0)
-
-mstar_f_ar = np.zeros(0)
-rh_f_ar = np.zeros(0)
-vd_f_ar = np.zeros(0)
-
-rperi_ar = np.zeros(0)
-rapo_ar = np.zeros(0)
-torb_ar = np.zeros(0)
-tinf_ar = np.zeros(0)
-
-mbpid_ar = np.zeros(0)
-mbpidp_ar = np.zeros(0) #this is the MBP ID of the previous snapshot
 
 
-for ix in tqdm(range(len(msh_snap))):
+
+
+results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(save_surviving_subhalos)(ix) for ix in tqdm(range(len(ssh_snap))))
+results = [value for value in results if value is not None] #Getting rid of all the None entries
+
+
+column_names = ['vmx_if_ar', 'rmx_if_ar', 'mmx_if_ar',
+    'vmx_f_ar', 'rmx_f_ar', 'mmx_f_ar',
+    'sfid_if_ar', 'snap_if_ar',
+    'mstar_max_ar', 'rh_max_ar', 'vd_max_ar',
+    'mstar_f_ar', 'rh_f_ar', 'vd_f_ar',
+    'rperi_ar', 'rapo_ar', 'torb_ar', 'tinf_ar',
+    'vmx_f_ar_tng', 'rmx_f_ar_tng', 'mmx_f_ar_tng',
+    'mstar_f_ar_tng', 'rh_f_ar_tng', 'vd_f_ar_tng',
+    'pos_f_ar', 'dist_f_ar', 'vd_f_pl_ar', 'rh_f_pl_ar', 'mstar_f_pl_ar', 
+    'vd_f_co_ar', 'rh_f_co_ar', 'mstar_f_co_ar', 
+    'rh_max_pl_ar', 'rh_max_co_ar', 'mstar_max_pl_ar', 'mstar_max_co_ar' ]
+
+# Create an empty DataFrame with the specified column names
+df = pd.DataFrame(columns=column_names)
+for ix in range(len(results)):
+    df.loc[len(df)] = results[ix]
+
+df.to_csv(outpath + fof_str + '_surviving_evolved_everything.csv', index = False)
+
+
+'''
+Merged subhalos with parallelzation. Writing.
+'''
+def save_merged_subhalos(ix):
     '''
-    This is to loop over all the merging subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+    This is a function to save return all the parameters of interest for the merged subhalos
     '''
-    if ix in [5, 9, 14, 22]: continue #takes lot of time to get compiled
+    vmx_f_ar, rmx_f_ar, mmx_f_ar, mstar_f_ar, rh_f_ar, vd_f_ar = -1 * np.ones(6, dtype = int)
+    mstar_f_pl_ar, rh_f_pl_ar, vd_f_pl_ar = -1 * np.ones(3, dtype = int)
+    mstar_f_co_ar, rh_f_co_ar, vd_f_co_ar = -1 * np.ones(3, dtype = int)
 
-    # if ix < 10:
-    #     continue
-
-    subh  = Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = int(msh_merger_snap[ix]), central_sfid_99=0) #these are at infall
-
-
-    if subh.mstar < 1e3 or subh.mstar.size == 0: #this would be the mass cutoff at infall for the subhalos
-        continue
+    subh  = Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = int(msh_merger_snap[ix]), central_sfid_99=central_sfid_99) #these are at infall
+    if max(subh.mstar, subh.mstar_co, subh.mstar_pl) < min_mstar or np.array(subh.mstar).size * np.array(subh.mstar_pl).size * np.array(subh.mstar_co).size  == 0: #this would be the mass cutoff at infall for the subhalos
+        return None
 
     try:
         t = subh.get_orbit(merged = True, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
@@ -335,93 +266,467 @@ for ix in tqdm(range(len(msh_snap))):
         print(e)
         # ctr = ctr + 1
         # skipped_ixs = np.append(skipped_ixs, ix)
-        continue
+        return None
 
-    rh_max_ar = np.append(rh_max_ar, subh.Rh) #this is the 2d half light radius
-    vd_max_ar = np.append(vd_max_ar, subh.vd) #los vd
+    rh_max_ar = subh.Rh  # this is the 2d half-light radius
+    vd_max_ar = subh.vd  # los vd
 
-    # print(subh.get_rh(where = 'max')*3./4)
-    # try: #If we do not have Rh at maximum stellar mass, then we are just skipping the subhalo
-    #     rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')*3./4) #this is the 2d half light radius
-    #     vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
-    # except ValueError:
-    #     continue
+    vmx_if_ar = subh.vmx0
+    rmx_if_ar = subh.rmx0
+    mmx_if_ar = subh.mmx0
 
+    sfid_if_ar = msh_sfid[ix]
+    snap_if_ar = msh_snap[ix]
+    rperi_ar = subh.rperi
+    rapo_ar = subh.rapo
+    torb_ar = subh.torb
+    tinf_ar = all_ages[msh_snap[ix]]
 
-    vmx_if_ar = np.append(vmx_if_ar, subh.vmx0)
-    rmx_if_ar = np.append(rmx_if_ar, subh.rmx0)
-    mmx_if_ar = np.append(mmx_if_ar, subh.mmx0)
+    mstar_max_ar = subh.mstar
 
-    sfid_if_ar = np.append(sfid_if_ar, msh_sfid[ix])
-    snap_if_ar = np.append(snap_if_ar, msh_snap[ix])
-    rperi_ar = np.append(rperi_ar, subh.rperi)
-    rapo_ar = np.append(rapo_ar, subh.rapo)
-    torb_ar = np.append(torb_ar, subh.torb)
-    tinf_ar = np.append(tinf_ar, all_ages[msh_snap[ix]])
+    rh_max_pl_ar = subh.Rh_pl
+    rh_max_co_ar = subh.Rh_co
 
-    mstar_max_ar = np.append(mstar_max_ar, subh.mstar)
-
+    mstar_max_co_ar = subh.mstar_co
+    mstar_max_pl_ar = subh.mstar_pl
 
 
     # if subh.torb == np.inf:
     #     vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.vmx0, subh.rmx0, subh.mmx0, vd_max_ar[-1], rh_max_ar[-1], subh.mstar
     # else:
-    vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t)
+    if subh.resolved == True:
+        vmx_f_ar, rmx_f_ar, mmx_f_ar, vd_f_ar, rh_f_ar, mstar_f_ar = subh.get_model_values(float(tinf_ar), t)  # FIXME: Some orbits are not unbound as galpy reports
+    else: #If unresolved, we calculate the power law and cutoff model stellar masses. Note that mmx, vmx, rmx would still be the same
+        vmx_f_ar, rmx_f_ar, mmx_f_ar, vd_f_pl_ar, rh_f_pl_ar, mstar_f_pl_ar = subh.get_model_values(float(tinf_ar), t, porc = 'p')
+        vmx_f_ar, rmx_f_ar, mmx_f_ar, vd_f_co_ar, rh_f_co_ar, mstar_f_co_ar = subh.get_model_values(float(tinf_ar), t, porc = 'c')
 
-    vmx_f_ar = np.append(vmx_f_ar, vmxf)
-    rmx_f_ar = np.append(rmx_f_ar, rmxf)
-    mmx_f_ar = np.append(mmx_f_ar, mmxf)
-    mstar_f_ar = np.append(mstar_f_ar, mstarf)
-    rh_f_ar = np.append(rh_f_ar, rhf)
-    vd_f_ar = np.append(vd_f_ar, vdf)
 
-    mbpid_ar = np.append(mbpid_ar, subh.get_mbpid(where = subh.last_snap)) #Get the MBP ID at infall
+
+    mbpid_ar = subh.get_mbpid(where = subh.last_snap) #Get the MBP ID at infall
     mbpidp =  np.array(subh.get_mbpid(where = subh.last_snap-1))
     # print(mbpid_ar[-1], mbpidp)
     # print(len(mbpidp), mbpidp.shape)
     if len(mbpidp) != 0:
-        mbpidp_ar = np.append(mbpidp_ar, mbpidp)
+        mbpidp_ar = mbpidp
     else:
-        mbpidp_ar = np.append(mbpidp_ar, -1)
-    # print(mbpidp_ar[-1])
+        mbpidp_ar = -1
+
+    return vmx_if_ar, rmx_if_ar, mmx_if_ar, vmx_f_ar, rmx_f_ar, mmx_f_ar, sfid_if_ar, snap_if_ar, mstar_max_ar, rh_max_ar, vd_max_ar, mstar_f_ar, rh_f_ar, vd_f_ar, rperi_ar, rapo_ar, torb_ar, tinf_ar, mbpid_ar, mbpidp_ar, vd_f_pl_ar, rh_f_pl_ar, mstar_f_pl_ar, vd_f_co_ar, rh_f_co_ar, mstar_f_co_ar, rh_max_pl_ar, rh_max_co_ar, mstar_max_pl_ar, mstar_max_co_ar
 
 
+results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(save_merged_subhalos)(ix) for ix in tqdm(range(len(msh_snap))))
+results = [value for value in results if value is not None] #Getting rid of all the None entries
 
-df = pd.DataFrame()
 
-df['vmx_if_ar'] = vmx_if_ar
-df['rmx_if_ar'] = rmx_if_ar
-df['mmx_if_ar'] = mmx_if_ar
-df['vmx_f_ar'] = vmx_f_ar
-df['rmx_f_ar'] = rmx_f_ar
-df['mmx_f_ar'] = mmx_f_ar
+column_names = ['vmx_if_ar', 'rmx_if_ar', 'mmx_if_ar',
+    'vmx_f_ar', 'rmx_f_ar', 'mmx_f_ar',
+    'sfid_if_ar', 'snap_if_ar',
+    'mstar_max_ar', 'rh_max_ar', 'vd_max_ar',
+    'mstar_f_ar', 'rh_f_ar', 'vd_f_ar',
+    'rperi_ar', 'rapo_ar', 'torb_ar', 'tinf_ar',
+    'mbpid_ar', 'mbpidp_ar',  'vd_f_pl_ar', 'rh_f_pl_ar', 
+    'mstar_f_pl_ar', 'vd_f_co_ar', 'rh_f_co_ar', 'mstar_f_co_ar', 
+    'rh_max_pl_ar', 'rh_max_co_ar', 'mstar_max_pl_ar', 'mstar_max_co_ar']
 
-df['sfid_if_ar'] = sfid_if_ar
-df['snap_if_ar'] = snap_if_ar
 
-df['mstar_max_ar'] = mstar_max_ar
-df['rh_max_ar'] = rh_max_ar
-df['vd_max_ar'] = vd_max_ar
+df = pd.DataFrame(columns=column_names)
+for ix in range(len(results)):
+    df.loc[len(df)] = results[ix]
 
-df['mstar_f_ar'] = mstar_f_ar
-df['rh_f_ar'] = rh_f_ar
-df['vd_f_ar'] = vd_f_ar
-
-df['rperi_ar'] = rperi_ar
-df['rapo_ar'] = rapo_ar
-df['torb_ar'] = torb_ar
-df['tinf_ar'] = tinf_ar
-
-df['mbpid_ar'] = mbpid_ar  #These are the final positions
-df['mbpidp_ar'] = mbpidp_ar #MBP IDs of the snapshot before the final snapshot
-
-df.to_csv(outpath + 'merged_evolved_fof0.csv', index = False)
-# df.to_csv(outpath + 'merged_evolved_fof0_everything.csv', index = False)
+df.to_csv(outpath + fof_str + '_merged_evolved_everything.csv', index = False)
 
 
 
 
 
+
+
+# print(results.shape)
+    # print(results[4])
+
+
+    
+    # df = pd.read_csv(outpath + 'temp_surviving.csv')
+    # df.[    vmx_if_ar, rmx_if_ar, mmx_if_ar,    vmx_f_ar, rmx_f_ar, mmx_f_ar,    sfid_if_ar, snap_if_ar,    mstar_max_ar, rh_max_ar, vd_max_ar,    mstar_f_ar, rh_f_ar, vd_f_ar,    rperi_ar, rapo_ar, torb_ar, tinf_ar,    vmx_f_ar_tng, rmx_f_ar_tng, mmx_f_ar_tng,    mstar_f_ar_tng, rh_f_ar_tng, vd_f_ar_tng,    pos_f_ar, dist_f_ar]
+
+    
+    # rh_max_ar = np.append(rh_max_ar, subh.Rh) #this is the 2d half light radius
+    # vd_max_ar = np.append(vd_max_ar, subh.vd) #los vd
+
+
+    # # print(subh.get_rh(where = 'max')*3./4)
+    # # try: #Skip the subhalos which do not have Rh at max Mstar
+    # #     rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')*3./4) #this is the 2d half light radius
+    # #     vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
+    # # except ValueError:
+    # #     continue
+
+    # # if vmx_if_ar.size == 0:
+    # #     vmx_if_ar = subh.vmx0
+    # # else:
+    # vmx_if_ar = np.append(vmx_if_ar, subh.vmx0)
+    # rmx_if_ar = np.append(rmx_if_ar, subh.rmx0)
+    # mmx_if_ar = np.append(mmx_if_ar, subh.mmx0) 
+
+    # sfid_if_ar = np.append(sfid_if_ar, subh.sfid)
+    # snap_if_ar = np.append(snap_if_ar, subh.snap)
+    # rperi_ar = np.append(rperi_ar, subh.rperi)
+    # rapo_ar = np.append(rapo_ar, subh.rapo)
+    # torb_ar = np.append(torb_ar, subh.torb)
+    # tinf_ar = np.append(tinf_ar, all_ages[int(subh.snap)])
+
+    # mstar_max_ar = np.append(mstar_max_ar, subh.mstar)
+
+    
+    # # if subh.torb == np.inf: #case of no evolution
+    # #     vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.vmx0, subh.rmx0, subh.mmx0, vd_max_ar[-1], rh_max_ar[-1], subh.mstar
+    # # else:
+    # vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t) #FIXME: Some orbits are not unbound as galpy reports
+    # vmx_f_ar = np.append(vmx_f_ar, vmxf)
+    # rmx_f_ar = np.append(rmx_f_ar, rmxf)
+    # mmx_f_ar = np.append(mmx_f_ar, mmxf)
+    # mstar_f_ar = np.append(mstar_f_ar, mstarf)
+    # rh_f_ar = np.append(rh_f_ar, rhf)
+    # vd_f_ar = np.append(vd_f_ar, vdf)
+
+    # with warnings.catch_warnings(record=True) as w:
+    #     vmxf_tng, rmxf_tng, mmxf_tng = subh.get_mx_values(where = int(99))
+    #     if len(w) > 0:
+    #         vmxf_tng, rmxf_tng, mmxf_tng = subh.get_rot_curve(where= int(99))
+    # # Following are from TNG
+    # vmx_f_ar_tng = np.append(vmx_f_ar_tng, vmxf_tng)
+    # rmx_f_ar_tng = np.append(rmx_f_ar_tng, rmxf_tng)
+    # mmx_f_ar_tng = np.append(mmx_f_ar_tng, mmxf_tng)
+    # mstar_f_ar_tng = np.append(mstar_f_ar_tng, subh.get_mstar(where = 99, how = 'total'))
+    # try:
+    #     rh_f_ar_tng = np.append(rh_f_ar_tng, subh.get_rh(where = 99)*3./4)
+    #     vd_f_ar_tng = np.append(vd_f_ar_tng, subh.get_vd(where = 99))
+    # except ValueError:
+    #     rh_f_ar_tng = np.append(rh_f_ar_tng, 0)
+    #     vd_f_ar_tng = np.append(vd_f_ar_tng, 0)
+    
+    # if len(pos_f_ar) == 0:
+    #     pos_f_ar = subh.tree['SubhaloPos'][-1, :]/h
+    #     pos_f_ar = pos_f_ar.reshape(1, -1)
+    # else:
+    #     this_pos = np.array(subh.tree['SubhaloPos'][-1, :]/h)
+    #     pos_f_ar = np.append(pos_f_ar, this_pos.reshape(1, -1), axis = 0)
+
+    # dist_f_ar = np.append(dist_f_ar, subh.get_dist_from_cen(where = 99))
+    # # print(subh.vmx0)
+    # print(vmx_if_ar)
+    # return None
+
+
+
+
+
+'''
+Surviving subhalos from FoF0
+'''
+# vmx_if_ar = np.zeros(0)
+# rmx_if_ar = np.zeros(0)
+# mmx_if_ar = np.zeros(0)
+# vmx_f_ar = np.zeros(0)
+# rmx_f_ar = np.zeros(0)
+# mmx_f_ar = np.zeros(0)
+
+# sfid_if_ar = np.zeros(0)
+# snap_if_ar = np.zeros(0)
+
+# mstar_max_ar = np.zeros(0)
+# rh_max_ar = np.zeros(0)
+# vd_max_ar = np.zeros(0)
+
+# mstar_f_ar = np.zeros(0)
+# rh_f_ar = np.zeros(0)
+# vd_f_ar = np.zeros(0)
+
+# rperi_ar = np.zeros(0)
+# rapo_ar = np.zeros(0)
+# torb_ar = np.zeros(0)
+# tinf_ar = np.zeros(0)
+
+# vmx_f_ar_tng = np.zeros(0)
+# rmx_f_ar_tng = np.zeros(0)
+# mmx_f_ar_tng = np.zeros(0)
+# mstar_f_ar_tng = np.zeros(0)
+# rh_f_ar_tng = np.zeros(0)
+# vd_f_ar_tng = np.zeros(0)
+
+# pos_f_ar = np.zeros(0) #These are the final positions
+# dist_f_ar = np.zeros(0)
+
+# def save_surviving_subhalos(snap, sfid, last_snap, central_sfid_99):
+#     # global vmx_if_ar, rmx_if_ar, mmx_if_ar, vmx_f_ar, rmx_f_ar, mmx_f_ar, sfid_if_ar, snap_if_ar, mstar_max_ar, rh_max_ar, vd_max_ar, mstar_f_ar, rh_f_ar, vd_f_ar, rperi_ar, rapo_ar, torb_ar, tinf_ar, vmx_f_ar_tng, rmx_f_ar_tng, mmx_f_ar_tng, mstar_f_ar_tng, rh_f_ar_tng, vd_f_ar_tng, pos_f_ar, dist_f_ar
+
+#     subh = Subhalo(snap = snap, sfid = sfid, last_snap=last_snap, central_sfid_99 = central_sfid_99)
+#     # print(subh.mstar)
+
+#     if subh.mstar < 1e3 or subh.mstar.size == 0:
+#         return None
+#     try:
+#         t = subh.get_orbit(merged = False, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+#     except Exception as e:
+#         print(e) 
+#         # ctr = ctr + 1
+#         # skipped_ixs = np.append(skipped_ixs, ix)
+#         return None
+    
+#     rh_max_ar = np.append(rh_max_ar, subh.Rh) #this is the 2d half light radius
+#     vd_max_ar = np.append(vd_max_ar, subh.vd) #los vd
+
+
+#     # print(subh.get_rh(where = 'max')*3./4)
+#     # try: #Skip the subhalos which do not have Rh at max Mstar
+#     #     rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')*3./4) #this is the 2d half light radius
+#     #     vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
+#     # except ValueError:
+#     #     continue
+
+#     # if vmx_if_ar.size == 0:
+#     #     vmx_if_ar = subh.vmx0
+#     # else:
+#     vmx_if_ar = np.append(vmx_if_ar, subh.vmx0)
+#     rmx_if_ar = np.append(rmx_if_ar, subh.rmx0)
+#     mmx_if_ar = np.append(mmx_if_ar, subh.mmx0) 
+
+#     sfid_if_ar = np.append(sfid_if_ar, subh.sfid)
+#     snap_if_ar = np.append(snap_if_ar, subh.snap)
+#     rperi_ar = np.append(rperi_ar, subh.rperi)
+#     rapo_ar = np.append(rapo_ar, subh.rapo)
+#     torb_ar = np.append(torb_ar, subh.torb)
+#     tinf_ar = np.append(tinf_ar, all_ages[int(subh.snap)])
+
+#     mstar_max_ar = np.append(mstar_max_ar, subh.mstar)
+
+    
+#     # if subh.torb == np.inf: #case of no evolution
+#     #     vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.vmx0, subh.rmx0, subh.mmx0, vd_max_ar[-1], rh_max_ar[-1], subh.mstar
+#     # else:
+#     vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t) #FIXME: Some orbits are not unbound as galpy reports
+#     vmx_f_ar = np.append(vmx_f_ar, vmxf)
+#     rmx_f_ar = np.append(rmx_f_ar, rmxf)
+#     mmx_f_ar = np.append(mmx_f_ar, mmxf)
+#     mstar_f_ar = np.append(mstar_f_ar, mstarf)
+#     rh_f_ar = np.append(rh_f_ar, rhf)
+#     vd_f_ar = np.append(vd_f_ar, vdf)
+
+#     with warnings.catch_warnings(record=True) as w:
+#         vmxf_tng, rmxf_tng, mmxf_tng = subh.get_mx_values(where = int(99))
+#         if len(w) > 0:
+#             vmxf_tng, rmxf_tng, mmxf_tng = subh.get_rot_curve(where= int(99))
+#     # Following are from TNG
+#     vmx_f_ar_tng = np.append(vmx_f_ar_tng, vmxf_tng)
+#     rmx_f_ar_tng = np.append(rmx_f_ar_tng, rmxf_tng)
+#     mmx_f_ar_tng = np.append(mmx_f_ar_tng, mmxf_tng)
+#     mstar_f_ar_tng = np.append(mstar_f_ar_tng, subh.get_mstar(where = 99, how = 'total'))
+#     try:
+#         rh_f_ar_tng = np.append(rh_f_ar_tng, subh.get_rh(where = 99)*3./4)
+#         vd_f_ar_tng = np.append(vd_f_ar_tng, subh.get_vd(where = 99))
+#     except ValueError:
+#         rh_f_ar_tng = np.append(rh_f_ar_tng, 0)
+#         vd_f_ar_tng = np.append(vd_f_ar_tng, 0)
+    
+#     if len(pos_f_ar) == 0:
+#         pos_f_ar = subh.tree['SubhaloPos'][-1, :]/h
+#         pos_f_ar = pos_f_ar.reshape(1, -1)
+#     else:
+#         this_pos = np.array(subh.tree['SubhaloPos'][-1, :]/h)
+#         pos_f_ar = np.append(pos_f_ar, this_pos.reshape(1, -1), axis = 0)
+
+#     dist_f_ar = np.append(dist_f_ar, subh.get_dist_from_cen(where = 99))
+#     # print(subh.vmx0)
+#     print(vmx_if_ar)
+#     return None
+
+
+
+# for : #This would run over all the subhalos surviving till z = 0
+
+
+
+
+# df = pd.DataFrame()
+
+# df['vmx_if_ar'] = vmx_if_ar
+# df['rmx_if_ar'] = rmx_if_ar
+# df['mmx_if_ar'] = mmx_if_ar
+# df['vmx_f_ar'] = vmx_f_ar
+# df['rmx_f_ar'] = rmx_f_ar
+# df['mmx_f_ar'] = mmx_f_ar
+
+# df['sfid_if_ar'] = sfid_if_ar
+# df['snap_if_ar'] = snap_if_ar
+
+# df['mstar_max_ar'] = mstar_max_ar
+# df['rh_max_ar'] = rh_max_ar
+# df['vd_max_ar'] = vd_max_ar
+
+# df['mstar_f_ar'] = mstar_f_ar
+# df['rh_f_ar'] = rh_f_ar
+# df['vd_f_ar'] = vd_f_ar
+
+# df['rperi_ar'] = rperi_ar
+# df['rapo_ar'] = rapo_ar
+# df['torb_ar'] = torb_ar
+# df['tinf_ar'] = tinf_ar
+
+# df['vmx_f_ar_tng'] = vmx_f_ar_tng
+# df['rmx_f_ar_tng'] = rmx_f_ar_tng
+# df['mmx_f_ar_tng'] = mmx_f_ar_tng
+# df['mstar_f_ar_tng'] = mstar_f_ar_tng
+# df['rh_f_ar_tng'] = rh_f_ar_tng
+# df['vd_f_ar_tng'] = vd_f_ar_tng
+
+# df['pos_f_ar'] = pos_f_ar.tolist()  #These are the final positions
+# df['dist_f_ar'] = dist_f_ar #This is the distance of the subhalo at z = 0
+
+# # df.to_csv(outpath + 'surviving_evolved_fof0_everything.csv', index = False)
+# df.to_csv(outpath + 'surviving_evolved_fof0.csv', index = False)
+
+
+# # IPython.embed()
+
+# # '''
+# # Merging subhalos from FoF0
+# # '''
+
+# vmx_if_ar = np.zeros(0)
+# rmx_if_ar = np.zeros(0)
+# mmx_if_ar = np.zeros(0)
+# vmx_f_ar = np.zeros(0)
+# rmx_f_ar = np.zeros(0)
+# mmx_f_ar = np.zeros(0)
+
+# sfid_if_ar = np.zeros(0)
+# snap_if_ar = np.zeros(0)
+
+# mstar_max_ar = np.zeros(0)
+# rh_max_ar = np.zeros(0)
+# vd_max_ar = np.zeros(0)
+
+# mstar_f_ar = np.zeros(0)
+# rh_f_ar = np.zeros(0)
+# vd_f_ar = np.zeros(0)
+
+# rperi_ar = np.zeros(0)
+# rapo_ar = np.zeros(0)
+# torb_ar = np.zeros(0)
+# tinf_ar = np.zeros(0)
+
+# mbpid_ar = np.zeros(0)
+# mbpidp_ar = np.zeros(0) #this is the MBP ID of the previous snapshot
+
+
+# for ix in tqdm(range(len(msh_snap))):
+#     '''
+#     This is to loop over all the merging subhalos of big dataset with subhalos in between 1e8.5 and 1e9.5 Msun
+#     '''
+#     if ix in [5, 9, 14, 22]: continue #takes lot of time to get compiled
+
+#     # if ix < 10:
+#     #     continue
+
+#     subh  = Subhalo(snap = int(msh_snap[ix]), sfid = int(msh_sfid[ix]), last_snap = int(msh_merger_snap[ix]), central_sfid_99=0) #these are at infall
+
+
+#     if subh.mstar < 1e3 or subh.mstar.size == 0: #this would be the mass cutoff at infall for the subhalos
+#         continue
+
+#     try:
+#         t = subh.get_orbit(merged = True, when_te = 'last') #after this, the subhalo has rperi, rapo and torb
+#     except Exception as e:
+#         print(e)
+#         # ctr = ctr + 1
+#         # skipped_ixs = np.append(skipped_ixs, ix)
+#         continue
+
+#     rh_max_ar = np.append(rh_max_ar, subh.Rh) #this is the 2d half light radius
+#     vd_max_ar = np.append(vd_max_ar, subh.vd) #los vd
+
+#     # print(subh.get_rh(where = 'max')*3./4)
+#     # try: #If we do not have Rh at maximum stellar mass, then we are just skipping the subhalo
+#     #     rh_max_ar = np.append(rh_max_ar, subh.get_rh(where = 'max')*3./4) #this is the 2d half light radius
+#     #     vd_max_ar = np.append(vd_max_ar, subh.get_vd(where = 'max')) #los vd
+#     # except ValueError:
+#     #     continue
+
+
+#     vmx_if_ar = np.append(vmx_if_ar, subh.vmx0)
+#     rmx_if_ar = np.append(rmx_if_ar, subh.rmx0)
+#     mmx_if_ar = np.append(mmx_if_ar, subh.mmx0)
+
+#     sfid_if_ar = np.append(sfid_if_ar, msh_sfid[ix])
+#     snap_if_ar = np.append(snap_if_ar, msh_snap[ix])
+#     rperi_ar = np.append(rperi_ar, subh.rperi)
+#     rapo_ar = np.append(rapo_ar, subh.rapo)
+#     torb_ar = np.append(torb_ar, subh.torb)
+#     tinf_ar = np.append(tinf_ar, all_ages[msh_snap[ix]])
+
+#     mstar_max_ar = np.append(mstar_max_ar, subh.mstar)
+
+
+
+#     # if subh.torb == np.inf:
+#     #     vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.vmx0, subh.rmx0, subh.mmx0, vd_max_ar[-1], rh_max_ar[-1], subh.mstar
+#     # else:
+#     vmxf, rmxf, mmxf, vdf, rhf, mstarf = subh.get_model_values(float(tinf_ar[-1]), t)
+
+#     vmx_f_ar = np.append(vmx_f_ar, vmxf)
+#     rmx_f_ar = np.append(rmx_f_ar, rmxf)
+#     mmx_f_ar = np.append(mmx_f_ar, mmxf)
+#     mstar_f_ar = np.append(mstar_f_ar, mstarf)
+#     rh_f_ar = np.append(rh_f_ar, rhf)
+#     vd_f_ar = np.append(vd_f_ar, vdf)
+
+#     mbpid_ar = np.append(mbpid_ar, subh.get_mbpid(where = subh.last_snap)) #Get the MBP ID at infall
+#     mbpidp =  np.array(subh.get_mbpid(where = subh.last_snap-1))
+#     # print(mbpid_ar[-1], mbpidp)
+#     # print(len(mbpidp), mbpidp.shape)
+#     if len(mbpidp) != 0:
+#         mbpidp_ar = np.append(mbpidp_ar, mbpidp)
+#     else:
+#         mbpidp_ar = np.append(mbpidp_ar, -1)
+#     # print(mbpidp_ar[-1])
+
+
+
+# df = pd.DataFrame()
+
+# df['vmx_if_ar'] = vmx_if_ar
+# df['rmx_if_ar'] = rmx_if_ar
+# df['mmx_if_ar'] = mmx_if_ar
+# df['vmx_f_ar'] = vmx_f_ar
+# df['rmx_f_ar'] = rmx_f_ar
+# df['mmx_f_ar'] = mmx_f_ar
+
+# df['sfid_if_ar'] = sfid_if_ar
+# df['snap_if_ar'] = snap_if_ar
+
+# df['mstar_max_ar'] = mstar_max_ar
+# df['rh_max_ar'] = rh_max_ar
+# df['vd_max_ar'] = vd_max_ar
+
+# df['mstar_f_ar'] = mstar_f_ar
+# df['rh_f_ar'] = rh_f_ar
+# df['vd_f_ar'] = vd_f_ar
+
+# df['rperi_ar'] = rperi_ar
+# df['rapo_ar'] = rapo_ar
+# df['torb_ar'] = torb_ar
+# df['tinf_ar'] = tinf_ar
+
+# df['mbpid_ar'] = mbpid_ar  #These are the final positions
+# df['mbpidp_ar'] = mbpidp_ar #MBP IDs of the snapshot before the final snapshot
+
+# df.to_csv(outpath + 'merged_evolved_fof0.csv', index = False)
+# # df.to_csv(outpath + 'merged_evolved_fof0_everything.csv', index = False)
+
+
+
+
+# ==================================================
 
 
 

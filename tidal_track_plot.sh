@@ -4,8 +4,8 @@
 #SBATCH --ntasks=64
 #SBATCH --mem=100gb
 #SBATCH --time=48:00:00
-#SBATCH -o output_log/main.out
-#SBATCH -e output_log/main.err
+#SBATCH -o output_log/ttp.out
+#SBATCH -e output_log/ttp.err
 #SBATCH --mail-user=psadh003@ucr.edu
 #SBATCH --mail-type=ALL
 
@@ -21,4 +21,4 @@ cd /rhome/psadh003/bigdata/tng50/dwarf_evolution/
 # Run job utilizing all requested processors
 # Please visit the namd site for usage details: http://www.ks.uiuc.edu/Research/namd/
 # python3 main.py
-python3 misc.py 2
+python3 tidal_track_plot.py

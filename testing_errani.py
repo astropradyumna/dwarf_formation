@@ -1,5 +1,6 @@
 '''
 This program is to test the Errani+22 formulation for some selected subhalos
+This is no more being used for testing Errani, this has all the functions that are being used for the tidal evolution in main program
 '''
 import requests
 import h5py
@@ -74,11 +75,17 @@ central_gr_m200 = central_tree['Group_M_Crit200']*1e10/h #This is the M200 of th
 '''
 The following is to plot the datasets that have been digitized for Rh values
 '''
-errani_fp = '/rhome/psadh003/bigdata/errani23_data/'
+errani_fp = '/rhome/psadh003/bigdata/errani22_data/'
 rh1by4_df = pd.read_csv(errani_fp + 'rh1by4_errani22.csv') # Rh/rmx0 = 1/4 from digitization
 rh1by2_df = pd.read_csv(errani_fp + 'rh1by2_errani22.csv') # Rh/rmx0 = 1/2 from digitization
 rh1by8_df = pd.read_csv(errani_fp + 'rh1by8_errani22.csv')
 rh1by16_df = pd.read_csv(errani_fp + 'rh1by16_errani22.csv')
+'''
+Following are new additions from the email plot sent by Rapha
+'''
+rh1by66_df = pd.read_csv(errani_fp + 'rh1by66_errani22.csv')
+rh1by250_df = pd.read_csv(errani_fp + 'rh1by250_errani22.csv')
+rh1by1000_df = pd.read_csv(errani_fp + 'rh1by1000_errani22.csv')
 
 l10mmxbymmx0_1by4 = rh1by4_df['l10mmxbymmx0']
 l10rbyrmx0_1by4 = rh1by4_df['l10rbyrmx0']
@@ -106,10 +113,46 @@ l10rbyrmx0_1by16 = l10rbyrmx0_1by16[np.argsort(l10mmxbymmx0_1by16)] #sorting bas
 l10mmxbymmx0_1by16 = l10mmxbymmx0_1by16[np.argsort(l10mmxbymmx0_1by16)]
 
 
+l10mmxbymmx0_1by66 = rh1by66_df['l10mmxbymmx0']
+l10rbyrmx0_1by66 = rh1by66_df['l10rbyrmx0'] + np.log10(1/66)
+
+l10rbyrmx0_1by66 = l10rbyrmx0_1by66[np.argsort(l10mmxbymmx0_1by66)] #sorting based on mass for the univariate spline
+l10mmxbymmx0_1by66 = l10mmxbymmx0_1by66[np.argsort(l10mmxbymmx0_1by66)]
+
+l10mmxbymmx0_1by250 = rh1by250_df['l10mmxbymmx0']
+l10rbyrmx0_1by250 = rh1by250_df['l10rbyrmx0'] + np.log10(1/250)
+
+l10rbyrmx0_1by250 = l10rbyrmx0_1by250[np.argsort(l10mmxbymmx0_1by250)] #sorting based on mass for the univariate spline
+l10mmxbymmx0_1by250 = l10mmxbymmx0_1by250[np.argsort(l10mmxbymmx0_1by250)]
+
+l10mmxbymmx0_1by1000 = rh1by1000_df['l10mmxbymmx0']
+l10rbyrmx0_1by1000 = rh1by1000_df['l10rbyrmx0'] + np.log10(1/1000)
+
+l10rbyrmx0_1by1000 = l10rbyrmx0_1by1000[np.argsort(l10mmxbymmx0_1by1000)] #sorting based on mass for the univariate spline
+l10mmxbymmx0_1by1000 = l10mmxbymmx0_1by1000[np.argsort(l10mmxbymmx0_1by1000)]
+
+
 l10rbyrmx0_1by4_spl = UnivariateSpline(l10mmxbymmx0_1by4, l10rbyrmx0_1by4, k = 3, s = 0.5)
 l10rbyrmx0_1by2_spl = UnivariateSpline(l10mmxbymmx0_1by2, l10rbyrmx0_1by2, k = 3, s = 0.5)
 l10rbyrmx0_1by8_spl = UnivariateSpline(l10mmxbymmx0_1by8, l10rbyrmx0_1by8, k = 3, s = 0.5)
 l10rbyrmx0_1by16_spl = UnivariateSpline(l10mmxbymmx0_1by16, l10rbyrmx0_1by16, k = 3, s = 0.5)
+
+l10rbyrmx0_1by66_spl = UnivariateSpline(l10mmxbymmx0_1by66, l10rbyrmx0_1by66, k = 3, s = 0.5)
+l10rbyrmx0_1by250_spl = UnivariateSpline(l10mmxbymmx0_1by250, l10rbyrmx0_1by250, k = 3, s = 0.5)
+l10rbyrmx0_1by1000_spl = UnivariateSpline(l10mmxbymmx0_1by1000, l10rbyrmx0_1by1000, k = 3, s = 0.5)
+
+# lmx_pl = np.linspace(-2.5, 0, 100)
+# plt.plot(lmx_pl, l10rbyrmx0_1by4_spl(lmx_pl), 'k', label = 'Rh/rmx0 = 1/4')
+# plt.plot(lmx_pl, l10rbyrmx0_1by2_spl(lmx_pl), 'r', label = 'Rh/rmx0 = 1/2')
+# plt.plot(lmx_pl, l10rbyrmx0_1by8_spl(lmx_pl), 'b', label = 'Rh/rmx0 = 1/8')
+# plt.plot(lmx_pl, l10rbyrmx0_1by16_spl(lmx_pl), 'g', label = 'Rh/rmx0 = 1/16')
+# plt.plot(lmx_pl, l10rbyrmx0_1by66_spl(lmx_pl), 'm', label = 'Rh/rmx0 = 1/66')
+# plt.plot(lmx_pl, l10rbyrmx0_1by250_spl(lmx_pl), 'c', label = 'Rh/rmx0 = 1/250')
+# plt.plot(lmx_pl, l10rbyrmx0_1by1000_spl(lmx_pl), 'y', label = 'Rh/rmx0 = 1/1000')
+# plt.xlabel(r'$\log_{10}(m_{mx}/m_{mx0})$')
+# plt.ylabel(r'$\log_{10}(R_{h}/r_{mx0})$')
+# plt.legend()
+# plt.show()
 
 '''
 Following is the dataset for the vd values that have been digitized
@@ -121,6 +164,9 @@ vd1by4_df = pd.read_csv(errani_fp + 'vd1by4_errani22.csv') # Rh/rmx0 = 1/4 from 
 vd1by2_df = pd.read_csv(errani_fp + 'vd1by2_errani22.csv') # Rh/rmx0 = 1/2 from digitization
 vd1by8_df = pd.read_csv(errani_fp + 'vd1by8_errani22.csv')
 vd1by16_df = pd.read_csv(errani_fp + 'vd1by16_errani22.csv')
+vd1by66_df = pd.read_csv(errani_fp + 'vd1by66_errani22.csv')
+vd1by250_df = pd.read_csv(errani_fp + 'vd1by250_errani22.csv')
+vd1by1000_df = pd.read_csv(errani_fp + 'vd1by1000_errani22.csv')
 
 l10mmxbymmx0_1by4 = vd1by4_df['l10mmxbymmx0']
 l10vbyvmx0_1by4 = vd1by4_df['l10vbyvmx0']
@@ -147,11 +193,35 @@ l10vbyvmx0_1by16 = vd1by16_df['l10vbyvmx0']
 l10vbyvmx0_1by16 = l10vbyvmx0_1by16[np.argsort(l10mmxbymmx0_1by16)] #sorting based on mass for the univariate spline
 l10mmxbymmx0_1by16 = l10mmxbymmx0_1by16[np.argsort(l10mmxbymmx0_1by16)]
 
+l10mmxbymmx0_1by66 = vd1by66_df['l10mmxbymmx0']
+l10vbyvmx0_1by66 = vd1by66_df['l10vbyvmx0']
+
+l10vbyvmx0_1by66 = l10vbyvmx0_1by66[np.argsort(l10mmxbymmx0_1by66)] #sorting based on mass for the univariate spline
+l10mmxbymmx0_1by66 = l10mmxbymmx0_1by66[np.argsort(l10mmxbymmx0_1by66)]
+
+l10mmxbymmx0_1by250 = vd1by250_df['l10mmxbymmx0']
+l10vbyvmx0_1by250 = vd1by250_df['l10vbyvmx0']
+
+l10vbyvmx0_1by250 = l10vbyvmx0_1by250[np.argsort(l10mmxbymmx0_1by250)] #sorting based on mass for the univariate spline
+l10mmxbymmx0_1by250 = l10mmxbymmx0_1by250[np.argsort(l10mmxbymmx0_1by250)]
+
+l10mmxbymmx0_1by1000 = vd1by1000_df['l10mmxbymmx0']
+l10vbyvmx0_1by1000 = vd1by1000_df['l10vbyvmx0']
+
+l10vbyvmx0_1by1000 = l10vbyvmx0_1by1000[np.argsort(l10mmxbymmx0_1by1000)] #sorting based on mass for the univariate spline
+l10mmxbymmx0_1by1000 = l10mmxbymmx0_1by1000[np.argsort(l10mmxbymmx0_1by1000)]
+
+
+
 
 l10vbyvmx0_1by4_spl = UnivariateSpline(l10mmxbymmx0_1by4, l10vbyvmx0_1by4, k = 3, s = 0.5)
 l10vbyvmx0_1by2_spl = UnivariateSpline(l10mmxbymmx0_1by2, l10vbyvmx0_1by2, k = 3, s = 0.5)
 l10vbyvmx0_1by8_spl = UnivariateSpline(l10mmxbymmx0_1by8, l10vbyvmx0_1by8, k = 3, s = 0.5)
 l10vbyvmx0_1by16_spl = UnivariateSpline(l10mmxbymmx0_1by16, l10vbyvmx0_1by16, k = 3, s = 0.5)
+
+l10vbyvmx0_1by66_spl = UnivariateSpline(l10mmxbymmx0_1by66, l10vbyvmx0_1by66, k = 3, s = 0.5)
+l10vbyvmx0_1by250_spl = UnivariateSpline(l10mmxbymmx0_1by250, l10vbyvmx0_1by250, k = 3, s = 0.5)
+l10vbyvmx0_1by1000_spl = UnivariateSpline(l10mmxbymmx0_1by1000, l10vbyvmx0_1by1000, k = 3, s = 0.5)
 
 
 
@@ -461,40 +531,47 @@ def get_L_star(alpha, beta, Es, Mmx_by_Mmx0):
     return L[0]
 
 def get_LbyL0(mxbymx0, rh0byrmx0):
-	LbyL0 = np.zeros(0)
-	if rh0byrmx0 == 1/2:
-		Es = 0.485
-	elif rh0byrmx0 == 1/4:
-		Es = 1/3. 
-	elif rh0byrmx0 == 1/8:
-		Es = 0.21 
-	elif rh0byrmx0 == 1/16:
-		Es = 0.112  
-	if isinstance(mxbymx0, float) or isinstance(mxbymx0, int):
-		LbyL0 = np.append(LbyL0, get_L_star(alpha = 3, beta = 3, Es = Es, Mmx_by_Mmx0 = mxbymx0))
-	else:
-		for mfrac in mxbymx0:
-			LbyL0 = np.append(LbyL0, get_L_star(alpha = 3, beta = 3, Es = Es, Mmx_by_Mmx0 = mfrac))
-	LbyL0 = LbyL0/get_L_star(alpha = 3, beta = 3, Es = Es, Mmx_by_Mmx0 = 1)
-	
-	return LbyL0
+    LbyL0 = np.zeros(0)
+    if rh0byrmx0 == 1/2:
+        Es = 0.485
+    elif rh0byrmx0 == 1/4:
+        Es = 1/3. 
+    elif rh0byrmx0 == 1/8:
+        Es = 0.21 
+    elif rh0byrmx0 == 1/16:
+        Es = 0.112  
+    elif rh0byrmx0 == 1/66:
+        Es = 10**-1.48
+    elif rh0byrmx0 == 1/250:
+        Es = 10**-2.06
+    elif rh0byrmx0 == 1/1000:
+        Es = 10**-2.64 #Copilot actually guessed this, ha!
+
+    if isinstance(mxbymx0, float) or isinstance(mxbymx0, int):
+        LbyL0 = np.append(LbyL0, get_L_star(alpha = 3, beta = 3, Es = Es, Mmx_by_Mmx0 = mxbymx0))
+    else:
+        for mfrac in mxbymx0:
+            LbyL0 = np.append(LbyL0, get_L_star(alpha = 3, beta = 3, Es = Es, Mmx_by_Mmx0 = mfrac))
+    LbyL0 = LbyL0/get_L_star(alpha = 3, beta = 3, Es = Es, Mmx_by_Mmx0 = 1)
+    
+    return LbyL0
 
 # print(np.log10(get_LbyL0(1e-2, 1/4)))
 
 
 def getMstar(Mh, z):
-	'''
-	This is from Moster 2013 Eq.?
-	gives the stellar mass for a given halo
-	'''
-	M1 = 10**(11.590 + 1.195*(z/(1+z)))
-	beta = 1.376 - 0.826*(z/(1+z))
-	gamma = 0.608 - 0.329*(z/(1+z))
-	N = 0.0351 - 0.0247*(z/(1+z))
-	MhbyM1 = Mh/M1
-	Mstar = 2*N*Mh
-	Mstar *= 1/(MhbyM1**(-beta) + MhbyM1**(gamma))
-	return Mstar
+    '''
+    This is from Moster 2013 Eq.?
+    gives the stellar mass for a given halo
+    '''
+    M1 = 10**(11.590 + 1.195*(z/(1+z)))
+    beta = 1.376 - 0.826*(z/(1+z))
+    gamma = 0.608 - 0.329*(z/(1+z))
+    N = 0.0351 - 0.0247*(z/(1+z))
+    MhbyM1 = Mh/M1
+    Mstar = 2*N*Mh
+    Mstar *= 1/(MhbyM1**(-beta) + MhbyM1**(gamma))
+    return Mstar
 
 def add_arrow(line, position=None, direction='right', size=15, color=None):
     """

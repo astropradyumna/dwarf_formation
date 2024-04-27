@@ -1,6 +1,5 @@
 '''
-This is an attempt to organize things in this project
-main.py combines everything and generates the data required to generate plots.
+
 '''
 
 import numpy as np
