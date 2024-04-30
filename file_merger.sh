@@ -1,13 +1,11 @@
 #!/bin/bash -l
 #SBATCH -J RUNewTst
 #SBATCH -p saleslab
-#SBATCH --ntasks=32
-#SBATCH --cpus-per-task=4
-###SBATCH --mem=100gb
-###SBATCH --mem-per-cpu=G
+#SBATCH --ntasks=64
+#SBATCH --mem=100gb
 #SBATCH --time=48:00:00
-#SBATCH -o output_log/misc.out
-#SBATCH -e output_log/misc.err
+#SBATCH -o output_log/fm.out
+#SBATCH -e output_log/fm.err
 #SBATCH --mail-user=psadh003@ucr.edu
 #SBATCH --mail-type=ALL
 
@@ -18,11 +16,9 @@ module load openmpi # Should already be loaded
 #module load hdf5
 
 # Swtich to the working directory
-cd /rhome/psadh003/bigdata/tng50/dwarf_formation/
+cd /rhome/psadh003/bigdata/tng50/dwarf_evolution/
 
 # Run job utilizing all requested processors
 # Please visit the namd site for usage details: http://www.ks.uiuc.edu/Research/namd/
-FOF=2
-python3 main.py $FOF
-python3 misc.py $FOF
-#python3 misc.py
+# python3 main.py
+python3 file_merger.py

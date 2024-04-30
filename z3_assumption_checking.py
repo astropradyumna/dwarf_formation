@@ -42,7 +42,7 @@ central_sfid_99 = this_fof['GroupFirstSub']
 Following is the dataset of the entire list of subhalos which infalled after z = 3 and survived
 '''
 # survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1.csv')
-survived_df = pd.read_csv(all_subh_path + fof_str + '_sh_survived_after_z3_tng50_1_everything.csv') #This does not have 100 particle restriction as well
+survived_df = pd.read_csv(filepath + fof_str + '_sh_survived_after_z3_tng50_1_everything.csv') #This does not have 100 particle restriction as well
 
 
 ssh_sfid = survived_df['SubfindID'] #is this at infall?
@@ -100,7 +100,7 @@ for ix in tqdm(range(len(ssh_snap))):
     subh = TNG_Subhalo(snap = ssh_snap[ix], sfid = ssh_sfid[ix], last_snap = 99)
     mstar_ar_z0 = np.append(mstar_ar_z0, subh.get_mstar(where = 99, how = 'total'))
 
-IPython.embed()
+# IPython.embed()
 
 fig, ax = plt.subplots(figsize = (6, 6))
 ax.plot(all_redshifts[ssh_snap], mstar_ar_z0, 'ko', markersize = 2, alpha = 0.2)
@@ -108,4 +108,5 @@ ax.set_yscale('log')
 ax.set_xlabel('Redshift of infall', fontsize = 12)
 ax.set_ylabel(r'$M_{\star}\,(M_{\odot})$ at z = 0', fontsize = 12)
 ax.set_title('FoF0', fontsize = 12)
-plt.show()
+plt.tight_layout()
+plt.savefig('z3_assumption_checking' + fof_str + '_mstar_z0_vs_z_infall.png')

@@ -58,6 +58,12 @@ this_fof_plotppath = '/bigdata/saleslab/psadh003/tng50/final_plots/' + fof_str +
 if not os.path.exists(this_fof_plotppath): #If the directory does not exist, then just create it!
     os.makedirs(this_fof_plotppath)
 
+
+'''
+This part is to plot the Fornax mass function (everything inside virial radius)
+'''
+
+
 '''
 In the following lines, 
 (i) ps stands for power law values of surviving subhalos

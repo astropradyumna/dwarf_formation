@@ -175,6 +175,7 @@ def save_surviving_subhalos(ix):
     torb_ar = subh.torb
     tinf_ar = all_ages[int(subh.snap)]
 
+    
 
     if subh.resolved == True:
         vmx_f_ar, rmx_f_ar, mmx_f_ar, vd_f_ar, rh_f_ar, mstar_f_ar = subh.get_model_values(float(tinf_ar), t)  # FIXME: Some orbits are not unbound as galpy reports
@@ -205,6 +206,15 @@ def save_surviving_subhalos(ix):
     except ValueError:
         rh_f_ar_tng = 0
         vd_f_ar_tng = 0
+
+    if subh.snap < 25: #These would be the cases where the infall was before z = 3 and we only consider these if they survive with mstar > 5e6 Msun at z = 0.
+        mstar_at_0 = subh.get_mstar(where = 99, how = 'total')
+        if mstar_at_0 > 5e6:
+            vmx_f_ar, rmx_f_ar, mmx_f_ar = vmx_f_ar_tng, rmx_f_ar_tng, mmx_f_ar_tng
+            mstar_f_ar, rh_f_ar, vd_f_ar = mstar_f_ar_tng, rh_f_ar_tng, vd_f_ar_tng
+            # vmx_f_ar, rmx_f_ar, mmx_f_ar, vd_f_ar, rh_f_ar, mstar_f_ar
+        else:
+            return None
 
     # if len(pos_f_ar) == 0:
     pos_f_ar = subh.tree['SubhaloPos'][-1, :] / h
