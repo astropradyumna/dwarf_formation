@@ -21,4 +21,4 @@ cd /rhome/psadh003/bigdata/tng50/dwarf_evolution/
 # Run job utilizing all requested processors
 # Please visit the namd site for usage details: http://www.ks.uiuc.edu/Research/namd/
 # python3 main.py
-python3 final_plots.py 0
+python3 final_plots.py 1

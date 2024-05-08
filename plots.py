@@ -828,6 +828,39 @@ plot_test_rh(porc = porc)
 
 
 
+def plot_mstar_vs_rperi(porc = 'p', iorf = 'f'):
+    '''
+    Plot 8: Mstar vs Rperi
+    '''
+    alpha = 0.8
+    msize = 2
+    fig, ax = plt.subplots(figsize = (7, 6))
+    mmstar_ar = get_mmstar(iorf = iorf, porc = porc)
+    smstar_ar = get_smstar(iorf = iorf, porc = porc)
+
+    # col_ar = stinf_ar
+    # col_label = r'$t_{\rm{inf}}$'
+    # col_ar = np.log10(smstar_max_ar)
+    # col_label = r'$\log M_{\rm{\bigstar, max}}$'
+    col_ar = np.log10(smstar_f_ar_tng)
+    col_label = r'$\log M_{\rm{\bigstar, TNG}}$ at $z = 0$'
+
+    sc = ax.scatter(srperi_ar, smstar_f_ar/smstar_f_ar_tng, c=col_ar, cmap='viridis', alpha = alpha, s = msize, marker='o', zorder = 20)
+    ax.axhline(1, ls = '--', c = 'gray')
+    cbar = plt.colorbar(sc, ax = ax)
+    cbar.set_label(col_label, fontsize = 14)
+
+    ax.set_ylabel(r'$M_{\bigstar, \rm{model}}/ M_{\bigstar, \rm{TNG}}$')
+    ax.set_xlabel(r'$r_{\rm{peri}}\,\rm{(kpc)}$')
+    # ax.legend(fontsize = 8)
+    plt.loglog()
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'mstar_vs_rperi.png')
+    plt.close()
+
+plot_mstar_vs_rperi()
+
+
 
 def plot_surv_comparison():
     '''
@@ -953,7 +986,7 @@ def plot_surv_comparison():
     # plt.show()
 
 
-
+# plot_surv_comparison()
 
 def plot_difference_comparison():
     fig, axs = plt.subplots(nrows = 2, ncols = 3, figsize = (12, 6))
@@ -1221,6 +1254,6 @@ def plot_fractions_comparison():
     # plt.show()
     return None
 
-# plot_fractions_comparison()
+plot_fractions_comparison()
 
 

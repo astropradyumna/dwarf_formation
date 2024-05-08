@@ -388,7 +388,7 @@ class TNG_Subhalo():
                 shsnap = shsnap_ar[ix]
                 shid = shid_ar[ix]
                 snap = self.get(baseUrl+'snapshots/'+str(shsnap)+'/')
-                if not os.path.isfile(fielpath + 'cutout_'+str(shid)+'_'+str(shsnap)+'.hdf5'): #if it is not downloaded alraedy
+                if not os.path.isfile(filepath + 'cutout_'+str(shid)+'_'+str(shsnap)+'.hdf5'): #if it is not downloaded alraedy
                     subh_link = self.get_link(shsnap, shid)
                     subh = self.get(subh_link, 'r')
                     cutout_request = {'gas':'Coordinates,Masses','stars':'Coordinates,Masses,ParticleIDs','dm':'Coordinates,ParticleIDs'}
@@ -869,7 +869,21 @@ class TNG_Subhalo():
                     dens_ar = np.append(dens_ar, dens)
                 return len(star_masses) * dens_ar * np.mean(star_masses)/ norm #This is after taking care of all the normalizing factors
 
+        if int(shsnap) == 99 and int(shid) == 163:
+            jess_data = np.load('/rhome/psadh003/shared/for_prady/sfid_163_snap_99_energy_info.npy', allow_pickle = True)
+            E_jess = jess_data[:, 9] + jess_data[:, 10]
+            eps_jess = 1 - E_jess/phi0 #ISSUE: Recheck Phi0 values for Jess
+            bins_jess = np.linspace(np.log10(min(eps_jess)), np.log10(max(eps_jess)), 75)
+            counts_jess, bins_jess, bars_jess = plt.hist(np.log10(eps_jess), bins = bins_jess)
 
+            plt.close()
+            bin_centers_jess = 10**((bins_jess[:-1] + bins_jess[1:])/2)
+            # print(np.log10(bin_centers2))
+
+            bin_centers_jess = bin_centers_jess[:-1]
+            bin_width_jess = np.diff(bins_jess)
+            dN_by_dE_jess = counts_jess/bin_width_jess/len(E_jess)
+            dN_by_dE_jess = dN_by_dE_jess[:-1]
 
 
         if plot:
@@ -877,7 +891,7 @@ class TNG_Subhalo():
             eps_pl = np.linspace(min(bin_centers), max(bin_centers), 30)
             ax.plot(np.log10(bin_centers), np.log10(dN_by_dE_tng), 'kx', label = 'Pariwise potential - TNG')
             if spherical:
-                # ax.plot(np.log10(bin_centers2), np.log10(dN_by_dE_tng2), 'ko', ms = 2, mfc = 'white', label = 'Spherical symmetry', alpha = 0.5)
+                ax.plot(np.log10(bin_centers2), np.log10(dN_by_dE_tng2), 'ko', ms = 2, mfc = 'white', label = 'Spherical symmetry', alpha = 0.5)
                 ax.axvline(np.log10(eps_rh), ls = '-.', color = 'gray', lw = 0.5, label = r'$\varepsilon(r_{\rm{h}})$ - TNG')
                 phi0_nfw = -4.67 * self.vmx0**2 #This is for testing against the value of phi0 which was from spherical symmetry
                 # phi0_sph = phi0*(3.086e+16)**2
@@ -885,7 +899,26 @@ class TNG_Subhalo():
                 ax.text(0.01, 0.95, f'phi0 = {phi0_tng:.2f} \n -4.67 vmx^2 = {phi0_nfw:.2f}', transform=ax.transAxes, ha = 'left', va = 'top', fontsize = 8)
                 # ax2.plot(rad_plot_cont, star_density_profile(rad_plot_cont), 'k--', label = 'TNG Density profile')
                 # print(get_density_model(rad_plot_cont))
-                
+            
+            if int(shsnap) == 99 and int(shid) == 163: #Wehave data from Jess in this case
+                # jess_data = np.load('/rhome/psadh003/shared/for_prady/sfid_163_snap_99_energy_info.npy', allow_pickle = True)
+                # E_jess = jess_data[:, 9] + jess_data[:, 10]
+                # eps_jess = 1 - E_jess/min(jess_data[:, 9]) #ISSUE: Recheck Phi0 values for Jess
+                # bins_jess = np.linspace(np.log10(min(eps_jess)), np.log10(max(eps_jess)), 75)
+                # counts_jess, bins_jess, bars_jess = plt.hist(np.log10(eps_jess), bins = bins_jess)
+
+                # plt.close()
+                # bin_centers_jess = 10**((bins_jess[:-1] + bins_jess[1:])/2)
+                # # print(np.log10(bin_centers2))
+
+                # bin_centers_jess = bin_centers_jess[:-1]
+                # bin_width_jess = np.diff(bins_jess)
+                # dN_by_dE_jess = counts_jess/bin_width_jess/len(E_jess)
+                # dN_by_dE_jess = dN_by_dE_jess[:-1]
+                # print(np.log10(bin_centers_jess), np.log10(dN_by_dE_jess))
+                ax.plot(np.log10(bin_centers_jess), np.log10(dN_by_dE_jess), marker = '^', color = 'k', lw = 0, markersize = 7, label = 'Jess calc')
+
+
 
             ax.axvline(np.log10(Es), ls = ':', color = 'gray', lw = 0.5, label = r'$\varepsilon_{\rm{\star}}$ - picked')
             # ax.plot(np.log10(eps_pl), ed_tng(np.log10(eps_pl))-fact, lw = 0.3, color = 'red')
@@ -907,13 +940,13 @@ class TNG_Subhalo():
             ax.plot(np.log10(eps_pl), np.log10(get_dNs_by_dE(np.log10(eps_pl), eps_star = Es)) - norm, lw = 0.7, color = 'darkblue', label = r'$R_{\rm{h0}}/r_{\rm{mx0}}$ = 1/16')
 
             ax.set_xlabel(r'$\log \epsilon$')
-            ax.set_ylabel(r'$dN/d\epsilon$')
+            ax.set_ylabel(r'$\log dN/d\epsilon$')
             ax.set_ylim(bottom = -0.25 + min(np.log10(dN_by_dE_tng[dN_by_dE_tng > 0])),
                         top =  (0.75 + max(np.log10(dN_by_dE_tng[dN_by_dE_tng > 0]))))
             # ax.set_xscale('log')
             # ax.set_yscale('log')
             ax.set_title('subhalo ID = '+str(shid)+' at snapshot '+str(shsnap) + ' and ' + r'$R_{\rm{h0}}/r_{\rm{mx0}} = $' + f'{Rh0byrmx0_in[0]:.2f}', fontsize = 10)
-            ax.legend(fontsize = 8, loc = 'lower right')
+            ax.legend(fontsize = 8, loc = 'lower left')
 
             plt.tight_layout()
             plt.savefig(plotpath + 'energy_dists/energy_dist_'+str(shid)+'_'+str(shsnap)+'.png')

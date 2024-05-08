@@ -25,7 +25,7 @@ df1['fof'] = 0
 df2['fof'] = 1
 df3['fof'] = 2
 
-print(df1.head())
+# print(df1.head())
 
 
 # Concatenate the DataFrames vertically (row-wise)
@@ -52,7 +52,7 @@ df1['fof'] = 0
 df2['fof'] = 1
 df3['fof'] = 2
 
-print(df1.head())
+# print(df1.head())
 
 
 # Concatenate the DataFrames vertically (row-wise)
@@ -81,7 +81,7 @@ df1['fof'] = 0
 df2['fof'] = 1
 df3['fof'] = 2
 
-print(df1.head())
+# print(df1.head())
 
 
 # Concatenate the DataFrames vertically (row-wise)

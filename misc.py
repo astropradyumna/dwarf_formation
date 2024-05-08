@@ -57,14 +57,18 @@ def convert_to_float(value):
 
 
 # df = pd.read_csv(outpath + 'merged_evolved_fof0_everything.csv', delimiter = ',')
-df = pd.read_csv(outpath + fof_str +'_merged_evolved_everything.csv', delimiter = ',')  
+df = pd.read_csv(outpath + fof_str +'_merged_evolved_everything.csv', delimiter = ',', low_memory=False)  
 df = df.applymap(convert_to_float)
 
-mbpid_ar = np.array(df['mbpid_ar'])
-mbpidp_ar = np.array(df['mbpidp_ar']) #MBP ID of one snapshot before 
+#Starting two empty columns, in an effort to have everything in one file
+df['pos_f_ar'] = ''
+df['dist_f_ar'] = ''
+
+mbpid_ar = np.array(df['mbpid_ar'], dtype = int)
+mbpidp_ar = np.array(df['mbpidp_ar'], dtype = int) #MBP ID of one snapshot before 
 
 star_ids = np.load(this_fof_path+'star_ids.npy')
-star_pos = np.load(this_fof_path+'star_pos.npy')
+star_pos = np.load(this_fof_path+'star_pos.npy') #
 
 dm_ids = np.load(this_fof_path+'dm_ids.npy')
 dm_pos = np.load(this_fof_path+'dm_pos.npy')
@@ -113,10 +117,12 @@ def get_positions(ix):
     posavg = []
     if len(pos) == 3 and len(pos2) == 3:
         posavg = np.array(pos + pos2)/2.
-    elif len(pos) ==3 and len(pos2) == 0:
+    elif len(pos) ==3 and len(pos2) == 1:
         posavg = np.array(pos)
-    elif len(pos2) == 3 and len(pos) == 0:
+    elif len(pos2) == 3 and len(pos) == 1:
         posavg = np.array(pos2)
+    elif len(pos2) == 1 and len(pos) == 1:
+        return None
 
     if len(posavg) == 3:
         return posavg
@@ -133,14 +139,20 @@ def get_positions(ix):
 results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_positions)(ix) for ix in tqdm(range(len(mbpid_ar))))
 # len_before = len(results)
 for ix in range(len(results)):
+    # if ix > 10:
+    #     break
     if results[ix] is None:
         popix_ar = np.append(popix_ar, ix)
+        
     else:
+        # print( np.array(results[ix].reshape(1, -1)[0]))
+        # print( results[ix].reshape(1, -1)[0] )
+        df['pos_f_ar'][ix] = np.array(results[ix].reshape(1, -1)[0]).tolist()
+        df['dist_f_ar'][ix] = np.linalg.norm(results[ix].reshape(1, -1))
         if len(pos_ar) == 0:
             pos_ar = results[ix].reshape(1, -1)
         else:
             pos_ar = np.append(pos_ar, results[ix].reshape(1, -1), axis = 0)
-        # pos_ar = np.append(pos_ar, results[ix].reshape(1, -1), axis = 0)
         
 # none_indices = [ix for ix, value in enumerate(results) if value is None]
 # results = [value for value in results if value is not None] #Getting rid of all the None entries
@@ -148,16 +160,16 @@ for ix in range(len(results)):
 print(f'Number of subhalos being lost are {len(popix_ar)} out of {len(mbpid_ar)}')
 
 
-df = df.drop(popix_ar)
-df['pos_f_ar'] = pos_ar.tolist()
+# df = df.drop(popix_ar)
+# df['pos_f_ar'] = pos_ar.tolist()
 # print(pos_ar)
-df['dist_f_ar'] = np.sqrt(np.sum(pos_ar**2, axis=1))
+# df['dist_f_ar'] = np.sqrt(np.sum(pos_ar**2, axis=1))
 
 
 
 df.to_csv(outpath + fof_str + '_merged_evolved_wmbp_everything.csv', index = False) 
 
-
+#Why are you removing the subhalos without MBP? Just make them -1 -1 in all the fields and keep them in the file.
 
 # for (ix, id) in tqdm(enumerate(mbpid_ar)):
 #     pos = [None]

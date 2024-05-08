@@ -31,6 +31,9 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 '''
 file import
 '''
+
+
+
 filepath = '/rhome/psadh003/bigdata/tng50/tng_files/'
 outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 baseUrl = 'https://www.tng-project.org/api/TNG50-1/'
@@ -60,6 +63,12 @@ def get_vmxbyvmx0(rmxbyrmx0, alpha = 0.4, beta = 0.65):
     '''
     return 2**alpha*rmxbyrmx0**beta*(1 + rmxbyrmx0**2)**(-alpha)
 
+
+
+
+    # Read a .npy file
+jess_data = np.load('/rhome/psadh003/shared/for_prady/sfid_163_snap_99_energy_info.npy', allow_pickle = True)
+print('load successful')
 
 
 
@@ -171,7 +180,7 @@ for ix in tqdm(range(len(snap_if_ar))): #This loop runs over all the subhalos th
     '''
     Assuming that this is for FoF0 as of now. Loops over all the subhalos with cuts defined above.
     '''
-    if ix > 19:
+    if ix > -1:
         continue
     subh = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99, central_sfid_99 = 0)
     subh.get_star_energy_dist(plot=True)

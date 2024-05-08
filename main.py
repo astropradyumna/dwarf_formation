@@ -35,7 +35,7 @@ headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
 basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
 
 h = 0.6744
-min_mstar = 1e2
+min_mstar = 1e2  #All starts above this mass would be evolved
 
 ages_df = pd.read_csv(filepath + 'ages_tng.csv', comment = '#')
 
@@ -252,6 +252,7 @@ df = pd.DataFrame(columns=column_names)
 for ix in range(len(results)):
     df.loc[len(df)] = results[ix]
 
+df['fof'] = fof_no
 df.to_csv(outpath + fof_str + '_surviving_evolved_everything.csv', index = False)
 
 
@@ -343,6 +344,7 @@ df = pd.DataFrame(columns=column_names)
 for ix in range(len(results)):
     df.loc[len(df)] = results[ix]
 
+df['fof'] = fof_no
 df.to_csv(outpath + fof_str + '_merged_evolved_everything.csv', index = False)
 
 

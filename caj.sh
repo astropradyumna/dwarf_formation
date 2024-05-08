@@ -6,8 +6,8 @@
 ###SBATCH --mem=100gb
 ###SBATCH --mem-per-cpu=G
 #SBATCH --time=48:00:00
-#SBATCH -o output_log/z3.out
-#SBATCH -e output_log/z3.err
+#SBATCH -o output_log/caj.out
+#SBATCH -e output_log/caj.err
 #SBATCH --mail-user=psadh003@ucr.edu
 #SBATCH --mail-type=ALL
 
@@ -22,6 +22,4 @@ cd /rhome/psadh003/bigdata/tng50/dwarf_formation/
 
 # Run job utilizing all requested processors
 # Please visit the namd site for usage details: http://www.ks.uiuc.edu/Research/namd/
-FOF=1
-python3 z3_assumption_checking.py $FOF
-#python3 misc.py
+python3 checking_against_jess.py

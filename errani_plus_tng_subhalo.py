@@ -282,7 +282,8 @@ class Subhalo(TNG_Subhalo):
         self.Rh_co = -1
         self.Rh_pl = -1
 
-        if self.mstar >= 5e6: #If we have stellar mass < 5e6 Msun, we take stellar mass from Vmax
+        if self.mstar >= 1e8: #In this case, we are choosing stellar mass from the TNG itself
+            #If we have stellar mass < 5e6 Msun, we take stellar mass from Vmax
             #in this case, assuming there are sufficient stars to give us valid values for Rh and M*
             self.mstar_co = -1 #just so that the main code doen't break
             self.mstar_pl = -1
@@ -296,6 +297,19 @@ class Subhalo(TNG_Subhalo):
                 self.Rh = self.get_rh(where = int(self.snap))*3/4
                 self.vd = self.get_vd(where = int(self.snap))
 
+            with warnings.catch_warnings(record=True) as w:
+                self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
+                if len(w) > 0:
+                    print(w)
+                    self.vmx0, self.rmx0, self.mmx0 = self.get_rot_curve(where= int(self.snap))
+        elif (5e6 < self.mstar) and (self.mstar < 1e8): #IN this range, we do not trust sizes from TNG, but masses are still trusted
+            self.mstar_co = -1 #just so that the main code doen't break
+            self.mstar_pl = -1
+            self.resolved = True #This variable can be used to test anywhere else if the subhalo is considerd resolved or not
+            #self.resolved only is relevant for power law or cutoff models, so this won't matter here
+            # Above variable is used so that we can have condition only at one place instead of testing with the mass at several places
+            self.Rh = get_rh_wsc(np.log10(self.mstar)) #This would be the half light radius.
+            self.vd = self.get_vd(where = int(self.snap))
             with warnings.catch_warnings(record=True) as w:
                 self.vmx0, self.rmx0, self.mmx0 = self.get_mx_values(where = int(self.snap))
                 if len(w) > 0:
@@ -347,8 +361,8 @@ class Subhalo(TNG_Subhalo):
         self.central_vx = self.central_tree['SubhaloVel'][:, 0] #km/s
         self.central_vy = self.central_tree['SubhaloVel'][:, 1]
         self.central_vz = self.central_tree['SubhaloVel'][:, 2]
-        self.central_v0 = np.sqrt(4.3e-6 * self.central_gr_m200 / self.central_r200) #this is the isothermal speed of the FoF halo for all snapshots
 
+        self.central_v0 = np.sqrt(4.3e-6 * self.central_gr_m200 / self.central_r200) #this is the isothermal speed of the FoF halo for all snapshots
         return None
 
 
@@ -361,7 +375,7 @@ class Subhalo(TNG_Subhalo):
 
         
         Rh0 = self.get_rh(where = 'max')*3./4 #FIXME: This needs to accound for the subhalos without measured Rh
-
+        # Rh0 = self.Rh
         
         closest_value = min(values, key=lambda x: abs(np.log(x) - np.log(Rh0/self.rmx0)))
         # print(closest_value)
@@ -659,7 +673,7 @@ class Subhalo(TNG_Subhalo):
     
 
 
-    def plot_orbit_comprehensive(self, merged, when_te = 'last', show = False):
+    def plot_orbit_comprehensive(self, when_te = 'last', show = False):
         '''
         This function plots the orbit comprehensively with energy and masses variation with time
         
@@ -685,29 +699,29 @@ class Subhalo(TNG_Subhalo):
         snap = self.snap
         sfid = self.sfid
         fields = ['SubhaloGrNr', 'GroupFirstSub', 'SnapNum', 'SubfindID', 'SubhaloPos', 'SubhaloVel', 'SubhaloMassType', 'SubhaloMassInRadType', 'SubhaloHalfmassRadType', 'SubhaloVelDisp', 'SubhaloMassInHalfRadType'] #These are the fields that will be taken for the subhalos
-        if not merged:
-            tree = il.sublink.loadTree(basePath, snap, sfid, fields = fields, onlyMDB = True) #This only works for surviving subhalos
-        else: #If it merges
-            tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = fields, onlyMDB = True) #From this we obtain all the desencdants of the subhalo at infall
-            tree.pop('count') #removing a useless key from the dictionary
-            snaps_temp = tree['SnapNum']
-            sfids_temp = tree['SubfindID']
+        # if not merged:
+        #     tree = il.sublink.loadTree(basePath, snap, sfid, fields = fields, onlyMDB = True) #This only works for surviving subhalos
+        # else: #If it merges
+        #     tree = il.sublink.loadTree(basePath, self.snap, self.sfid, fields = fields, onlyMDB = True) #From this we obtain all the desencdants of the subhalo at infall
+        #     tree.pop('count') #removing a useless key from the dictionary
+        #     snaps_temp = tree['SnapNum']
+        #     sfids_temp = tree['SubfindID']
 
-            merger_index = np.where(snaps_temp == self.last_snap)[0][-1] #this is the index of the merger in the tree
-            # msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
-            tree = {key: value[merger_index:] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
+        #     merger_index = np.where(snaps_temp == self.last_snap)[0][-1] #this is the index of the merger in the tree
+        #     # msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
+        #     tree = {key: value[merger_index:] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
 
-            # infall_ix = np.where((msh_snap == snap) & (msh_sfid == sfid))[0] #This is to get the index of the current subhalo in the merger dataframe
-            # msh_last_snap = msh_merger_snap[infall_ix] #This is the infall snapshot
-            # msh_last_sfid = msh_merger_sfid[infall_ix] #This is the infall subfind ID
+        #     # infall_ix = np.where((msh_snap == snap) & (msh_sfid == sfid))[0] #This is to get the index of the current subhalo in the merger dataframe
+        #     # msh_last_snap = msh_merger_snap[infall_ix] #This is the infall snapshot
+        #     # msh_last_sfid = msh_merger_sfid[infall_ix] #This is the infall subfind ID
 
-            tree = il.sublink.loadTree(basePath, int(msh_last_snap), int(msh_last_sfid), fields = fields, onlyMPB = True) #Getting all the progenitors from the last snapshot of survival
-            tree.pop('count') #removing a useless key from the dictionary
-            snaps_temp = tree['SnapNum']
-            sfids_temp = tree['SubfindID']
-            msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
-            tree = {key: value[0:msh_if_ix_tree+1] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
-
+        #     tree = il.sublink.loadTree(basePath, int(msh_last_snap), int(msh_last_sfid), fields = fields, onlyMPB = True) #Getting all the progenitors from the last snapshot of survival
+        #     tree.pop('count') #removing a useless key from the dictionary
+        #     snaps_temp = tree['SnapNum']
+        #     sfids_temp = tree['SubfindID']
+        #     msh_if_ix_tree = np.where((snaps_temp == snap) & (sfids_temp == sfid))[0].item() #This is the infall index in the tree
+        #     tree = {key: value[0:msh_if_ix_tree+1] for key, value in tree.items()} #new tree which only runs from final existing snapshot to the infall snapshot
+        tree = self.tree
         subh_snap = tree['SnapNum']
         subh_sfid = tree['SubfindID']
         subh_redshift = all_redshifts[subh_snap]
@@ -756,14 +770,12 @@ class Subhalo(TNG_Subhalo):
             raise ValueError('Recheck the input for when_te variable')
         
 
-        # print(f'te_snap = {te_snap}')
-
         te_snap_z = all_redshifts[te_snap] #This is the refshift at the total energy snapshot
-        te_time = all_ages[te_snap] #This is the time where we are inputting the energy to galpy
+        te_time = all_ages[te_snap]
         te_snap_ix = te_snap == common_snaps_des
-        # Discovery of the day: This index has to be input to subh_x itself or central_x itself. Not any subset of it!
+        # This index has to be input to subh_x itself or central_x itself. Not any subset of it! For e.g. subh_x[te_subh_ix]
         te_subh_ix = subh_ixs[te_snap_ix] #Subhalo index for this infall time. 
-        te_central_ix = self.central_ixs[te_snap_ix]
+        te_central_ix = central_ixs[te_snap_ix]
 
         subh_vx_cen = subh_vx[te_subh_ix] - self.central_vx[te_central_ix]
         subh_vy_cen = subh_vy[te_subh_ix] - self.central_vy[te_central_ix]
@@ -775,27 +787,26 @@ class Subhalo(TNG_Subhalo):
         subh_z_cen = subh_z[te_subh_ix] - self.central_z[te_central_ix]
 
 
-        mvir = self.central_gr_m200[te_central_ix].item() 
-
-        # Following part is for galpy
 
 
-        def get_nfw_at_t(t):
-            '''
-            This is to mdel the time dependence of the galpy potential
-            -o- potential is a nonlinear function in the virial mass because of the scale radius
-            -o- we will be divding the potential calculated the current time with the potential
-            '''
-            t = t + te_time
-            # A = np.sqrt(t) #testing so that nothing blows up
-            # A = (fof_m200_t(t) / (fof_r200_t(t))) * ((fof_r200_t(te_time)) / fof_m200_t(te_time))
-            A = 1
-            return A
+        mvir = self.central_gr_m200[te_central_ix].item() #this would be the virial mass of the FoF halo infall time 
+        
+        # This is method 3: Using galpy. For codes using other methods, look at subhalo_time_evolution.py
+        # def get_nfw_at_t(t):
+        #     '''
+        #     This is to mdel the time dependence of the galpy potential.
+        #     -o- potential is a nonlinear function in the virial mass because of the scale radius.
+        #     -o- Using taylor expansion of the NFW potential to have the correction to first order in r/rvir.
+        #     '''
+        #     t = t + te_time
+        #     # A = np.sqrt(t) #testing so that nothing blows up
+        #     # A = (fof_m200_t(t) / (fof_r200_t(t))) * ((fof_r200_t(te_time)) / fof_m200_t(te_time))
+        #     A = 1
+        #     return A
 
         potential = NFWPotential(conc=concentration.concentration(0.6744 * mvir, 'vir', 0, 'ludlow16'), mvir=mvir/1e12, wrtcrit = True, overdens = 200 * get_critical_dens(te_snap_z)/get_critical_dens(0))
-        # potential = TimeDependentAmplitudeWrapperPotential(A = get_nfw_at_t, pot = nfw) #This is to vary the time 
+        # potential = TimeDependentAmplitudeWrapperPotential(A = get_nfw_at_t, pot = nfw) #This is to vary the potential with time 
 
-        # potential = NFWPotential(conc=8, mvir=mvir/1e12, wrtcrit = True, overdens = 200 * get_critical_dens(te_snap_z)/get_critical_dens(0))
         x, y, z = subh_x_cen, subh_y_cen, subh_z_cen
         # Convert positions to cylindrical coordinates
         R = np.sqrt(x**2 + y**2)
@@ -810,40 +821,51 @@ class Subhalo(TNG_Subhalo):
 
         initial_conditions = [R * u.kpc, vR * u.kilometer/u.second, vPhi * u.kilometer/u.second, Z * u.kpc, vZ * u.kilometer/u.second, Phi * u.radian ] 
         subhalo_orbit = Orbit(initial_conditions)
+        # subhalo_orbit2 = Orbit(initial_conditions)
+
+        # initial_conditions = [R * u.kpc, vR * u.kilometer/u.second, vPhi * u.kilometer/u.second, Z * u.kpc, vZ * u.kilometer/u.second, Phi * u.radian ] 
+        # subhalo_orbit = Orbit(initial_conditions)
         
         midway = False
         # Integrate the orbit
         # Integrate the orbit
+        # if when_te == 'last':
+        #     ts = np.arange(0, all_ages[common_snaps[0] - 1] -all_ages[te_snap] , -0.1) #This is for 13.8 Gyr before the given snapshot. 
+        #     subhalo_orbit2 = Orbit(initial_conditions)
+        #     if all_ages[-1] > all_ages[te_snap]:
+        #         midway = True
+        #         ts2 = np.arange(0, all_ages[-1] - all_ages[te_snap], 0.1)
+        #         subhalo_orbit2.integrate(ts2 * u.Gyr, potential, method = 'leapfrog')
+        #         fig, = subhalo_orbit2.plot(d1 = 't', d2 = 'x')
+        #         plt.close()
+        #         fig2, = subhalo_orbit2.plot(d1 = 'y', d2 = 'z')
+        #         plt.close()
+        #         fig3, = subhalo_orbit2.plot(d1 = 'vx', d2 = 'vy')
+        #         plt.close()
+        #         fig4, = subhalo_orbit2.plot(d1 = 'vz', d2 = 'E')
+        #         plt.close()
+
+        #         t2_gp = fig.get_xdata() + te_time
+        #         x2_gp = fig.get_ydata()
+        #         y2_gp = fig2.get_xdata()
+        #         z2_gp = fig2.get_ydata()
+        #         vx2_gp = fig3.get_xdata()
+        #         vy2_gp = fig3.get_ydata()
+        #         vz2_gp = fig4.get_xdata()
+        #         E2_gp = fig4.get_ydata()
+
+        #         # print(t2_gp)
+        #         dist2_gp = np.sqrt(x2_gp**2 + y2_gp**2 + z2_gp**2)
+
+        # else: #Since I am already raising a ValueError before, I am using else directly here
+        #     ts = np.linspace(0, 13.8 - te_time.item(), 100) #This is only for the remaining time
+
+
+        # Integrate the orbit
         if when_te == 'last':
-            ts = np.arange(0, all_ages[common_snaps[0] - 1] -all_ages[te_snap] , -0.1) #This is for 13.8 Gyr before the given snapshot. 
-            subhalo_orbit2 = Orbit(initial_conditions)
-            if all_ages[-1] > all_ages[te_snap]:
-                midway = True
-                ts2 = np.arange(0, all_ages[-1] - all_ages[te_snap], 0.1)
-                subhalo_orbit2.integrate(ts2 * u.Gyr, potential, method = 'leapfrog')
-                fig, = subhalo_orbit2.plot(d1 = 't', d2 = 'x')
-                plt.close()
-                fig2, = subhalo_orbit2.plot(d1 = 'y', d2 = 'z')
-                plt.close()
-                fig3, = subhalo_orbit2.plot(d1 = 'vx', d2 = 'vy')
-                plt.close()
-                fig4, = subhalo_orbit2.plot(d1 = 'vz', d2 = 'E')
-                plt.close()
-
-                t2_gp = fig.get_xdata() + te_time
-                x2_gp = fig.get_ydata()
-                y2_gp = fig2.get_xdata()
-                z2_gp = fig2.get_ydata()
-                vx2_gp = fig3.get_xdata()
-                vy2_gp = fig3.get_ydata()
-                vz2_gp = fig4.get_xdata()
-                E2_gp = fig4.get_ydata()
-
-                # print(t2_gp)
-                dist2_gp = np.sqrt(x2_gp**2 + y2_gp**2 + z2_gp**2)
-
+            ts = np.linspace(0, -10 , 1000) #This is for 13.8 Gyr before the given snapshot. 
         else: #Since I am already raising a ValueError before, I am using else directly here
-            ts = np.linspace(0, 13.8 - te_time.item(), 100) #This is only for the remaining time
+            ts = np.linspace(0, 10 - te_time.item(), 500) #This is only for the remaining time
 
         subhalo_orbit.integrate(ts * u.Gyr, potential, method = 'leapfrog')
         
@@ -871,7 +893,7 @@ class Subhalo(TNG_Subhalo):
         # print(t_gp)
 
         dist_gp = np.sqrt(x_gp**2 + y_gp**2 + z_gp**2)
-
+        # print('len dist_gp = ', len(dist_gp))
 
         if midway:
             t_gp = np.append(np.flip(t2_gp), t_gp)
@@ -924,7 +946,7 @@ class Subhalo(TNG_Subhalo):
             pe_ar = np.append(pe_ar, get_nfw_potential(dist, self.central_gr_m200[central_ixs[ix]], 8, all_redshifts[snap]))
 
         dist_gp = np.sqrt(x_gp**2 + y_gp**2 + z_gp**2)
-        # print(t_gp)
+        # print(f'len t_gp = {len(t_gp)}')
         for (ix, t) in enumerate(t_gp): #This is a loop over galpy
             snap = np.searchsorted(all_ages, t) - 1 #index of the snapshot that has age lower than this time
             # print(f'{len(pe_ar_gp)} out of {len(t_gp)}')
@@ -938,8 +960,9 @@ class Subhalo(TNG_Subhalo):
         ax_sub1.plot(t_gp, E_gp, color = 'red', alpha = 0.5, label = 'galpy')
         # ax_sub1.axhline(subhalo_orbit.E(use_physical = True), color = 'red', alpha = 0.5, label = 'e2')
         ax_sub1.plot(t_gp, ke_ar_gp, color = 'hotpink', ls = ':')
-        ax_sub1.plot(t_gp, pe_ar_gp, color = 'hotpink', ls = '-.')
-        ax_sub1.plot(t_gp, pe_ar_gp + ke_ar_gp, color = 'hotpink', ls = '-')
+        # FIXME: FOLLOWING LINES DO NOT WORK FOR SOME OF THE SUBHALOS
+        # ax_sub1.plot(t_gp, pe_ar_gp, color = 'hotpink', ls = '-.')
+        # ax_sub1.plot(t_gp, pe_ar_gp + ke_ar_gp, color = 'hotpink', ls = '-')
 
         ax_sub1.plot(np.flip(subh_ages), np.flip(ke_ar), color = 'blue', ls = ':', label = 'KE')
         ax_sub1.plot(np.flip(subh_ages), np.flip(pe_ar), color = 'blue', ls = '-.', label = 'PE')

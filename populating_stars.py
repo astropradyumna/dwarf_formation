@@ -80,14 +80,21 @@ def get_lrh(lmstar_ar, m1 = 0.178, m2 = 0.31, b = -1.49):
     This function returns the log rh for a given Mstar -- in what units?
     0.17832722702850887, 0.30555128418263083, -1.4929324569613338
     '''
-    lrh_ar = np.zeros(0)
-    # print(lmstar_ar)
-    for lmstar in lmstar_ar:
-        if lmstar > 6.5:
-            lrh = m1 * lmstar + b 
-        elif lmstar <= 6.5:
-            lrh = m2 * lmstar + (m1 - m2) * 6.5 + b
-        lrh_ar = np.append(lrh_ar, lrh)
+    if isinstance(lmstar_ar, float):
+        if lmstar_ar > 6.5:
+            lrh = m1 * lmstar_ar + b 
+        elif lmstar_ar <= 6.5:
+            lrh = m2 * lmstar_ar + (m1 - m2) * 6.5 + b
+        lrh_ar = lrh
+    else:
+        lrh_ar = np.zeros(0)
+        # print(lmstar_ar)
+        for lmstar in lmstar_ar:
+            if lmstar > 6.5:
+                lrh = m1 * lmstar + b 
+            elif lmstar <= 6.5:
+                lrh = m2 * lmstar + (m1 - m2) * 6.5 + b
+            lrh_ar = np.append(lrh_ar, lrh)
     return lrh_ar
 
 
@@ -97,7 +104,10 @@ def get_rh_wsc(lmstar_ar):
     '''
     mu_lrh = get_lrh(lmstar_ar)
     sig_lrh = 0.2
-    lrh =  np.random.normal(mu_lrh, sig_lrh, size = len(lmstar_ar))
+    if isinstance(lmstar_ar, float):
+        lrh =  np.random.normal(mu_lrh, sig_lrh, size = 1)
+    else:
+        lrh =  np.random.normal(mu_lrh, sig_lrh, size = len(lmstar_ar))
     return 10**lrh
 
 

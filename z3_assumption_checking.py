@@ -110,3 +110,14 @@ ax.set_ylabel(r'$M_{\star}\,(M_{\odot})$ at z = 0', fontsize = 12)
 ax.set_title('FoF0', fontsize = 12)
 plt.tight_layout()
 plt.savefig('z3_assumption_checking' + fof_str + '_mstar_z0_vs_z_infall.png')
+
+
+
+fig, ax = plt.subplots(figsize = (6, 6))
+ax.plot(all_redshifts[ssh_snap], mstar_ar_z0/ssh_max_mstar, 'ko', markersize = 2, alpha = 0.2)
+ax.set_yscale('log')
+ax.set_xlabel('Redshift of infall', fontsize = 12)
+ax.set_ylabel(r'$M_{\star, \rm{z = 0}}/M_{\star, \rm{max}}$ ', fontsize = 12)
+ax.set_title('FoF0', fontsize = 12)
+plt.tight_layout()
+plt.savefig('z3_assumption_checking' + fof_str + '_mstar_z0_vs_z_infall.png')

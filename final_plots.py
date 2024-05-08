@@ -23,13 +23,19 @@ matplotlib.rc('font', **font)
 
 def convert_to_float(value):
     try:
+        if isinstance(value, float) or isinstance(value, int):
+            return value
         blah = ast.literal_eval(value)
         if isinstance(blah, list):
-            blah2 = float(blah[0])     
+            if len(blah) == 1:
+                blah2 = float(blah[0])   
+            elif len(blah) == 3:
+                blah2 = np.array([float(blah[0]), float(blah[1]), float(blah[2])])
         else:
             blah2 = float(blah)        
         return blah2
     except (ValueError, SyntaxError):
+        # print(f"Error converting {value}") #Looks like only inf values are not being converted, which is good
         return value 
 
 
@@ -38,6 +44,7 @@ basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
 outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 plotpath = '/bigdata/saleslab/psadh003/tng50/output_plots/'
 ferrarese_data_path = '/bigdata/saleslab/psadh003/misc_files/Ferrarese_virgo_smf.csv'
+venhola_data_path = '/bigdata/saleslab/psadh003/misc_files/Venhola_fornax_smf.csv'
 
 '''
 This part is to plot the NGVS data of virgo core set of satellites
@@ -47,21 +54,35 @@ fmstar = fdata['mstar']
 fngal = fdata['ngal']
 fngal_cum = np.cumsum(fngal)
 
-fof_no = int(sys.argv[1])
-fof_str = 'fof' + str(fof_no)
+'''
+This part is to plot the Fornax mass function (everything inside virial radius)
+'''
+vdata = pd.read_csv(venhola_data_path, delimiter = ',')
+vmstar = vdata['mstar']
+vngal = vdata['ngal']
+vngal_cum = np.cumsum(vngal)
 
-this_fof = il.groupcat.loadSingle(basePath, 99, haloID = fof_no)
-central_sfid_99 = this_fof['GroupFirstSub']
-rvir_fof = this_fof['Group_R_Crit200']/0.6744
+
+
+fof_no = 210
+fof_str = 'fof210'
+
+this_fof0 = il.groupcat.loadSingle(basePath, 99, haloID = 0)
+central_sfid_99_0 = this_fof0['GroupFirstSub']
+rvir_fof0 = this_fof0['Group_R_Crit200']/0.6744
+
+this_fof1 = il.groupcat.loadSingle(basePath, 99, haloID = 1)
+central_sfid_99_1 = this_fof1['GroupFirstSub']
+rvir_fof1 = this_fof1['Group_R_Crit200']/0.6744
+
+this_fof2 = il.groupcat.loadSingle(basePath, 99, haloID = 2)
+central_sfid_99_2 = this_fof2['GroupFirstSub']
+rvir_fof2 = this_fof2['Group_R_Crit200']/0.6744
 
 this_fof_plotppath = '/bigdata/saleslab/psadh003/tng50/final_plots/' + fof_str + '/'
 if not os.path.exists(this_fof_plotppath): #If the directory does not exist, then just create it!
     os.makedirs(this_fof_plotppath)
 
-
-'''
-This part is to plot the Fornax mass function (everything inside virial radius)
-'''
 
 
 '''
@@ -80,8 +101,11 @@ if True: #This is a section for getting power law values of survived subhalos
     pdfs = pdfs.applymap(convert_to_float)
 
 
-    pdfs = pdfs[pdfs['dist_f_ar']<rvir_fof]
+    # subset1 = pdfs[(pdfs['dist_f_ar']<rvir_fof0) & (pdfs['fof'] == 0)]
+    # subset2 = pdfs[(pdfs['dist_f_ar']<rvir_fof1) & (pdfs['fof'] == 1)]
+    # subset3 = pdfs[(pdfs['dist_f_ar']<rvir_fof2) & (pdfs['fof'] == 2)]
 
+    # pdfs = pd.concat([subset1, subset2, subset3], axis=0)
     pdfs1 = pdfs
     # if porc == 'p':
         # print(len(pdfs[pdfs['mstar_f_ar_tng'].values>5e6]))
@@ -94,10 +118,17 @@ if True: #This is a section for getting power law values of survived subhalos
     cutoff = 10
 
     pdfs = pdfs[(max_values > cutoff)]
+    # pdfs = pdfs[pdfs[]]
 
 
     psdist_f_ar = pdfs['dist_f_ar'].values
-    pspos_f_ar = pdfs['pos_f_ar'].values
+    pspos_f_ar = np.stack(np.array(pdfs['pos_f_ar'].values))
+    # print(pspos_f_ar)
+    # print(pspos_f_ar.shape)
+    psxydist_f_ar = np.sqrt(np.sum(pspos_f_ar[:, :2], axis = 1))
+    psyzdist_f_ar = np.sqrt(np.sum(pspos_f_ar[:, 1:], axis = 1))
+    psxzdist_f_ar = np.sqrt(np.sum(pspos_f_ar[:, [0, 2]], axis = 1))
+
 
     psvd_f_ar_tng = pdfs['vd_f_ar_tng'].values
     psrh_f_ar_tng = pdfs['rh_f_ar_tng'].values
@@ -140,6 +171,7 @@ if True: #This is a section for getting power law values of survived subhalos
     psrh_max_co_ar = pdfs['rh_max_co_ar'].values
     psmstar_max_pl_ar = pdfs['mstar_max_pl_ar'].values
     psmstar_max_co_ar = pdfs['mstar_max_co_ar'].values
+    psfof = pdfs['fof'].values
 
     psmstar_all = np.zeros(len(psmmx_f_ar))
     psrh_all = np.zeros(len(psmmx_f_ar))
@@ -153,14 +185,29 @@ if True: #This is a section for getting power law values of survived subhalos
     psvd_all[res_ixs] = psvd_f_ar[res_ixs]
     psvd_all[unres_ixs] = psvd_f_pl_ar[unres_ixs]
 
+    pssigma_all = 4.83 +21.57 -2.5 * np.log10(psmstar_all / (np.pi * (psrh_all*1e3) ** 2)) #This will be in mag/arcsec^2
+
 
 
 
 
 if True: #This is a section for getting power law values of merged subhalos
     pdfm = pd.read_csv(outpath + fof_str + '_merged_evolved_wmbp_everything.csv', delimiter = ',')
+    # print(pdfm.head(20))
+    # print(f'Length before is: {len(pdfm)}')
+    # pdfm = pdfm[pdfm['dist_f_ar'] != '']
+    # print(f'Length after is: {len(pdfm)}')
+
+    pdfm = pdfm.dropna(subset = ['dist_f_ar'])
+    # print(pdfm['pos_f_ar'])
     pdfm = pdfm.applymap(convert_to_float)
-    pdfm = pdfm[pdfm['dist_f_ar']<rvir_fof]
+    # pdfm = pdfm[pdfm['dist_f_ar']<rvir_fof]
+
+    # subset1 = pdfm[(pdfm['dist_f_ar']<rvir_fof0) & (pdfm['fof'] == 0)]
+    # subset2 = pdfm[(pdfm['dist_f_ar']<rvir_fof1) & (pdfm['fof'] == 1)]
+    # subset3 = pdfm[(pdfm['dist_f_ar']<rvir_fof2) & (pdfm['fof'] == 2)]
+
+    # pdfm = pd.concat([subset1, subset2, subset3], axis=0)
     pdfm1 = pdfm 
 
     columns_to_max = ['mstar_max_ar', 'mstar_max_pl_ar']
@@ -178,7 +225,14 @@ if True: #This is a section for getting power law values of merged subhalos
     # print(len(pdfm))
     pdfm = pdfm[max_values > cutoff]
     # print(len(pdfm))
+
     pmdist_f_ar = pdfm['dist_f_ar'].values
+    pmpos_ar = np.stack(np.array(pdfm['pos_f_ar'].values))
+    # pmpos_ar
+    print(pmpos_ar)
+    pmxydist_f_ar = np.sqrt(np.sum(pmpos_ar[:, :2], axis = 1))
+    pmyzdist_f_ar = np.sqrt(np.sum(pmpos_ar[:, 1:], axis = 1))
+    pmxzdist_f_ar = np.sqrt(np.sum(pmpos_ar[:, [0, 2]], axis = 1))
     pmmbpid_ar = pdfm['mbpid_ar'].values
 
     pmtinf_ar = pdfm['tinf_ar'].values
@@ -215,6 +269,7 @@ if True: #This is a section for getting power law values of merged subhalos
     pmrh_max_co_ar = pdfm['rh_max_co_ar'].values
     pmmstar_max_pl_ar = pdfm['mstar_max_pl_ar'].values
     pmmstar_max_co_ar = pdfm['mstar_max_co_ar'].values
+    pmfof = pdfm['fof'].values
 
 
     pmmstar_all = np.zeros(len(pmmmx_f_ar))
@@ -229,6 +284,8 @@ if True: #This is a section for getting power law values of merged subhalos
     pmvd_all[res_ixs] = pmvd_f_ar[res_ixs]
     pmvd_all[unres_ixs] = pmvd_f_pl_ar[unres_ixs]
 
+    pmsigma_all = 4.83 +21.57 -2.5 * np.log10(pmmstar_all / (np.pi * (pmrh_all*1e3) ** 2)) #This will be in mag/arcsec^2
+
 
 
 
@@ -242,8 +299,12 @@ if True: #This is a section for getting cutoff values of survived subhalos
     cdfs = cdfs.applymap(convert_to_float)
 
 
-    cdfs = cdfs[cdfs['dist_f_ar']<rvir_fof]
+    # cdfs = cdfs[cdfs['dist_f_ar']<rvir_fof]
+    # subset1 = cdfs[(cdfs['dist_f_ar']<rvir_fof0) & (cdfs['fof'] == 0)]
+    # subset2 = cdfs[(cdfs['dist_f_ar']<rvir_fof1) & (cdfs['fof'] == 1)]
+    # subset3 = cdfs[(cdfs['dist_f_ar']<rvir_fof2) & (cdfs['fof'] == 2)]
 
+    # cdfs = pd.concat([subset1, subset2, subset3], axis=0)
     cdfs1 = cdfs
 
     # elif porc == 'c':
@@ -262,7 +323,10 @@ if True: #This is a section for getting cutoff values of survived subhalos
     cdfs = cdfs[(max_values > cutoff)]
 
     csdist_f_ar = cdfs['dist_f_ar'].values
-    cspos_f_ar = cdfs['pos_f_ar'].values
+    cspos_f_ar = np.stack(np.array(cdfs['pos_f_ar'].values))
+    csxydist_f_ar = np.sqrt(np.sum(cspos_f_ar[:, :2], axis = 1))
+    csyzdist_f_ar = np.sqrt(np.sum(cspos_f_ar[:, 1:], axis = 1))
+    csxzdist_f_ar = np.sqrt(np.sum(cspos_f_ar[:, [0, 2]], axis = 1))
 
     csvd_f_ar_tng = cdfs['vd_f_ar_tng'].values
     csrh_f_ar_tng = cdfs['rh_f_ar_tng'].values
@@ -305,6 +369,7 @@ if True: #This is a section for getting cutoff values of survived subhalos
     csrh_max_co_ar = cdfs['rh_max_co_ar'].values
     csmstar_max_pl_ar = cdfs['mstar_max_pl_ar'].values
     csmstar_max_co_ar = cdfs['mstar_max_co_ar'].values
+    csfof = cdfs['fof'].values
 
     csmstar_all = np.zeros(len(csmmx_f_ar))
     csrh_all = np.zeros(len(csmmx_f_ar))
@@ -318,11 +383,23 @@ if True: #This is a section for getting cutoff values of survived subhalos
     csvd_all[res_ixs] = csvd_f_ar[res_ixs]
     csvd_all[unres_ixs] = csvd_f_pl_ar[unres_ixs]
 
+    cssigma_all = 4.83 +21.57 -2.5 * np.log10(csmstar_all / (np.pi * (csrh_all*1e3) ** 2)) #This will be in mag/arcsec^2
+
 
 if True: #This is a section for getting cutoff values of merged subhalos
     cdfm = pd.read_csv(outpath + fof_str + '_merged_evolved_wmbp_everything.csv', delimiter = ',')
+    cdfm = cdfm.dropna(subset = ['dist_f_ar'])
     cdfm = cdfm.applymap(convert_to_float)
-    cdfm = cdfm[cdfm['dist_f_ar']<rvir_fof]
+
+
+    # cdfm = cdfm[cdfm['dist_f_ar']<rvir_fof]
+    
+    # subset1 = cdfm[(cdfm['dist_f_ar']<rvir_fof0) & (cdfm['fof'] == 0)]
+    # subset2 = cdfm[(cdfm['dist_f_ar']<rvir_fof1) & (cdfm['fof'] == 1)]
+    # subset3 = cdfm[(cdfm['dist_f_ar']<rvir_fof2) & (cdfm['fof'] == 2)]
+
+    # cdfm = pd.concat([subset1, subset2, subset3], axis=0)
+
     cdfm1 = cdfm 
 
     columns_to_max = ['mstar_max_ar', 'mstar_max_co_ar']
@@ -339,6 +416,12 @@ if True: #This is a section for getting cutoff values of merged subhalos
     cdfm = cdfm[max_values > cutoff]
     # print(len(cdfm))
     cmdist_f_ar = cdfm['dist_f_ar'].values
+    cmpos_ar = np.stack(np.array(cdfm['pos_f_ar'].values))
+    cmxydist_f_ar = np.sqrt(np.sum(cmpos_ar[:, :2], axis = 1))
+    cmyzdist_f_ar = np.sqrt(np.sum(cmpos_ar[:, 1:], axis = 1))
+    cmxzdist_f_ar = np.sqrt(np.sum(cmpos_ar[:, [0, 2]], axis = 1))
+
+
     cmmbpid_ar = cdfm['mbpid_ar'].values
 
     cmtinf_ar = cdfm['tinf_ar'].values
@@ -375,6 +458,7 @@ if True: #This is a section for getting cutoff values of merged subhalos
     cmrh_max_co_ar = cdfm['rh_max_co_ar'].values
     cmmstar_max_pl_ar = cdfm['mstar_max_pl_ar'].values
     cmmstar_max_co_ar = cdfm['mstar_max_co_ar'].values
+    cmfof = cdfm['fof'].values
 
     cmmstar_all = np.zeros(len(cmmmx_f_ar))
     cmrh_all = np.zeros(len(cmmmx_f_ar))
@@ -388,32 +472,66 @@ if True: #This is a section for getting cutoff values of merged subhalos
     cmvd_all[res_ixs] = cmvd_f_ar[res_ixs]
     cmvd_all[unres_ixs] = cmvd_f_pl_ar[unres_ixs]
 
+    cmsigma_all = 4.83 +21.57 -2.5 * np.log10(cmmstar_all / (np.pi * (cmrh_all*1e3) ** 2)) #This will be in mag/arcsec^2
+
+
+
+fof_no = int(sys.argv[1])
+fof_str = 'fof' + str(fof_no)
+
+
+
+print('Data import is a success!')
 
 
 def plot_subh_mf():
     '''
     This function is to plot the subhalos mass function
+    We will be plotting with Fornax here
     '''
     mstarpl = np.logspace(1, 11, 100)
-    pNm_ar = np.zeros(0) #shmf for merged subhalos
-    pNs_ar = np.zeros(0) #shmf for surviving subhalos 
-    cNm_ar = np.zeros(0) #shmf for merged subhalos
-    cNs_ar = np.zeros(0) #shmf for surviving subhalos 
-    Ntng_ar = np.zeros(0)
-    for (ix, ms) in enumerate(mstarpl):
-        pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[pmmstar_all > ms]))
-        pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[psmstar_all > ms]))
-        cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[cmmstar_all > ms]))
-        cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[csmstar_all > ms]))
-        Ntng_ar = np.append(Ntng_ar, len(psmstar_f_ar_tng[psmstar_f_ar_tng > ms]))
+
+    rvir_fornax = 700 #kpc
 
     fig, ax = plt.subplots(figsize = (6, 6.25))
+    ls_ar = ['-.', '--', '-']
+    for this_fof in [0, 1, 2]:
+        pNm_ar = np.zeros(0) #shmf for merged subhalos
+        pNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        cNm_ar = np.zeros(0) #shmf for merged subhalos
+        cNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        for (ix, ms) in enumerate(mstarpl):
+            pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > ms) & (pmfof == this_fof) & (pmxydist_f_ar < rvir_fornax)]))
+            pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > ms) &  (psfof == this_fof) & (psxydist_f_ar < rvir_fornax)]))
+            cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > ms) & (cmfof == this_fof) & (cmxydist_f_ar < rvir_fornax)]))
+            cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > ms) & (csfof == this_fof) & (csxydist_f_ar < rvir_fornax)]))
     
-    # ax.plot(mstarpl, Ns_ar, color = 'darkgreen', label = 'Model Surviving', alpha = 0.5)
-    ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', label = 'Model cutoff', alpha = 0.5)
-    ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', label = 'Model power law', alpha = 0.5)
+        ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', label = 'Cutoff FoF = ' + str(this_fof), alpha = 0.5, ls = ls_ar[this_fof])
+        ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', label = 'Power law FoF = ' + str(this_fof), alpha = 0.5, ls = ls_ar[this_fof])
+
+    ax.plot(10**vmstar, vngal_cum, color = 'black', marker = '^', label = 'Venhola+19 Fornax')
+    # for jx in range(len(sigma_pl_ar) + 1): #+2 because we also need to plot without any surface brightness limits
+    # pNm_ar = np.zeros(0) #shmf for merged subhalos
+    # pNs_ar = np.zeros(0) #shmf for surviving subhalos 
+    # cNm_ar = np.zeros(0) #shmf for merged subhalos
+    # cNs_ar = np.zeros(0) #shmf for surviving subhalos 
+    # Ntng_ar = np.zeros(0)
+
+
+    # for (ix, ms) in enumerate(mstarpl):
+    #     pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > ms) & (pmfof == 0) & (pmxydist_f_ar < rvir_fornax)]))
+    #     pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > ms) &  (psfof == 0) & (psxydist_f_ar < rvir_fornax)]))
+    #     cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > ms) & (cmfof == 0) & (cmxydist_f_ar < rvir_fornax)]))
+    #     cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > ms) & (csfof == 0) & (csxydist_f_ar < rvir_fornax)]))
+    #     # Ntng_ar = np.append(Ntng_ar, len(psmstar_f_ar_tng[psmstar_f_ar_tng > ms]))
+
+    # fig, ax = plt.subplots(figsize = (6, 6.25))
+    
+    # # ax.plot(mstarpl, Ns_ar, color = 'darkgreen', label = 'Model Surviving', alpha = 0.5)
+    # ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', label = 'Cutoff', alpha = 0.5)
+    # ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', label = 'Power law', alpha = 0.5)
     # plot_sachi(ax)
-    ax.plot(mstarpl, Ntng_ar, color = 'blue', label = 'TNG surviving', alpha = 0.5)
+    # ax.plot(mstarpl, Ntng_ar, color = 'blue', label = 'TNG surviving', alpha = 0.5)
     ax.legend(fontsize = 8)
     ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
     ax.set_ylabel(r'$N(>M_{\bigstar})$')
@@ -423,7 +541,7 @@ def plot_subh_mf():
     ax.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
     ax.tick_params(axis='x', which = 'both', direction = 'in')
     
-    ax.set_title('FoF'+str(fof_no))
+    # ax.set_title('FoF'+str(fof_no))
     plt.tight_layout()
     plt.savefig(this_fof_plotppath + 'mass_function.png')
 
@@ -438,29 +556,34 @@ def plot_subh_mf_core():
     '''
     This is to plot the satellite mass function and ompare it with the Virgo core data from ferrarese 2016 paper
     '''
-    rcore = 0.2 * rvir_fof #This is assumed to be the core radius temporarily
+    # rcore = 0.2 * rvir_fof #This is assumed to be the core radius temporarily
+    rcore_virgo = 309 #This is assumed to be the core radius temporarily
+
     mstarpl = np.logspace(1, 11, 100)
-    pNm_ar = np.zeros(0) #shmf for merged subhalos
-    pNs_ar = np.zeros(0) #shmf for surviving subhalos 
-    cNm_ar = np.zeros(0) #shmf for merged subhalos
-    cNs_ar = np.zeros(0) #shmf for surviving subhalos 
+
+    
     Ntng_ar = np.zeros(0)
-    for (ix, ms) in enumerate(mstarpl):
-        pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > ms) & (pmdist_f_ar < rcore)]))
-        pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > ms) & (psdist_f_ar < rcore)]))
-        cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > ms) & (cmdist_f_ar < rcore)]))
-        cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > ms) & (csdist_f_ar < rcore)]))
-        Ntng_ar = np.append(Ntng_ar, len(psmstar_f_ar_tng[(psmstar_f_ar_tng > ms) & (psdist_f_ar < rcore)]))
 
     fig, ax = plt.subplots(figsize = (6, 6.25))
+    ls_ar = ['-.', '--', '-']
+    for this_fof in [0, 1, 2]:
+        pNm_ar = np.zeros(0) #shmf for merged subhalos
+        pNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        cNm_ar = np.zeros(0) #shmf for merged subhalos
+        cNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        for (ix, ms) in enumerate(mstarpl):
+            pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > ms) & (pmfof == this_fof) & (pmxydist_f_ar < rcore_virgo)]))
+            pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > ms) &  (psfof == this_fof) & (psxydist_f_ar < rcore_virgo)]))
+            cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > ms) & (cmfof == this_fof) & (cmxydist_f_ar < rcore_virgo)]))
+            cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > ms) & (csfof == this_fof) & (csxydist_f_ar < rcore_virgo)]))
     
+        ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', label = 'Cutoff FoF = ' + str(this_fof), alpha = 0.5, ls = ls_ar[this_fof])
+        ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', label = 'Power law FoF = ' + str(this_fof), alpha = 0.5, ls = ls_ar[this_fof])
+
     # ax.plot(mstarpl, Ns_ar, color = 'darkgreen', label = 'Model Surviving', alpha = 0.5)
     ax.plot(10**fmstar, fngal_cum, color = 'black', marker = 'o', label = 'Ferrarese+16 Virgo core')
-
-    ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', label = 'Model cutoff', alpha = 0.5)
-    ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', label = 'Model power law', alpha = 0.5)
     # plot_sachi(ax)
-    ax.plot(mstarpl, Ntng_ar, color = 'blue', label = 'TNG surviving', alpha = 0.5)
+    # ax.plot(mstarpl, Ntng_ar, color = 'blue', label = 'TNG surviving', alpha = 0.5)
     ax.legend(fontsize = 8)
     ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
     ax.set_ylabel(r'$N(>M_{\bigstar})$')
@@ -470,7 +593,7 @@ def plot_subh_mf_core():
     ax.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
     ax.tick_params(axis='x', which = 'both', direction = 'in')
     
-    ax.set_title('FoF'+str(fof_no)+ f' within core {rcore:.0f} kpc')
+    # ax.set_title('FoF'+str(fof_no)+ f' within core {rcore_virgo:.0f} kpc')
     plt.tight_layout()
     plt.savefig(this_fof_plotppath + 'mass_function_core.png')
 
@@ -481,7 +604,77 @@ def plot_subh_mf_core():
 
 plot_subh_mf_core()
 
-def plot_rh_vs_mstar():
+
+
+def plot_mass_fn_completeness():
+    '''
+    This is to plot the mass function with different surface brightness limits along with completeness in the bottom panel
+    '''
+    fig, (ax, ax2) = plt.subplots(nrows = 2, ncols = 1, figsize = (6, 6.25), gridspec_kw={'height_ratios':[2, 1]}, sharex=True)
+    mstarpl = np.logspace(1, 11, 100)
+
+    sigma_pl_ar = [24, 28, 35] #This is the surface brightness cuts that we would be using
+    ls_ar = ['-.', '--', '-']
+    for jx in range(len(sigma_pl_ar)): #+2 because we also need to plot without any surface brightness limits
+        pNm_ar = np.zeros(0) #shmf for merged subhalos
+        pNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        cNm_ar = np.zeros(0) #shmf for merged subhalos
+        cNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        Ntng_ar = np.zeros(0)
+        for (ix, ms) in enumerate(mstarpl):
+            pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > ms) & (pmfof == 0) & (pmsigma_all < sigma_pl_ar[jx])]))
+            pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > ms) &  (psfof == 0) & (pssigma_all < sigma_pl_ar[jx])]))
+            cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > ms) & (cmfof == 0) & (cmsigma_all < sigma_pl_ar[jx])]))
+            cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > ms) & (csfof == 0) & (cssigma_all < sigma_pl_ar[jx])]))
+            # Ntng_ar = np.append(Ntng_ar, len(psmstar_f_ar_tng[psmstar_f_ar_tng > ms]))
+
+        # fig, ax = plt.subplots(figsize = (6, 6.25))
+        
+        # ax.plot(mstarpl, Ns_ar, color = 'darkgreen', label = 'Model Surviving', alpha = 0.5)
+        if jx == -1: #NULL
+            ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', ls = ls_ar[jx], label = r'Cutoff all', alpha = 0.5)
+            ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', ls = ls_ar[jx], label = r'Power all', alpha = 0.5)
+        else:
+            ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', ls = ls_ar[jx], label = r'Cutoff $\Sigma < $'+str(sigma_pl_ar[jx]), alpha = 0.5)
+            ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', ls = ls_ar[jx], label = r'Power law $\Sigma < $'+str(sigma_pl_ar[jx]), alpha = 0.5)
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+
+    ax.legend(fontsize = 8)
+
+    ax2.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
+
+
+    for ix in range(len(sigma_pl_ar)):
+        ccompleteness_ar = np.zeros(0)
+        pcompleteness_ar = np.zeros(0)
+        cmstar_pl_ar = np.zeros(0)
+        pmstar_pl_ar = np.zeros(0)
+        for jx in range(len(mstarpl) - 1):
+            try:
+                ccompleteness_ar = np.append(ccompleteness_ar, (len(cmmstar_all[(cmsigma_all < sigma_pl_ar[ix]) & (mstarpl[jx] < cmmstar_all) & (cmmstar_all < mstarpl[jx+1])]) + len(csmstar_all[(cssigma_all < sigma_pl_ar[ix]) & (mstarpl[jx] < csmstar_all) & (csmstar_all < mstarpl[jx+1])]))/(len(cmmstar_all[(mstarpl[jx] < cmmstar_all) & (cmmstar_all < mstarpl[jx+1])]) + len(csmstar_all[(mstarpl[jx] < csmstar_all) & (csmstar_all < mstarpl[jx+1])])))
+                cmstar_pl_ar =np.append(cmstar_pl_ar, mstarpl[jx])
+            except Exception as e:
+                pass
+            try:
+                pcompleteness_ar = np.append(pcompleteness_ar, (len(pmmstar_all[(pmsigma_all < sigma_pl_ar[ix]) & (mstarpl[jx] < pmmstar_all) & (pmmstar_all < mstarpl[jx+1])]) + len(psmstar_all[(pssigma_all < sigma_pl_ar[ix]) & (mstarpl[jx] < psmstar_all) & (psmstar_all < mstarpl[jx+1])]))/(len(pmmstar_all[(mstarpl[jx] < pmmstar_all) & (pmmstar_all < mstarpl[jx+1])]) + len(psmstar_all[(mstarpl[jx] < psmstar_all) & (psmstar_all < mstarpl[jx+1])])))
+                pmstar_pl_ar =np.append(pmstar_pl_ar, mstarpl[jx])
+            except Exception as e:
+                pass
+        ax2.plot(cmstar_pl_ar, ccompleteness_ar, color = 'darkgreen', ls = ls_ar[ix], label = r'Cutoff $\Sigma < $'+str(sigma_pl_ar[ix]))
+        ax2.plot(pmstar_pl_ar, pcompleteness_ar, color = 'red', ls = ls_ar[ix], label = r'Power law $\Sigma < $'+str(sigma_pl_ar[ix]))
+    
+    
+    ax2.set_ylabel('Completeness')
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'mass_function_completeness.png')
+    plt.close()
+    return None
+
+plot_mass_fn_completeness()
+
+
+def plot_rh_vs_mstar(fof_no = 210, alpha_points = 0.1, size_points = 7.5):
     '''
     Rh vs Mstar
     '''
@@ -519,16 +712,29 @@ def plot_rh_vs_mstar():
     plot_lg_virgo(ax2)
     
 
-    ax.scatter(csmstar_all, np.array(csrh_all) * 1e3, marker = 's', fc = 'darkgreen', alpha = 0.3, s = 10, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
-    ax.scatter(cmmstar_all, np.array(cmrh_all) * 1e3, marker = 's', fc = 'purple', alpha = 0.3, s = 10, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
+
+    if fof_no == 210:
+        csix = np.where(csfof == 0 | csfof == 1 | csfof == 2)[0]
+        cmix = np.where(cmfof == 0 | cmfof == 1 | cmfof == 2)[0]
+        psix = np.where(psfof == 0 | psfof == 1 | psfof == 2)[0]
+        pmix = np.where(pmfof == 0 | pmfof == 1 | pmfof == 2)[0]
+    else:
+        csix = np.where(csfof == fof_no)[0]
+        cmix = np.where(cmfof == fof_no)[0]
+        psix = np.where(psfof == fof_no)[0]
+        pmix = np.where(pmfof == fof_no)[0]
+
+
+    ax.scatter(csmstar_all[csix], np.array(csrh_all[csix]) * 1e3, marker = 's', fc = 'darkgreen', alpha = alpha_points, s = size_points, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
+    ax.scatter(cmmstar_all[cmix], np.array(cmrh_all[cmix]) * 1e3, marker = 's', fc = 'purple', alpha = alpha_points, s = size_points, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
     top_data = ax.get_ylim()[1]
     right_data = ax.get_xlim()[1]
     ax.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k')
     ax.set_xlim(left = 1e1, right = right_data)
     ax.set_ylim(bottom = 10, top = top_data)
 
-    ax2.scatter(psmstar_all, np.array(psrh_all) * 1e3, marker = 's', fc = 'darkgreen', alpha = 0.3, s = 10, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
-    ax2.scatter(pmmstar_all, np.array(pmrh_all) * 1e3, marker = 's', fc = 'purple', alpha = 0.3, s = 10, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
+    ax2.scatter(psmstar_all[psix], np.array(psrh_all[psix]) * 1e3, marker = 's', fc = 'darkgreen', alpha = alpha_points, s = size_points, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
+    ax2.scatter(pmmstar_all[pmix], np.array(pmrh_all[pmix]) * 1e3, marker = 's', fc = 'purple', alpha = alpha_points, s = size_points, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
     top_data2 = ax2.get_ylim()[1]
     right_data = ax2.get_xlim()[1]
     ax2.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k')
@@ -587,9 +793,150 @@ def plot_rh_vs_mstar():
     plt.savefig(this_fof_plotppath + 'rh_vs_mstar.png')
     plt.close()
 
-plot_rh_vs_mstar()
+plot_rh_vs_mstar(fof_no)
 
 
+
+def plot_rh_vs_mstar_hist2d(alpha_points = 0.1, size_points = 7.5):
+    '''
+    This is to plot the 2d histogram of size-mass relation
+    '''
+    def get_line_of_constant_surfb(mstar, S):
+        '''
+        This is to plot the line of constant surface brightness
+        mstar: Stellar mass
+        S: Surface brightness
+
+        Returns:
+        R: Half light radius in pc
+        '''
+        logR = -(1/5.)*(4.83+21.57-2.5*np.log10(mstar)+2.5*np.log10(np.pi)-S)
+        return 10**logR
+
+    def inverse_get_line_of_constant_surfb(R, S):
+        '''
+        Inverse function of get_line_of_constant_surfb
+        R: Half light radius in pc
+        S: Surface brightness
+
+        Returns:
+        mstar: Stellar mass
+        '''
+        def equation(mstar):
+            return R - get_line_of_constant_surfb(mstar, S)
+
+        mstar_guess = 1e3  # Initial guess for mstar
+        mstar_solution = fsolve(equation, mstar_guess)
+        return mstar_solution[0]
+
+    fig, (ax, ax2) = plt.subplots(nrows = 1, ncols = 2, figsize = (12, 6.15))
+    mspl_log = np.linspace(1, 13, 100)
+    # plot_lg_virgo(ax)
+    # plot_lg_virgo(ax2)
+    
+
+
+    if fof_no == 210:
+        csix = np.where(csfof == 0 | csfof == 1 | csfof == 2)[0]
+        cmix = np.where(cmfof == 0 | cmfof == 1 | cmfof == 2)[0]
+        psix = np.where(psfof == 0 | psfof == 1 | psfof == 2)[0]
+        pmix = np.where(pmfof == 0 | pmfof == 1 | pmfof == 2)[0]
+    else:
+        csix = np.where(csfof == fof_no)[0]
+        cmix = np.where(cmfof == fof_no)[0]
+        psix = np.where(psfof == fof_no)[0]
+        pmix = np.where(pmfof == fof_no)[0]
+
+
+    # ax.scatter(csmstar_all[csix], np.array(csrh_all[csix]) * 1e3, marker = 's', fc = 'darkgreen', alpha = alpha_points, s = size_points, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
+    # ax.scatter(cmmstar_all[cmix], np.array(cmrh_all[cmix]) * 1e3, marker = 's', fc = 'purple', alpha = alpha_points, s = size_points, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
+    
+    cmstar = np.append(csmstar_all[csix], cmmstar_all[cmix]) #msun, THis is all the subhalos in the cutoff model
+    crh = np.append(csrh_all[csix], cmrh_all[cmix]) * 1e3 #kpc, This is rh of all the subhalos in the cutoff model
+    cmstar = cmstar[crh > 0]
+    crh = crh[crh > 0]
+    y_space = np.logspace(np.log10(min(crh)), np.log10(max(crh)), 100)
+    x_space = np.logspace(np.log10(min(cmstar)), np.log10(max(cmstar)), 100)
+    ax.scatter(cmstar, crh, marker = 's', fc = 'gray', alpha = alpha_points, s = size_points, zorder = 0, edgecolor = 'gray', linewidth = 0.7)
+    ax.hist2d(cmstar, crh, bins = (x_space, y_space), cmin = 3, norm = 'log', zorder = 100)
+    ax.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k')
+    top_data = ax.get_ylim()[1]
+    right_data = ax.get_xlim()[1]
+    ax.set_xlim(left = 1e1, right = right_data)
+    ax.set_ylim(bottom = 10, top = top_data)
+
+    # ax2.scatter(psmstar_all[psix], np.array(psrh_all[psix]) * 1e3, marker = 's', fc = 'darkgreen', alpha = alpha_points, s = size_points, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
+    # ax2.scatter(pmmstar_all[pmix], np.array(pmrh_all[pmix]) * 1e3, marker = 's', fc = 'purple', alpha = alpha_points, s = size_points, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
+    
+    pmstar = np.append(psmstar_all[psix], pmmstar_all[pmix])
+    prh = np.append(psrh_all[psix], pmrh_all[pmix]) * 1e3
+    pmstar = pmstar[prh > 0]
+    prh = prh[prh > 0]
+    y_space = np.logspace(np.log10(min(prh)), np.log10(max(prh)), 100)
+    x_space = np.logspace(np.log10(min(pmstar)), np.log10(max(pmstar)), 100)
+    ax2.scatter(pmstar, prh, marker = 's', fc = 'gray', alpha = alpha_points, s = size_points, zorder = 0, edgecolor = 'gray', linewidth = 0.7)
+    
+    ax2.hist2d(pmstar, prh, bins = (x_space, y_space), cmin = 3, norm = 'linear', zorder = 100)
+    ax2.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k')
+    top_data2 = ax2.get_ylim()[1]
+    right_data2 = ax2.get_xlim()[1]
+    ax2.set_xlim(left = 1e1, right = right_data2)
+    ax2.set_ylim(bottom = 10, top = top_data2)
+
+
+    if True: #This section is for lines of constant surface brightness
+        angle = 59
+        yval = 0.21*top_data
+        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 24), ls = '--', color = 'gray')
+        ax.annotate(r'24 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 24), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 24), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 28), ls = '--', color = 'gray')
+        ax.annotate(r'28 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 28), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 28), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 35), ls = '--', color = 'gray')
+        ax.annotate(r'35 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 35), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 35), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        
+        yval = 0.21*top_data2
+        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 24), ls = '--', color = 'gray')
+        ax2.annotate(r'24 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 24), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 24), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 28), ls = '--', color = 'gray')
+        ax2.annotate(r'28 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 28), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 28), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 35), ls = '--', color = 'gray')
+        ax2.annotate(r'35 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 35), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 35), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+    
+
+    # # Example usage:
+    # R = 100  # Half light radius in pc
+    # S = 25  # Surface brightness
+    # mstar_inverse = inverse_get_line_of_constant_surfb(R, S)
+    # print(mstar_inverse)
+    ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
+    ax.set_ylabel(r'$R_{\rm{h}}$ (pc)')
+    ax.legend(fontsize = 8)
+    ax.tick_params(axis='both', which = 'both', left=True, right=True, bottom = True, top = True, direction = 'in')
+    ax.text(0.01, 0.99, 'Cutoff', ha = 'left', va = 'top', transform=ax.transAxes)
+
+    ax2.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
+    ax2.set_ylabel(r'$R_{\rm{h}}$ (pc)')
+    ax2.legend(fontsize = 8)
+    ax2.tick_params(axis='both', which = 'both', left=True, right=True, bottom = True, top = True, direction = 'in')
+    ax2.text(0.01, 0.99, 'Power law', ha = 'left', va = 'top', transform=ax2.transAxes)
+
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    fig.suptitle('FoF'+str(fof_no), fontsize = 14)
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'rh_vs_mstar_hist.png')
+    plt.close()
+    return None
+
+plot_rh_vs_mstar_hist2d()
 
 
 
