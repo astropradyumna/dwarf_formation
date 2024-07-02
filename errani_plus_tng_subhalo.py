@@ -194,20 +194,27 @@ class ErraniSubhalo():
                 rh_now = rmx 
                 vd_now = vmx - vd_diff
 
-        elif rh0byrmx0 in [1/66, 1/250, 1/1000]:
+
+        elif rh0byrmx0 in [1/66, 1/250]:
             if np.log10(frem) >= -5:
-                if rh0byrmx0 == 1/66:
+                if (rh0byrmx0 == 1/66):
                     rh_now = 10 ** (l10rbyrmx0_1by66_spl(np.log10(frem))) * self.Rh/rh0byrmx0
                     vd_now = 10 ** (l10vbyvmx0_1by66_spl(np.log10(frem))) * self.vmx0
-                elif rh0byrmx0 == 1/250:
+                elif (rh0byrmx0 == 1/250):
                     rh_now = 10 ** (l10rbyrmx0_1by250_spl(np.log10(frem))) * self.Rh/rh0byrmx0
                     vd_now = 10 ** (l10vbyvmx0_1by250_spl(np.log10(frem))) * self.vmx0
-                elif rh0byrmx0 == 1/1000:
-                    rh_now = 10 ** (l10rbyrmx0_1by1000_spl(np.log10(frem))) * self.Rh/rh0byrmx0
-                    vd_now = 10 ** (l10vbyvmx0_1by1000_spl(np.log10(frem))) * self.vmx0
-
-
+            # elif (np.log10(frem) >= -6.4) & (rh0byrmx0 == 1/1000):
+            #     rh_now = 10 ** (l10rbyrmx0_1by1000_spl(np.log10(frem))) * self.Rh/rh0byrmx0
+            #     vd_now = 10 ** (l10vbyvmx0_1by1000_spl(np.log10(frem))) * self.vmx0
             elif np.log10(frem) < -5:
+                rh_now = rmx 
+                vd_now = vmx - vd_diff
+        
+        elif rh0byrmx0 == 1/1000:
+            if np.log10(frem) >= -6.4:
+                rh_now = 10 ** (l10rbyrmx0_1by1000_spl(np.log10(frem))) * self.Rh/rh0byrmx0
+                vd_now = 10 ** (l10vbyvmx0_1by1000_spl(np.log10(frem))) * self.vmx0
+            elif np.log10(frem) < -6.4:
                 rh_now = rmx 
                 vd_now = vmx - vd_diff
 

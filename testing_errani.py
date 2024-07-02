@@ -18,6 +18,7 @@ from scipy.integrate import quad
 from scipy.misc import derivative
 from tqdm import tqdm
 import time
+import warnings
 from matplotlib.backends.backend_pdf import PdfPages
 
 # response = requests.get('https://www.tng-project.org/api/TNG50-1/', verify=False) #Set warnings  off
@@ -114,7 +115,7 @@ l10mmxbymmx0_1by16 = l10mmxbymmx0_1by16[np.argsort(l10mmxbymmx0_1by16)]
 
 
 l10mmxbymmx0_1by66 = rh1by66_df['l10mmxbymmx0']
-l10rbyrmx0_1by66 = rh1by66_df['l10rbyrmx0'] + np.log10(1/66)
+l10rbyrmx0_1by66 = rh1by66_df['l10rbyrmx0'] + np.log10(1/66) #This additional term is to adjust for the fact that the plot is for Rh/Rh0
 
 l10rbyrmx0_1by66 = l10rbyrmx0_1by66[np.argsort(l10mmxbymmx0_1by66)] #sorting based on mass for the univariate spline
 l10mmxbymmx0_1by66 = l10mmxbymmx0_1by66[np.argsort(l10mmxbymmx0_1by66)]
@@ -491,9 +492,24 @@ def get_rmxbyrmx0(mxbymx0_reqd):
     if isinstance(mxbymx0_reqd, np.ndarray):
         rmxbyrmx0_ar = np.zeros(0)
         for mfrac in mxbymx0_reqd:
-            rmxbyrmx0_ar = np.append(rmxbyrmx0_ar, fsolve(lambda x: get_mxbymx0(x) - mfrac, x0 = 0.5))
+            with warnings.catch_warnings(record=True) as w:
+                rmxbyrmx0 = fsolve(lambda x: np.log10(get_mxbymx0(x)) - np.log10(mfrac), x0 = 0.1)
+                if len(w) > 0:
+                    with warnings.catch_warnings(record=True) as w:
+                        rmxbyrmx0 = fsolve(lambda x: np.log10(get_mxbymx0(x)) - np.log10(mfrac), x0 = 0.01)
+                        if len(w) > 0:
+                            rmxbyrmx0 = fsolve(lambda x: np.log10(get_mxbymx0(x)) - np.log10(mfrac), x0 = 0.001)
+            rmxbyrmx0_ar = np.append(rmxbyrmx0_ar, rmxbyrmx0)            
     else:
-        rmxbyrmx0_ar = fsolve(lambda x: get_mxbymx0(x) - mxbymx0_reqd, x0 = 0.5)
+        with warnings.catch_warnings(record=True) as w:
+            rmxbyrmx0 = fsolve(lambda x: np.log10(get_mxbymx0(x)) - np.log10(mxbymx0_reqd), x0 = 0.1)
+            if len(w) > 0:
+                with warnings.catch_warnings(record=True) as w:
+                    rmxbyrmx0 = fsolve(lambda x: np.log10(get_mxbymx0(x)) - np.log10(mxbymx0_reqd), x0 = 0.01)
+                    if len(w) > 0:
+                        rmxbyrmx0 = fsolve(lambda x: np.log10(get_mxbymx0(x)) - np.log10(mxbymx0_reqd), x0 = 0.001)
+        # rmxbyrmx0_ar = fsolve(lambda x: np.log10(get_mxbymx0(x)) - np.log10(mxbymx0_reqd), x0 = 0.1)
+        rmxbyrmx0_ar = rmxbyrmx0
     return rmxbyrmx0_ar
 
 def get_L_star(alpha, beta, Es, Mmx_by_Mmx0):
@@ -526,7 +542,7 @@ def get_L_star(alpha, beta, Es, Mmx_by_Mmx0):
         b = 12
         I = dNs_by_dE(e, alpha, beta, Es)/(1 + (a * e/e_mx_t(Mmx_by_Mmx0))**b)
         return I 
-    L = quad(L_star_integrand, 0, 1, args = (alpha, beta, Es, Mmx_by_Mmx0))
+    L = quad(L_star_integrand, 0, 1, args = (alpha, beta, Es, Mmx_by_Mmx0), epsabs = 1e-15)
     # print(L)
     return L[0]
 
@@ -692,6 +708,9 @@ def get_iso_potential(r, v0, r0):
     This function returns the isotropic potential mentioned in the Errani series of papers
     '''
     return 3.24078e-17**2*v0**2*np.log(r/r0)
+
+
+
 
 
 

@@ -97,32 +97,60 @@ This cell is to generate the plots
 '''
 # plt.figure(figsize  = (11, 6))
 # fig, ax = plt.subplots(figsize = (11, 7))
-alpha = 0.2
-def plot_lg_virgo(ax):
+
+def plot_lg_virgo(ax, alpha = 0.8, mec = None):
     '''
     this function plots all the Virgo and LG data
     Use this to avoid clutter in the main code
     '''
-    ax.plot(get_ms_from_mag(den_mg), den_re, marker = 'o', color = 'darkkhaki', label = 'Nucleated galaxies', 
-            lw = 0, ms = 4, alpha = alpha)
+    ax.plot(get_ms_from_mag(den_mg), den_re, marker = 'o', color = 'silver', label = 'Nucleated galaxies', 
+            lw = 0, ms = 4, alpha = alpha, mec = mec)
     ax.plot(get_ms_from_mag(sden_mg), sden_re, marker = 'D', color = 'orangered',  label = 'Strongly nucleated dE,Ns', 
-            lw = 0, ms = 5, alpha = alpha)
+            lw = 0, ms = 5, alpha = alpha, mec = mec)
     ax.plot(get_ms_from_mag(gc_mg), gc_re, marker = 'o', color = 'darkgray', label = 'GCs', 
             lw = 0, ms = 1.5, alpha = alpha)
     ax.plot(get_ms_from_mag(nsc_mg), nsc_re, marker = 'o', color = 'maroon',  label = 'NSCs', 
-            lw = 0, ms = 4, alpha = alpha)
+            lw = 0, ms = 4, alpha = alpha, mec = mec)
     ax.plot(get_ms_from_mag(eucd_mg), eucd_re, marker = 'D', color = 'deeppink',  label = 'UCD,Es', 
-            lw = 0, ms = 5, alpha = alpha)
+            lw = 0, ms = 5, alpha = alpha, mec = mec)
     ax.plot(get_ms_from_mag(ucd_mg), ucd_re, marker = 'o', color = 'orange', label = 'UCDs', 
-            lw = 0, ms = 5, alpha = alpha)
+            lw = 0, ms = 5, alpha = alpha, mec = mec)
     ax.plot(get_ms_from_mag(udg_mg), udg_re, marker = '^', color = 'skyblue',  label = 'UDGs', 
-            lw = 0, ms = 8, alpha = alpha)
+            lw = 0, ms = 8, alpha = alpha, mec = mec)
     '''
     Following is LG data
     '''
     ax.plot(mstr_gc,rh_gc,marker = '.',markersize=3.5,alpha=alpha,color='gray', lw = 0, label = 'LG GCs')
     # ax.errorbar(get_mag_from_ms(np.log10(mstr)), rh*1e3, yerr=err_rh, xerr=err_mstr,marker='o',ms=8, mfc='white', mec = 'black', mew=1,ecolor='darkgray',ls='none',zorder=-32, alpha = 0.8, label = 'LG')ax.errorbar(get_mag_from_ms(np.log10(mstr)), rh*1e3, yerr=err_rh, xerr=err_mstr,marker='o',ms=8, mfc='white', mec = 'black', mew=1,ecolor='darkgray',ls='none',zorder=-32, alpha = 0.8, label = 'LG')
     ax.plot(mstr, rh*1e3,marker='o',ms=4, mfc='white', mec = 'black',ls='none', alpha = alpha, label = 'LG')
+
+
+
+def plot_lg_virgo_some(ax, zorder = 300, alpha = 0.1, mec = 'black'):
+    '''
+    this function plots all the Virgo and LG data
+    We will only be using the some of the data in the main paper to avoid clutter
+    '''
+    ax.plot(np.log10(get_ms_from_mag(den_mg)), np.log10(den_re), marker = 'D', mfc='white', mec = mec, label = 'Nucleated galaxies', 
+            lw = 0, ms = 4, alpha = alpha, zorder = zorder)
+#     ax.plot(get_ms_from_mag(sden_mg), sden_re, marker = 'D', color = 'orangered',  label = 'Strongly nucleated dE,Ns', 
+#             lw = 0, ms = 5, alpha = alpha, zorder = zorder)
+#     ax.plot(get_ms_from_mag(gc_mg), gc_re, marker = 'o', color = 'darkgray', label = 'GCs', 
+#             lw = 0, ms = 1.5, alpha = alpha, zorder = zorder)
+#     ax.plot(get_ms_from_mag(nsc_mg), nsc_re, marker = 'o', color = 'maroon',  label = 'NSCs', 
+#             lw = 0, ms = 4, alpha = alpha, zorder = zorder)
+#     ax.plot(get_ms_from_mag(eucd_mg), eucd_re, marker = 'D', color = 'deeppink',  label = 'UCD,Es', 
+#             lw = 0, ms = 5, alpha = alpha, zorder = zorder)
+#     ax.plot(get_ms_from_mag(ucd_mg), ucd_re, marker = 'o', color = 'orange', label = 'UCDs', 
+#             lw = 0, ms = 5, alpha = alpha, zorder = zorder)
+#     ax.plot(get_ms_from_mag(udg_mg), udg_re, marker = '^', color = 'skyblue',  label = 'UDGs', 
+#             lw = 0, ms = 8, alpha = alpha, zorder = zorder)
+    '''
+    Following is LG data
+    '''
+#     ax.plot(mstr_gc,rh_gc,marker = '.',markersize=3.5,alpha=alpha,color='gray', lw = 0, label = 'LG GCs', zorder = zorder)
+    # ax.errorbar(get_mag_from_ms(np.log10(mstr)), rh*1e3, yerr=err_rh, xerr=err_mstr,marker='o',ms=8, mfc='white', mec = 'black', mew=1,ecolor='darkgray',ls='none',zorder=-32, alpha = 0.8, label = 'LG')ax.errorbar(get_mag_from_ms(np.log10(mstr)), rh*1e3, yerr=err_rh, xerr=err_mstr,marker='o',ms=8, mfc='white', mec = 'black', mew=1,ecolor='darkgray',ls='none',zorder=-32, alpha = 0.8, label = 'LG')
+    ax.plot(np.log10(mstr), np.log10(rh*1e3),marker='o',ms=4, mfc='white', mec = mec,ls='none', alpha = alpha, label = 'LG', zorder = zorder)
 
 
 # The following lines involve data import from LG data for velocity dispersion

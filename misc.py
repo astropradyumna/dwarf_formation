@@ -63,17 +63,21 @@ df = df.applymap(convert_to_float)
 #Starting two empty columns, in an effort to have everything in one file
 df['pos_f_ar'] = ''
 df['dist_f_ar'] = ''
+df['vel_f_ar'] = ''
 
 mbpid_ar = np.array(df['mbpid_ar'], dtype = int)
 mbpidp_ar = np.array(df['mbpidp_ar'], dtype = int) #MBP ID of one snapshot before 
 
 star_ids = np.load(this_fof_path+'star_ids.npy')
-star_pos = np.load(this_fof_path+'star_pos.npy') #
+star_pos = np.load(this_fof_path+'star_pos.npy') #in kpc, wrt center of the fof halo
+star_vel = np.load(this_fof_path+'star_vel.npy') #in km/s wrt 1000 central stellar particles of the FoF
 
 dm_ids = np.load(this_fof_path+'dm_ids.npy')
 dm_pos = np.load(this_fof_path+'dm_pos.npy')
+dm_vel = np.load(this_fof_path+'dm_vel.npy')
 
 pos_ar = np.zeros(0)
+vel_ar = np.zeros(0)
 
 popix_ar = np.zeros(0)
 
@@ -93,20 +97,30 @@ def get_positions(ix):
     This function is for parallelizing the process of finding the positions of the subhalos
     '''
     pos = [None]
+    vel = [None]
     pos2 = [None]
+    vel2 = [None]
     index = np.where(np.isin(star_ids, mbpid_ar[ix]))[0]
     # print(index)
-    if len(index) == 1: pos = star_pos[index][0]
+    if len(index) == 1: 
+        pos = star_pos[index][0]
+        vel = star_vel[index][0]
     if len(index) == 0:
         index = np.where(np.isin(dm_ids, mbpid_ar[ix]))[0]
-        if len(index) == 1: pos = dm_pos[index][0]
+        if len(index) == 1: 
+            pos = dm_pos[index][0]
+            vel = dm_vel[index][0]
 
     index2 = np.where(np.isin(star_ids, mbpidp_ar[ix]))[0]
     # print(index2)
-    if len(index2) == 1: pos2 = star_pos[index2][0]
+    if len(index2) == 1: 
+        pos2 = star_pos[index2][0]
+        vel2 = star_vel[index2][0]
     if len(index2) == 0:
         index2 = np.where(np.isin(dm_ids, mbpidp_ar[ix]))[0]
-        if len(index2) == 1: pos2 = dm_pos[index2][0]
+        if len(index2) == 1: 
+            pos2 = dm_pos[index2][0]
+            vel2 = dm_vel[index2][0]
     
     # print(pos, pos2)
     # posavg = pos + pos2 #This is the average position of the subhalo
@@ -115,17 +129,21 @@ def get_positions(ix):
         # the position would be the average of both positions, else, it is only one of these positions. 
         # It should either be a stellar particle or a DM particle
     posavg = []
+    velavg = []
     if len(pos) == 3 and len(pos2) == 3:
         posavg = np.array(pos + pos2)/2.
+        velavg = np.array(vel + vel2)/2.
     elif len(pos) ==3 and len(pos2) == 1:
         posavg = np.array(pos)
+        velavg = np.array(vel)
     elif len(pos2) == 3 and len(pos) == 1:
         posavg = np.array(pos2)
+        velavg = np.array(vel2)
     elif len(pos2) == 1 and len(pos) == 1:
         return None
 
     if len(posavg) == 3:
-        return posavg
+        return posavg, velavg
         # if len(pos_ar) == 0:
         #     pos_ar = posavg.reshape(1, -1)
         # else:
@@ -136,7 +154,7 @@ def get_positions(ix):
         return None
 
 
-results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_positions)(ix) for ix in tqdm(range(len(mbpid_ar))))
+results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_positions)(ix) for ix in tqdm(range(int(len(mbpid_ar)))))
 # len_before = len(results)
 for ix in range(len(results)):
     # if ix > 10:
@@ -147,12 +165,16 @@ for ix in range(len(results)):
     else:
         # print( np.array(results[ix].reshape(1, -1)[0]))
         # print( results[ix].reshape(1, -1)[0] )
-        df['pos_f_ar'][ix] = np.array(results[ix].reshape(1, -1)[0]).tolist()
-        df['dist_f_ar'][ix] = np.linalg.norm(results[ix].reshape(1, -1))
+        posavg, velavg = results[ix]
+        df['pos_f_ar'][ix] = posavg.reshape(1, -1)[0].tolist()
+        df['vel_f_ar'][ix] = velavg.reshape(1, -1)[0].tolist()
+        df['dist_f_ar'][ix] = np.linalg.norm(posavg.reshape(1, -1))
         if len(pos_ar) == 0:
-            pos_ar = results[ix].reshape(1, -1)
+            pos_ar = posavg.reshape(1, -1)
+            vel_ar = velavg.reshape(1, -1)
         else:
-            pos_ar = np.append(pos_ar, results[ix].reshape(1, -1), axis = 0)
+            pos_ar = np.append(pos_ar, posavg.reshape(1, -1), axis = 0)
+            vel_ar = np.append(vel_ar, velavg.reshape(1, -1), axis = 0)
         
 # none_indices = [ix for ix, value in enumerate(results) if value is None]
 # results = [value for value in results if value is not None] #Getting rid of all the None entries

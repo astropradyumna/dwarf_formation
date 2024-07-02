@@ -36,11 +36,11 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 '''
 file import
 '''
-filepath = '/home/psadh003/tng50/tng_files/'
-outpath  = '/home/psadh003/tng50/output_files/'
+filepath = '/rhome/psadh003/bigdata/tng50/tng_files/'
+outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 baseUrl = 'https://www.tng-project.org/api/TNG50-1/'
 headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
-basePath = '/mainvol/jdopp001/L35n2160TNG_fixed/output'
+basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
 
 h = 0.6744
 
@@ -54,7 +54,7 @@ all_ages = np.array(ages_df['age(Gyr)'])
 '''
 Following is the dataset of the entire list of subhalos which infalled after z = 3 and survived
 '''
-survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1_everything.csv') #This does not have 100 particle restriction as well
+survived_df = pd.read_csv(filepath + 'fof0_sh_survived_after_z3_tng50_1_everything.csv') #This does not have 100 particle restriction as well
 # survived_df = pd.read_csv(filepath + 'sh_survived_after_z3_tng50_1_nomstar.csv')
 
 ssh_sfid = survived_df['SubfindID'] #is this at infall?
@@ -81,7 +81,7 @@ Following is the import of the subhalos that get merged
 '''
 
 
-merged_df = pd.read_csv(filepath + 'sh_merged_after_z3_tng50_1_everything.csv')
+merged_df = pd.read_csv(filepath + 'fof0_sh_merged_after_z3_tng50_1_everything.csv')
 
 msh_sfid = merged_df['SubfindID']
 msh_sfid = np.array([s.strip('[]') for s in msh_sfid], dtype = int) #snap ID at infall
@@ -109,10 +109,10 @@ msh_max_mstar_snap = np.array(merged_df['max_Mstar_snap'], dtype = int)
 '''
 Following is the data of the files that we already ran. We need rh and mstar value to obtain
 '''
-outpath  = '/home/psadh003/tng50/output_files/'
+outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 rvir_fof0 = 811.66/0.6744
 
-dfs = pd.read_csv(outpath + 'surviving_evolved_fof0.csv', delimiter = ',')
+dfs = pd.read_csv(outpath + 'fof0_surviving_evolved_everything.csv', delimiter = ',')
 dfs = dfs[dfs['dist_f_ar']<rvir_fof0]
 dfs1 = dfs
 dfs = dfs[(dfs['mstar_f_ar']>1e1) & (dfs['mstar_max_ar']<1e10)]
@@ -157,7 +157,7 @@ svmx_if_ar = dfs['vmx_if_ar']
 
 
 
-dfm = pd.read_csv(outpath + 'merged_evolved_fof0_wmbp.csv', delimiter = ',')
+dfm = pd.read_csv(outpath + 'fof0_merged_evolved_wmbp_everything.csv', delimiter = ',')
 dfm = dfm[dfm['dist_f_ar']<rvir_fof0]
 dfm1 = dfm 
 dfm = dfm[(dfm['mstar_f_ar']>1e1) & (dfm['mstar_max_ar']<1e10)]

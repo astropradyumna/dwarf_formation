@@ -153,6 +153,7 @@ def save_surviving_subhalos(ix):
         print(e) 
         return 
 
+    
     rh_max_ar = subh.Rh  # this is the 2d half light radius
     vd_max_ar = subh.vd  # los vd
     mstar_max_ar = subh.mstar
@@ -166,6 +167,9 @@ def save_surviving_subhalos(ix):
     vmx_if_ar = subh.vmx0
     rmx_if_ar = subh.rmx0
     mmx_if_ar = subh.mmx0
+
+    mstar_if_ar = subh.get_mstar(where = int(subh.snap), how = 'total')
+    vmax_if_ar = subh.get_vmax(where = int(subh.snap))
 
 
     sfid_if_ar = subh.sfid
@@ -217,14 +221,31 @@ def save_surviving_subhalos(ix):
             return None
 
     # if len(pos_f_ar) == 0:
-    pos_f_ar = subh.tree['SubhaloPos'][-1, :] / h
-    pos_f_ar = pos_f_ar.reshape(1, -1)
+    # pos_f_ar = subh.tree['SubhaloPos'][0, :] / h #Maybe we should take pos at 0 which is snap 99?
+    # pos_f_ar = pos_f_ar.reshape(1, -1)
+
+    pos_f_ar = subh.get_position_wrt_center(where = 99)
+    pos_f_ar = pos_f_ar.reshape(1, -1) #This is the array after beign reshaped
+
+    vel_f_ar = np.array(subh.tree['SubhaloVel'][0, :]) #This is the peculiar velocity of the group
+    if fof_no == 0:
+        avg_vel =  np.array([-32.431934, -31.424938, -37.76695 ] )
+    elif fof_no == 1:
+        avg_vel =  np.array([124.3889,   99.56441,  -32.406525] )
+    elif fof_no == 2:
+        avg_vel =  np.array( [-110.63492,    28.92303,  5.6502633]  )
+    else:
+        # print('Average velocity not defined for this FoF group')
+        raise ValueError('Average velocity not defined for this FoF group')
+    vel_f_ar = vel_f_ar - avg_vel
+    # vel_f_ar = vel_f_ar.tolist()
+    vel_f_ar = vel_f_ar.reshape(1, -1)
     # else:
     #     this_pos = np.array(subh.tree['SubhaloPos'][-1, :] / h)
     #     pos_f_ar = np.append(pos_f_ar, this_pos.reshape(1, -1), axis=0)
 
     dist_f_ar = subh.get_dist_from_cen(where=99)
-    return vmx_if_ar, rmx_if_ar, mmx_if_ar, vmx_f_ar, rmx_f_ar, mmx_f_ar,sfid_if_ar, snap_if_ar, mstar_max_ar, rh_max_ar, vd_max_ar, mstar_f_ar, rh_f_ar, vd_f_ar,  rperi_ar, rapo_ar, torb_ar, tinf_ar, vmx_f_ar_tng, rmx_f_ar_tng, mmx_f_ar_tng, mstar_f_ar_tng, rh_f_ar_tng, vd_f_ar_tng, pos_f_ar.tolist()[0], dist_f_ar, vd_f_pl_ar, rh_f_pl_ar, mstar_f_pl_ar, vd_f_co_ar, rh_f_co_ar, mstar_f_co_ar, rh_max_pl_ar, rh_max_co_ar, mstar_max_pl_ar, mstar_max_co_ar 
+    return vmx_if_ar, rmx_if_ar, mmx_if_ar, vmx_f_ar, rmx_f_ar, mmx_f_ar,sfid_if_ar, snap_if_ar, mstar_max_ar, rh_max_ar, vd_max_ar, mstar_f_ar, rh_f_ar, vd_f_ar,  rperi_ar, rapo_ar, torb_ar, tinf_ar, vmx_f_ar_tng, rmx_f_ar_tng, mmx_f_ar_tng, mstar_f_ar_tng, rh_f_ar_tng, vd_f_ar_tng, pos_f_ar.tolist()[0], dist_f_ar, vd_f_pl_ar, rh_f_pl_ar, mstar_f_pl_ar, vd_f_co_ar, rh_f_co_ar, mstar_f_co_ar, rh_max_pl_ar, rh_max_co_ar, mstar_max_pl_ar, mstar_max_co_ar, vel_f_ar.tolist()[0], mstar_if_ar, vmax_if_ar
 
 
 
@@ -245,7 +266,7 @@ column_names = ['vmx_if_ar', 'rmx_if_ar', 'mmx_if_ar',
     'mstar_f_ar_tng', 'rh_f_ar_tng', 'vd_f_ar_tng',
     'pos_f_ar', 'dist_f_ar', 'vd_f_pl_ar', 'rh_f_pl_ar', 'mstar_f_pl_ar', 
     'vd_f_co_ar', 'rh_f_co_ar', 'mstar_f_co_ar', 
-    'rh_max_pl_ar', 'rh_max_co_ar', 'mstar_max_pl_ar', 'mstar_max_co_ar' ]
+    'rh_max_pl_ar', 'rh_max_co_ar', 'mstar_max_pl_ar', 'mstar_max_co_ar', 'vel_f_ar', 'mstar_if_ar', 'vmax_if_ar']
 
 # Create an empty DataFrame with the specified column names
 df = pd.DataFrame(columns=column_names)
@@ -295,6 +316,9 @@ def save_merged_subhalos(ix):
 
     mstar_max_ar = subh.mstar
 
+    mstar_if_ar = subh.get_mstar(where = int(subh.snap), how = 'total')
+    vmax_if_ar = subh.get_vmax(where = int(subh.snap))
+
     rh_max_pl_ar = subh.Rh_pl
     rh_max_co_ar = subh.Rh_co
 
@@ -322,7 +346,7 @@ def save_merged_subhalos(ix):
     else:
         mbpidp_ar = -1
 
-    return vmx_if_ar, rmx_if_ar, mmx_if_ar, vmx_f_ar, rmx_f_ar, mmx_f_ar, sfid_if_ar, snap_if_ar, mstar_max_ar, rh_max_ar, vd_max_ar, mstar_f_ar, rh_f_ar, vd_f_ar, rperi_ar, rapo_ar, torb_ar, tinf_ar, mbpid_ar, mbpidp_ar, vd_f_pl_ar, rh_f_pl_ar, mstar_f_pl_ar, vd_f_co_ar, rh_f_co_ar, mstar_f_co_ar, rh_max_pl_ar, rh_max_co_ar, mstar_max_pl_ar, mstar_max_co_ar
+    return vmx_if_ar, rmx_if_ar, mmx_if_ar, vmx_f_ar, rmx_f_ar, mmx_f_ar, sfid_if_ar, snap_if_ar, mstar_max_ar, rh_max_ar, vd_max_ar, mstar_f_ar, rh_f_ar, vd_f_ar, rperi_ar, rapo_ar, torb_ar, tinf_ar, mbpid_ar, mbpidp_ar, vd_f_pl_ar, rh_f_pl_ar, mstar_f_pl_ar, vd_f_co_ar, rh_f_co_ar, mstar_f_co_ar, rh_max_pl_ar, rh_max_co_ar, mstar_max_pl_ar, mstar_max_co_ar, mstar_if_ar, vmax_if_ar
 
 
 results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(save_merged_subhalos)(ix) for ix in tqdm(range(len(msh_snap))))
@@ -337,7 +361,7 @@ column_names = ['vmx_if_ar', 'rmx_if_ar', 'mmx_if_ar',
     'rperi_ar', 'rapo_ar', 'torb_ar', 'tinf_ar',
     'mbpid_ar', 'mbpidp_ar',  'vd_f_pl_ar', 'rh_f_pl_ar', 
     'mstar_f_pl_ar', 'vd_f_co_ar', 'rh_f_co_ar', 'mstar_f_co_ar', 
-    'rh_max_pl_ar', 'rh_max_co_ar', 'mstar_max_pl_ar', 'mstar_max_co_ar']
+    'rh_max_pl_ar', 'rh_max_co_ar', 'mstar_max_pl_ar', 'mstar_max_co_ar', 'mstar_if_ar', 'vmax_if_ar']
 
 
 df = pd.DataFrame(columns=column_names)

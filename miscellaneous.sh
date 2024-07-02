@@ -22,7 +22,11 @@ cd /rhome/psadh003/bigdata/tng50/dwarf_formation/
 
 # Run job utilizing all requested processors
 # Please visit the namd site for usage details: http://www.ks.uiuc.edu/Research/namd/
-FOF=0
+# FOF=0
 # python3 Ndm_extractor.py $FOF
-python3 misc.py $FOF
+# python3 misc.py $FOF
+# python3 Pradyumna_save.py
+# python3 Pradyumna_plot.py
 #python3 misc.py
+# python3 tidal_track_plot.py
+python3 poster_plots.py

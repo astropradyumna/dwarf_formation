@@ -6,8 +6,8 @@
 ###SBATCH --mem=100gb
 ###SBATCH --mem-per-cpu=G
 #SBATCH --time=48:00:00
-#SBATCH -o output_log/misc.out
-#SBATCH -e output_log/misc.err
+#SBATCH -o output_log/de.out
+#SBATCH -e output_log/de.err
 #SBATCH --mail-user=psadh003@ucr.edu
 #SBATCH --mail-type=ALL
 

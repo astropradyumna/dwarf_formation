@@ -12,6 +12,7 @@ def get_mstar_co(lvmax, alpha = 2.93, mu = -1.39, M0 = 2.43e8):
 def get_mstar_pl(lvmaxar, m1 = 3.01, m2 =  4.6, b = 3.14):
     '''
     This is the power law model from Santos-Santos 2022
+    Input is the log of Vmax
     '''
     if isinstance(lvmaxar, float):
         if lvmaxar >= np.log10(87):

@@ -986,7 +986,7 @@ def plot_surv_comparison():
     # plt.show()
 
 
-# plot_surv_comparison()
+plot_surv_comparison()
 
 def plot_difference_comparison():
     fig, axs = plt.subplots(nrows = 2, ncols = 3, figsize = (12, 6))

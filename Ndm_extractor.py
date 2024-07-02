@@ -69,6 +69,9 @@ mbpidp_ar = np.array(df['mbpidp_ar']) #MBP ID of one snapshot before
 
 star_ids = np.load(this_fof_path+'star_ids.npy')
 star_pos = np.load(this_fof_path+'star_pos.npy')
+star_mass = np.load(this_fof_path+'star_mass.npy')
+
+star_dist = np.sqrt(np.sum(star_pos**2, axis=1))
 
 dm_ids = np.load(this_fof_path+'dm_ids.npy')
 dm_pos = np.load(this_fof_path+'dm_pos.npy')
@@ -85,7 +88,16 @@ def get_Ndm(ix):
 results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_Ndm)(ix) for ix in tqdm(range(len(rpl))))
 
 
-print(results)
+print('Ndm', results)
+
+
+def get_Nstar(ix):
+    ms = rpl[ix]
+    return(np.sum(star_mass[star_dist < ms]))
+
+results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_Nstar)(ix) for ix in tqdm(range(len(rpl))))
+
+print('Nstar', results)
 # pos_ar = np.zeros(0)
 
 # popix_ar = np.zeros(0)

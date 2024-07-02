@@ -283,6 +283,18 @@ class TNG_Subhalo():
         cen_x, cen_y, cen_z = il.groupcat.loadSingle(basePath, snap_wanted, subhaloID = cen_id)['SubhaloPos']/h/(1 + all_redshifts[snap_wanted])
         dist = np.sqrt((cen_x - subh_x) ** 2 + (cen_y - subh_y) ** 2 +  (cen_z - subh_z) ** 2)
         return dist
+
+
+    def get_position_wrt_center(self, where):
+        '''
+        This gives us the position of the subhalo wrt the central subhalo in kpc directly.
+        '''
+        snap_wanted = self.__where_to_snap(where)
+        subh_x, subh_y, subh_z = self.tree['SubhaloPos'][snap_wanted == self.tree['SnapNum']][0]/h/(1 + all_redshifts[snap_wanted])
+        cen_id = self.tree['GroupFirstSub'][snap_wanted == self.tree['SnapNum']]
+        cen_x, cen_y, cen_z = il.groupcat.loadSingle(basePath, snap_wanted, subhaloID = cen_id)['SubhaloPos']/h/(1 + all_redshifts[snap_wanted])
+        pos = np.array([(subh_x - cen_x), (subh_y - cen_y), (subh_z - cen_z)])
+        return pos
     
     def get_vmax(self, where):
         '''
@@ -377,7 +389,7 @@ class TNG_Subhalo():
             if not os.path.isfile(filepath + 'cutout_'+str(shid)+'_'+str(shsnap)+'.hdf5'): #if it is not downloaded alraedy
                 subh_link = self.get_link(shsnap, shid)
                 subh = self.get(subh_link, 'r')
-                cutout_request = {'gas':'Coordinates,Masses','stars':'Coordinates,Masses,Velocities,ParticleIDs','dm':'Coordinates,ParticleIDs'}
+                cutout_request = {'gas':'Coordinates,Masses','stars':'Coordinates,Masses,Velocities,ParticleIDs','dm':'Coordinates,ParticleIDs,Velocities'}
                 cutout = self.get(subh_link+"cutout.hdf5", cutout_request)
                 os.rename('cutout_'+str(shid)+'.hdf5', filepath + 'cutout_files/cutout_'+str(shid)+'_'+str(shsnap)+'.hdf5') #Renaming the file to include the snapshot in name
         else:
@@ -391,7 +403,7 @@ class TNG_Subhalo():
                 if not os.path.isfile(filepath + 'cutout_'+str(shid)+'_'+str(shsnap)+'.hdf5'): #if it is not downloaded alraedy
                     subh_link = self.get_link(shsnap, shid)
                     subh = self.get(subh_link, 'r')
-                    cutout_request = {'gas':'Coordinates,Masses','stars':'Coordinates,Masses,ParticleIDs','dm':'Coordinates,ParticleIDs'}
+                    cutout_request = {'gas':'Coordinates,Masses','stars':'Coordinates,Masses,ParticleIDs','dm':'Coordinates,ParticleIDs,Velocities'}
                     cutout = self.get(subh_link+"cutout.hdf5", cutout_request)
                     os.rename('cutout_'+str(shid)+'.hdf5', filepath + 'cutout_files/cutout_'+str(shid)+'_'+str(shsnap)+'.hdf5') #Renaming the file to include the snapshot in name
         return None
@@ -620,6 +632,133 @@ class TNG_Subhalo():
         return Rh0/rmx0
 
 
+    def get_dm_energy_dist(self, where = None, plot = True):
+        '''
+        This is to get the energy distribution of the dark matter particles
+        We plan to compare it with the energy distribution of the NFW profile
+        '''
+        if where == None: #If the input is none, then go ahead a nd use the default values
+            shsnap = self.snap
+            shid = self.sfid
+        else: #If there is some input, use that to get the rotation curve
+            shsnap = self.__where_to_snap(where)
+            shid = int(self.tree['SubfindID'][self.tree['SnapNum'] == shsnap])
+
+        z = all_redshifts[shsnap]
+        filename = filepath + 'cutout_files/cutout_'+str(shid)+'_'+str(shsnap)+'.hdf5'
+        # if not os.path.exists(filename): #Uncomment this after the first run
+        if True:
+            # os.remove(filename)
+            print(f'Downloading data for sfid: {int(shid)} and snap: {int(shsnap)}')
+            self.download_data(int(shsnap), int(shid))
+
+        f = h5py.File(filename, 'r') #This is to read the cutout file
+        subh = il.groupcat.loadSingle(basePath,shsnap,subhaloID=shid) #This loads the subhalo position mentioned in the group catalog
+        subh_pos_x = subh['SubhaloPos'][0]/h/(1+z)
+        subh_pos_y = subh['SubhaloPos'][1]/h/(1+z)
+        subh_pos_z = subh['SubhaloPos'][2]/h/(1+z)
+        subh_vel_x = subh['SubhaloVel'][0]
+        subh_vel_y = subh['SubhaloVel'][1]
+        subh_vel_z = subh['SubhaloVel'][2]
+        dm_coords = f['PartType1']['Coordinates'] #This is for individual DM particles
+        dm_xcoord = dm_coords[:, 0]/h/(1+z) - subh_pos_x
+        dm_ycoord = dm_coords[:, 1]/h/(1+z) - subh_pos_y
+        dm_zcoord = dm_coords[:, 2]/h/(1+z) - subh_pos_z
+
+        dm_coords = f['PartType1']['Velocities'] #Not sure if this will get loaded
+        dm_xvel = dm_coords[:, 0]*np.sqrt(1 / (1+z)) - subh_vel_x
+        dm_yvel = dm_coords[:, 1]*np.sqrt(1 / (1+z)) - subh_vel_y
+        dm_zvel = dm_coords[:, 2]*np.sqrt(1 / (1+z)) - subh_vel_z
+
+        if 'PartType0' in f.keys():
+            cg = 1 #telling that gas is present
+            gas_coords = f['PartType0']['Coordinates']
+            gas_xcoord = gas_coords[:, 0]/h/(1+z) - subh_pos_x
+            gas_ycoord = gas_coords[:, 1]/h/(1+z) - subh_pos_y
+            gas_zcoord = gas_coords[:, 2]/h/(1+z) - subh_pos_z
+            gas_masses = np.array(f['PartType0']['Masses'])*1e10/h
+        else:
+            cg = 0 
+
+        star_ids = f['PartType4']['ParticleIDs']
+        star_coords = f['PartType4']['Coordinates']
+        star_xcoord = star_coords[:, 0]/h/(1+z) - subh_pos_x
+        star_ycoord = star_coords[:, 1]/h/(1+z) - subh_pos_y
+        star_zcoord = star_coords[:, 2]/h/(1+z) - subh_pos_z
+        star_vels = f['PartType4']['Velocities']
+        star_xvel = star_vels[:, 0]*np.sqrt(1 / (1+z)) - subh_vel_x
+        star_yvel = star_vels[:, 1]*np.sqrt(1 / (1+z)) - subh_vel_y
+        star_zvel = star_vels[:, 2]*np.sqrt(1 / (1+z)) - subh_vel_z
+        star_masses = np.array(f['PartType4']['Masses'])*1e10/h
+
+        print(f'Nstars = {len(star_xcoord)} and Ndm = {len(dm_xcoord)}')
+
+        def get_potential_energy(x, y, z):
+            '''
+            This returns the potential energy of the star at the given position in (km/s)^2
+            '''
+            G1 = 4.30092e-6 #kpc/Msun * (km/s)^2
+            # pe_dm = mass_dm * np.sum(1/np.sqrt((x - dm_xcoord)**2 + (y - dm_ycoord)**2 + (z - dm_zcoord)**2))
+            pe_gas = 0
+            if cg == 1: pe_gas = np.sum(gas_masses/np.sqrt((x - gas_xcoord)**2 + (y - gas_ycoord)**2 + (z - gas_zcoord)**2))
+            pe_dm = 0 #It should be noted that this is for stars
+            pe_stars = np.sum(star_masses/np.sqrt((x - star_xcoord)**2 + (y - star_ycoord)**2 + (z - star_zcoord)**2))
+            for ix in range(len(dm_xcoord)):
+                if dm_xcoord[ix] == x and dm_ycoord[ix] == y and dm_zcoord[ix] == z:
+                    continue
+                pe_dm = pe_dm + mass_dm/np.sqrt((x - dm_xcoord[ix])**2 + (y - dm_ycoord[ix])**2 + (z - dm_zcoord[ix])**2)
+            pe = -G1 * (pe_dm + pe_gas + pe_stars)
+            return pe
+
+        def get_total_energy(ix):
+            ke = 0.5 * (dm_xvel[ix]**2 + dm_yvel[ix]**2 + dm_zvel[ix]**2)
+            pe = get_potential_energy(dm_xcoord[ix], dm_ycoord[ix], dm_zcoord[ix])
+            # te = pe + ke
+            return ke, pe
+
+        results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_total_energy)(ix) for ix in (range(len(dm_xcoord))))
+        ke_ar = np.zeros(0)
+        pe_ar = np.zeros(0)
+        for ix in range(len(results)):
+            ke_ar = np.append(ke_ar, results[ix][0])
+            pe_ar = np.append(pe_ar, results[ix][1])
+
+        te_ar = ke_ar + pe_ar #This is the array of total energy from the particle data
+        phi0 = phi0_tng = get_potential_energy(0, 0, 0) #This would be the potential energy at the center of the subhalo, no spherical assumption
+        # phi0 =  -4.67 * self.vmx0**2 #This is the potential energy at the center of the subhalo assuming NFW profile, for testing
+        eps_ar = 1 - te_ar/phi0
+
+        eps_ar = eps_ar[eps_ar > 0]
+        bins = np.linspace(max(-3, np.log10(min(eps_ar))), np.log10(max(eps_ar)), 100)
+
+        counts, bins, bars = plt.hist(np.log10(eps_ar), bins = bins)
+        plt.close()
+        bin_centers = 10**((bins[:-1] + bins[1:])/2)
+        bin_centers = bin_centers[:-1]
+        bin_width = np.diff(bins)
+        dN_by_dlogE_tng = counts/bin_width/len(star_xvel)
+        dN_by_dE_tng = dN_by_dlogE_tng[:-1] / bin_centers / np.log(10)
+        
+        if plot:
+            fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize = (6, 6))
+            eps_pl = np.linspace(min(bin_centers), max(bin_centers), 30)
+            ax.plot(np.log10(bin_centers), np.log10(dN_by_dE_tng), 'kx', label = 'Pariwise potential - TNG')
+            ax.set_xlabel(r'$\log_{10}(\epsilon)$')
+            ax.set_ylabel(r'$\log_{10}(dN/dE)$')
+            ax.set_title('subhalo ID = '+str(shid)+' at snapshot '+str(shsnap) + ' and', fontsize = 10)
+            ax.legend(fontsize = 8, loc = 'lower left')
+
+            plt.tight_layout()
+            plt.savefig(plotpath + 'energy_dists/dm_energy_dist_'+str(shid)+'_'+str(shsnap)+'.png')
+            plt.close()
+
+
+
+
+
+        return None
+
+
     def get_star_energy_dist(self, where = None, rl = 'linear', h = 0.6774, plot = False, spherical = True):
         '''
         This is without the assumption of spherical symmetry. 
@@ -634,6 +773,9 @@ class TNG_Subhalo():
 
         z = all_redshifts[shsnap]
         filename = filepath + 'cutout_files/cutout_'+str(shid)+'_'+str(shsnap)+'.hdf5'
+        if not os.path.exists(filename):
+            print(f'Downloading data for sfid: {int(shid)} and snap: {int(shsnap)}')
+            self.download_data(int(shsnap), int(shid))
         f = h5py.File(filename, 'r') #This is to read the cutout file
         subh = il.groupcat.loadSingle(basePath,shsnap,subhaloID=shid) #This loads the subhalo position mentioned in the group catalog
         subh_pos_x = subh['SubhaloPos'][0]/h/(1+z)
@@ -658,6 +800,7 @@ class TNG_Subhalo():
         else:
             cg = 0 
 
+        star_ids = f['PartType4']['ParticleIDs']
         star_coords = f['PartType4']['Coordinates']
         star_xcoord = star_coords[:, 0]/h/(1+z) - subh_pos_x
         star_ycoord = star_coords[:, 1]/h/(1+z) - subh_pos_y
@@ -690,11 +833,18 @@ class TNG_Subhalo():
         def get_total_energy(ix):
             ke = 0.5 * (star_xvel[ix]**2 + star_yvel[ix]**2 + star_zvel[ix]**2)
             pe = get_potential_energy(star_xcoord[ix], star_ycoord[ix], star_zcoord[ix])
-            te = pe + ke
-            return te
+            # te = pe + ke
+            return ke, pe
 
 
-        te_ar = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_total_energy)(ix) for ix in (range(len(star_masses))))
+        results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_total_energy)(ix) for ix in (range(len(star_masses))))
+        ke_ar = np.zeros(0)
+        pe_ar = np.zeros(0)
+        for ix in range(len(results)):
+            ke_ar = np.append(ke_ar, results[ix][0])
+            pe_ar = np.append(pe_ar, results[ix][1])
+
+        te_ar = ke_ar + pe_ar #This is the array of total energy from the particle data
         phi0 = phi0_tng = get_potential_energy(0, 0, 0) #This would be the potential energy at the center of the subhalo, no spherical assumption
         # phi0 =  -4.67 * self.vmx0**2 #This is the potential energy at the center of the subhalo assuming NFW profile, for testing
         eps_ar = 1 - te_ar/phi0
@@ -871,9 +1021,12 @@ class TNG_Subhalo():
 
         if int(shsnap) == 99 and int(shid) == 163:
             jess_data = np.load('/rhome/psadh003/shared/for_prady/sfid_163_snap_99_energy_info.npy', allow_pickle = True)
-            E_jess = jess_data[:, 9] + jess_data[:, 10]
-            eps_jess = 1 - E_jess/phi0 #ISSUE: Recheck Phi0 values for Jess
-            bins_jess = np.linspace(np.log10(min(eps_jess)), np.log10(max(eps_jess)), 75)
+            U_jess = jess_data[:, 9]
+            T_jess = jess_data[:, 10]
+            PID_jess = jess_data[:, 0] #These are the particle IDs for Jess' subhalo
+            E_jess = U_jess + T_jess
+            eps_jess = 1 - E_jess/phi0_tng #ISSUE: Recheck Phi0 values for Jess
+            bins_jess = np.linspace(max(-3, np.log10(min(eps_jess))), np.log10(max(eps_jess)), 100)
             counts_jess, bins_jess, bars_jess = plt.hist(np.log10(eps_jess), bins = bins_jess)
 
             plt.close()
@@ -882,8 +1035,33 @@ class TNG_Subhalo():
 
             bin_centers_jess = bin_centers_jess[:-1]
             bin_width_jess = np.diff(bins_jess)
-            dN_by_dE_jess = counts_jess/bin_width_jess/len(E_jess)
-            dN_by_dE_jess = dN_by_dE_jess[:-1]
+            dN_by_dlogE_jess = counts_jess/bin_width_jess/len(PID_jess)
+            dN_by_dE_jess = dN_by_dlogE_jess[:-1] / bin_centers_jess / np.log(10)
+
+            fig, ax = plt.subplots(nrows = 1, ncols = 3, figsize = (18, 6)) 
+            for tix, tng_id in enumerate(star_ids):
+                if tng_id in PID_jess:
+                    jix = np.where(PID_jess == tng_id)[0]
+                    ax[0].scatter(ke_ar[tix], T_jess[jix], color = 'k', s = 1)
+                    ax[1].scatter(pe_ar[tix], U_jess[jix], color = 'k', s = 1)
+                    ax[2].scatter(te_ar[tix], E_jess[jix], color = 'k', s = 1)
+            dummy = np.linspace(ax[0].get_xlim()[0], ax[0].get_xlim()[1], 3) 
+            ax[0].plot(dummy, dummy, ls ='--', color = 'orange', lw = 2, zorder = 0, alpha = 0.5)
+            dummy2 = np.linspace(ax[1].get_xlim()[0], ax[1].get_xlim()[1], 3)
+            ax[1].plot(dummy2, dummy2, ls ='--', color = 'orange', lw = 2, zorder = 0, alpha = 0.5)
+            dummy3 = np.linspace(ax[2].get_xlim()[0], ax[2].get_xlim()[1], 3)
+            ax[2].plot(dummy3, dummy3, ls ='--', color = 'orange', lw = 2, zorder = 0, alpha = 0.5)
+            
+            ax[0].set_xlabel('TNG KE')
+            ax[0].set_ylabel('Jess KE')
+            ax[1].set_xlabel('TNG PE')
+            ax[1].set_ylabel('Jess PE')
+            ax[2].set_xlabel('TNG TE')
+            ax[2].set_ylabel('Jess TE')
+            plt.tight_layout()
+            plt.savefig(plotpath + 'energy_dists/jess_energy_comparison_'+str(shid)+'_'+str(shsnap)+'.png')
+                    # break
+
 
 
         if plot:
