@@ -31,7 +31,8 @@ h = 0.6774
 mass_dm = 3.07367708626464e-05 * 1e10/h #This is for TNG50-1
 G = 4.5390823753559603e-39 #This is in kpc, Msun and seconds
 
-mvir = 1.5e8
+# mvir = 1.5e11 #1.5e8 for 1e6 Msun and 
+mvir = 1.5e11 #1.5e8 for 1e6 Msun and 
 conc=concentration.concentration(0.6744 * mvir, 'vir', 0, 'ludlow16')
 print(conc)
 
@@ -74,7 +75,7 @@ def get_converted_nfw_params(m_vir, c_vir):
 rmx0, vmx0 = get_converted_nfw_params(mvir, conc)
 
 mstar = 10**get_mstar_pl(np.log10(vmx0)) #This would be the stellar mass corresponding to the virial mass in power law model
-rh = 10**get_lrh(np.log10(mstar))/2
+rh = 10**get_lrh(np.log10(mstar))
 
 print(np.log10(mstar), rh) #This is the initial stellar mass and rh for the subhalo
 
@@ -119,12 +120,13 @@ for frem in frem_ar:
 
 rh_ar = rh_ar * 1e3 #coverting the rh to parsecs
 
-df = pd.DataFrame({'mstar': mstar_ar, 'rh': rh_ar})
+df = pd.DataFrame({'mstar': mstar_ar, 'rh': rh_ar, 'frem': frem_ar})
 
 
 filepath = '/bigdata/saleslab/psadh003/misc_files/'
 
-df.to_csv(filepath + '1e6_tidal_tracks.csv', index = False)
+# df.to_csv(filepath + '1e6_tidal_tracks.csv', index = False)
+# df.to_csv(filepath + '5e9_tidal_tracks.csv', index = False)
 
 # plt.plot(np.log10(mstar_ar), np.log10(rh_ar))
 # plt.show()

@@ -539,7 +539,7 @@ class Subhalo(TNG_Subhalo):
             ts = np.linspace(0, -10 , 1000) #This is for 13.8 Gyr before the given snapshot. 
         else: #Since I am already raising a ValueError before, I am using else directly here
             ts = np.linspace(0, 10 - te_time.item(), 500) #This is only for the remaining time
-
+    
         subhalo_orbit.integrate(ts * u.Gyr, potential, method = 'leapfrog')
 
         try:

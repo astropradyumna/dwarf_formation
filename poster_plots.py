@@ -560,7 +560,7 @@ if True: #This is a section for getting cutoff values of merged subhalos
 # IPython.embed()
 
 # print('Data import is a success!')
-label_font = 24
+label_font = 26
 legend_size = 14
 
 
@@ -774,7 +774,7 @@ def niusha_plot(rproj = 300, zmax = 50):
 
 
 
-    fig.savefig(this_fof_plotppath +'niusha_plot.png', bbox_inches='tight', dpi = 3000)
+    fig.savefig(this_fof_plotppath +'niusha_plot.png', bbox_inches='tight', dpi = 300)
     return None
 
 niusha_plot()
@@ -845,11 +845,11 @@ def plot_radial_density_dist_3panel():
         
 
         axs[jx].plot(rpl2, Ntng_ar, 'bo-', label = r'TNG')
-        axs[jx].plot(rpl2, pN_ar, color = 'red', label = r'Power law', lw  = 2.5)
-        axs[jx].plot(rpl2, cN_ar, color = 'darkgreen', label = r'Cutoff', lw = 2.5)
+        axs[jx].plot(rpl2, pN_ar, color = 'red', label = r'Power law', lw  = 3)
+        axs[jx].plot(rpl2, cN_ar, color = 'darkgreen', label = r'Cutoff', lw = 3)
 
-        axs[jx].plot(rpl, Ndm_ar, color = 'black', ls = '--', label = 'DM in TNG', alpha = 0.5)
-        axs[jx].plot(rpl, Mstar_ar, color = 'black', ls = ':', label = 'Stars in TNG', alpha = 0.5)
+        # axs[jx].plot(rpl, Ndm_ar, color = 'black', ls = '--', label = 'DM in TNG', alpha = 0.5, lw = 2)
+        # axs[jx].plot(rpl, Mstar_ar, color = 'black', ls = ':', label = 'Stars in TNG', alpha = 0.5)
         axs[jx].plot(rpl, Nstar_and_dm, color = 'black', ls = '-', label = 'Stars and DM in TNG', alpha = 0.5)
         if jx == 0:
             axs[jx].legend(fontsize = legend_size)
@@ -860,7 +860,7 @@ def plot_radial_density_dist_3panel():
         axs[jx].set_xscale('log')
         axs[jx].set_yscale('log')
     plt.tight_layout()
-    plt.savefig(this_fof_plotppath + 'radial_density_dist_3panel.png', dpi = 1800)
+    plt.savefig(this_fof_plotppath + 'radial_density_dist_3panel.png', dpi = 300)
 
     return
 
@@ -880,15 +880,15 @@ def plot_abundance_matching():
     psmstar_if_ar[psmstar_if_ar == 0] = 1e3
     lvmax_pl = np.linspace(0.1, np.log10(600), 100)
     ax.scatter(np.log10(psvmax_if_ar), np.log10(psmstar_if_ar), color = 'gray', marker = 'o', s = 1, alpha = 0.1, label = 'TNG at infall')
-    ax.plot(lvmax_pl, get_mstar_pl(lvmax_pl), color = 'red', label = 'Power law', lw = 2)
+    ax.plot(lvmax_pl, get_mstar_pl(lvmax_pl), color = 'red', label = 'Power law', lw = 3)
     ax.fill_between(lvmax_pl, get_mstar_pl(lvmax_pl) - get_scatter(lvmax_pl), get_mstar_pl(lvmax_pl) + get_scatter(lvmax_pl), color = 'red', alpha = 0.1)
-    ax.plot(lvmax_pl, get_mstar_co(lvmax_pl), color = 'darkgreen', label = 'Cutoff', ls = '--', lw = 2)
+    ax.plot(lvmax_pl, get_mstar_co(lvmax_pl), color = 'darkgreen', label = 'Cutoff', ls = '--', lw = 3)
     ax.fill_between(lvmax_pl, get_mstar_co(lvmax_pl) - get_scatter(lvmax_pl), get_mstar_co(lvmax_pl) + get_scatter(lvmax_pl), color = 'darkgreen', alpha = 0.1)
     ax.set_ylabel(r'$\log M_{\rm{star}}(M_\odot)$', fontsize = label_font)
     ax.set_xlabel(r'$\log V_{\rm{max}}(\rm{km/s})$', fontsize = label_font)
-    ax.axhline(np.log10(5e6), ls = ':', color = 'gray', alpha = 0.4)
+    ax.axhline(np.log10(5e6), ls = ':', color = 'gray', alpha = 0.4, lw = 3)
     ax.text(0.31, 5.8, 'Unresolved in size\nand mass', fontsize = legend_size)
-    ax.axhline(np.log10(1e8), ls = ':', color = 'gray', alpha = 0.4)
+    ax.axhline(np.log10(1e8), ls = ':', color = 'gray', alpha = 0.4, lw = 3)
     ax.text(0.31, 7, 'Unresolved in size,\nresolved in mass', fontsize = legend_size)
     ax.text(0.31, 9, 'Resolved in size and mass', fontsize = legend_size)
 
@@ -943,15 +943,16 @@ def tidal_tracks():
         return l10rhbyrmx0_ar
 
         # return l10rhbyrmx0
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/2), c = 'r', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/2$')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/4), c = 'orange', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/4$')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/8), c = 'skyblue', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/8$')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/16), c = 'darkblue', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/16$')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/66), c = 'purple', ls = ':')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/250), c = 'limegreen', ls = ':')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/1000), c = 'darkgreen', ls = ':')
+    lw = 2.5
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/2), c = 'r', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/2$', lw = lw)
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/4), c = 'orange', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/4$', lw = lw)
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/8), c = 'skyblue', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/8$', lw = lw)
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/16), c = 'darkblue', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/16$', lw = lw)
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/66), c = 'purple', ls = ':', lw = lw)
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/250), c = 'limegreen', ls = ':', lw = lw)
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/1000), c = 'darkgreen', ls = ':', lw = lw)
 
-    ax.plot(fpl, np.log10(get_rmxbyrmx0(10**fpl)), c = 'black', ls = '--')
+    ax.plot(fpl, np.log10(get_rmxbyrmx0(10**fpl)), c = 'black', ls = '--', lw = lw)
     ax.annotate(r'$r_{\rm{mx}}$', xy = (fpl[-20], np.log10(get_rmxbyrmx0(10**fpl))[-20]), xytext = (fpl[-20], 0.8* np.log10(get_rmxbyrmx0(10**fpl))[-20]), 
                 rotation=30, color='black', fontsize=legend_size, rotation_mode='anchor')
 
@@ -962,13 +963,13 @@ def tidal_tracks():
     ax.tick_params(axis='x', which = 'both', direction = 'in')
 
     # print('Why are you like this!', get_LbyL0(fpl, 1/2))
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/2)), c = 'r')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/4)), c = 'orange')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/8)), c = 'skyblue')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/16)), c = 'darkblue')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/66)), c = 'purple', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/66$', ls = ':')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/250)), c = 'limegreen', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/250$', ls = ':')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/1000)), c = 'darkgreen', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/1000$', ls = ':')
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/2)), c = 'r', lw = lw)
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/4)), c = 'orange', lw = lw)
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/8)), c = 'skyblue', lw = lw)
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/16)), c = 'darkblue', lw = lw)
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/66)), c = 'purple', lw = lw, label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/66$', ls = ':')
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/250)), c = 'limegreen', lw = lw, label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/250$', ls = ':')
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/1000)), c = 'darkgreen', lw = lw, label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/1000$', ls = ':')
 
     ax2.set_xlabel(r'$\log M_{\rm{mx}}/M_{\rm{mx0}}$', fontsize = label_font)
     ax2.set_ylabel(r'$\log M_{\rm{star}}/M_{\rm{star,0}}$', fontsize = label_font)
@@ -1018,8 +1019,8 @@ def plot_mass_fn_completeness():
             ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', ls = ls_ar[jx], label = r'Cutoff all', alpha = 0.5)
             ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', ls = ls_ar[jx], label = r'Power all', alpha = 0.5)
         else:
-            ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', ls = ls_ar[jx], label = r'Cutoff $\Sigma < $'+str(sigma_pl_ar[jx]), alpha = 0.5, lw = 2.2)
-            ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', ls = ls_ar[jx], label = r'Power law $\Sigma < $'+str(sigma_pl_ar[jx]), alpha = 0.5, lw = 2.2)
+            ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', ls = ls_ar[jx], label = r'Cutoff $\Sigma < $'+str(sigma_pl_ar[jx]), alpha = 0.5, lw = 3)
+            ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', ls = ls_ar[jx], label = r'Power law $\Sigma < $'+str(sigma_pl_ar[jx]), alpha = 0.5, lw =3)
         ax.set_xscale('log')
         ax.set_yscale('log')
     ax.tick_params(axis='both', which = 'both', left=True, right=True, bottom = True, top = True, direction = 'in')
@@ -1044,8 +1045,8 @@ def plot_mass_fn_completeness():
                 pmstar_pl_ar =np.append(pmstar_pl_ar, mstarpl[jx])
             except Exception as e:
                 pass
-        ax2.plot(cmstar_pl_ar, ccompleteness_ar, color = 'darkgreen', ls = ls_ar[ix], label = r'Cutoff $\Sigma < $'+str(sigma_pl_ar[ix]))
-        ax2.plot(pmstar_pl_ar, pcompleteness_ar, color = 'red', ls = ls_ar[ix], label = r'Power law $\Sigma < $'+str(sigma_pl_ar[ix]))
+        ax2.plot(cmstar_pl_ar, ccompleteness_ar,lw = 3, color = 'darkgreen', ls = ls_ar[ix], label = r'Cutoff $\Sigma < $'+str(sigma_pl_ar[ix]))
+        ax2.plot(pmstar_pl_ar, pcompleteness_ar, lw = 3, color = 'red', ls = ls_ar[ix], label = r'Power law $\Sigma < $'+str(sigma_pl_ar[ix]))
     
     ax2.set_ylim(bottom = -0.1, top = 1.2)
     ax2.tick_params(axis='both', which = 'both', left=True, right=True, bottom = True, top = True, direction = 'in')
@@ -1102,8 +1103,8 @@ def plot_subh_mf_core():
                 cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > ms) & (cmfof == this_fof) & (cm_proj_dist <= rcore_virgo) ]))
                 cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > ms) & (csfof == this_fof) & (cs_proj_dist <= rcore_virgo) ]))
     
-    ax.plot(mstarpl, get_med_values(cNs_ar + cNm_ar, 9), color = 'darkgreen', label = 'Cutoff', alpha = 0.5, ls = '-')
-    ax.plot(mstarpl, get_med_values(pNs_ar + pNm_ar, 9), color = 'red', label = 'Power', alpha = 0.5, ls = '-')
+    ax.plot(mstarpl, get_med_values(cNs_ar + cNm_ar, 9), color = 'darkgreen', label = 'Cutoff', alpha = 0.5, ls = '-', lw = 2.5)
+    ax.plot(mstarpl, get_med_values(pNs_ar + pNm_ar, 9), color = 'red', label = 'Power', alpha = 0.5, ls = '-', lw = 2.5)
     ax.fill_between(mstarpl, get_quantiles(cNs_ar + cNm_ar, 9)[0], get_quantiles(cNs_ar + cNm_ar, 9)[1], color = 'darkgreen', alpha = 0.3)
     ax.fill_between(mstarpl, get_quantiles(pNs_ar + pNm_ar, 9)[0], get_quantiles(pNs_ar + pNm_ar, 9)[1], color = 'red', alpha = 0.3)
     ax.plot(10**fmstar, fngal_cum, color = 'black', marker = 'o', label = 'Ferrarese+16 Virgo core')

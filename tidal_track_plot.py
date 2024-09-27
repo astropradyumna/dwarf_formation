@@ -75,10 +75,16 @@ for ix in tqdm(range(len(snap_if_ar))): #This loop runs over all the subhalos th
     '''
     Assuming that this is for FoF0 as of now. Loops over all the subhalos with cuts defined above.
     '''
-    if ix > 5:
+    if ix != 2:
         continue
-    subh = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99, central_sfid_99 = 0)
+    # subh = Subhalo(snap = snap_if_ar[ix], sfid = sfid_if_ar[ix], last_snap = 99, central_sfid_99 = 0)
+    subh = Subhalo(snap = 99, sfid = 677855, last_snap = 99, central_sfid_99 = 0)
     subh.get_dm_energy_dist()
+    # try:
+    #     subh.get_dm_energy_dist()
+    # except Exception as e:
+    #     print(e)
+    #     continue
 
 sys.exit()
 

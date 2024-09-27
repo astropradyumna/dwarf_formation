@@ -18,6 +18,7 @@ from scipy.optimize import fsolve
 from scipy import stats
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.collections as mc
+from matplotlib.legend_handler import HandlerTuple
 from testing_errani import get_rot_curve, get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0, l10rbyrmx0_1by4_spl,l10rbyrmx0_1by2_spl, l10rbyrmx0_1by8_spl, l10rbyrmx0_1by16_spl, l10vbyvmx0_1by2_spl, l10vbyvmx0_1by4_spl, l10vbyvmx0_1by8_spl, l10vbyvmx0_1by16_spl, l10rbyrmx0_1by66_spl, l10rbyrmx0_1by250_spl, l10rbyrmx0_1by1000_spl, l10vbyvmx0_1by66_spl, l10vbyvmx0_1by250_spl, l10vbyvmx0_1by1000_spl
 import matplotlib.ticker as ticker
 
@@ -567,13 +568,22 @@ label_font = 20
 
 
 
-def plot_radial_density_dist_3panel():
+
+
+
+
+def plot_properties_3panel(fofno = 0):
     '''
     This is to plot the radial density of subhalos in 3 panels for FoF0 in three mass ranges
     '''
-    fig, axs = plt.subplots(1, 3, figsize = (18, 6))
-    Ndm_ar =[721148, 778322, 839804, 905710, 976898, 1054137, 1137501, 1227676, 1325214, 1430877, 1545758, 1669730, 1805234, 1953330, 2114837, 2291374, 2484727, 2697632, 2929798, 3184435, 3461447, 3763454, 4093457, 4451911, 4839639, 5261067, 5717234, 6218030, 6759960, 7335930, 7958128, 8628601, 9351223, 10124871, 10954252, 11843815, 12803150, 13852694, 14955612, 16130128, 17390800, 18724037, 20147057, 21672913, 23303629, 25059909, 26945144, 28965678, 31153056, 33453105, 35883715, 38490363, 41284274, 44311781, 47556207, 50917974, 54416144, 58216056, 62174887, 66291888, 70515423, 74848372, 79404305, 84157527, 89209147, 94471028, 99857920, 105317116, 111028328, 116939549, 123289439, 130030026, 137275327, 145069112, 153548719, 161907244, 169905804, 177886839, 185830162, 194592334, 203383663, 212695914, 222350306, 232159462, 242040951, 251514511, 260202731, 268769952, 278511000, 289919552, 300273807, 309815832, 319892274, 331241231, 342176869, 352467656, 365061316, 375410309, 383675808, 390894527]
-    Mstar_ar = [1215764100000.0, 1254275500000.0, 1293225400000.0, 1332839300000.0, 1373199400000.0, 1414346300000.0, 1456465800000.0, 1499649100000.0, 1543340700000.0, 1587188200000.0, 1631277400000.0, 1676285400000.0, 1723836500000.0, 1770465500000.0, 1818711300000.0, 1868407000000.0, 1921189400000.0, 1975527500000.0, 2031582000000.0, 2091765200000.0, 2152079200000.0, 2214667500000.0, 2279144400000.0, 2346879800000.0, 2415670000000.0, 2483960200000.0, 2560993300000.0, 2639518500000.0, 2717090000000.0, 2789425800000.0, 2865190000000.0, 2938990200000.0, 3014576300000.0, 3088882300000.0, 3166544000000.0, 3234522200000.0, 3303603000000.0, 3403499700000.0, 3475743700000.0, 3541706200000.0, 3611283200000.0, 3671716800000.0, 3740037800000.0, 3803736700000.0, 3863171600000.0, 3924207300000.0, 3984920700000.0, 4047178600000.0, 4116152300000.0, 4179430200000.0, 4235346300000.0, 4302655000000.0, 4361331100000.0, 4432361700000.0, 4508296400000.0, 4587731300000.0, 4649099700000.0, 4724291500000.0, 4775264400000.0, 4826232000000.0, 4874225000000.0, 4915582000000.0, 4958145500000.0, 4994681500000.0, 5043397300000.0, 5096712000000.0, 5136737400000.0, 5176501500000.0, 5222220400000.0, 5250391500000.0, 5282301000000.0, 5315951000000.0, 5351944000000.0, 5401151000000.0, 5537075300000.0, 5626221000000.0, 5672295500000.0, 5750817000000.0, 5774166000000.0, 5900201400000.0, 5929926000000.0, 5960066700000.0, 5986782300000.0, 6014626000000.0, 6088623000000.0, 6145640500000.0, 6163691000000.0, 6178112000000.0, 6282066000000.0, 6651228000000.0, 6749657000000.0, 6765084700000.0, 6809034700000.0, 6949706000000.0, 6986958000000.0, 7002995600000.0, 7282621400000.0, 7327393000000.0, 7357744000000.0, 7428319000000.0]
+    fig, axes = plt.subplots(3, 3, figsize = (18, 18))
+    axs = axes[0, :]
+    if fofno == 0:
+        Ndm_ar =[721148, 778322, 839804, 905710, 976898, 1054137, 1137501, 1227676, 1325214, 1430877, 1545758, 1669730, 1805234, 1953330, 2114837, 2291374, 2484727, 2697632, 2929798, 3184435, 3461447, 3763454, 4093457, 4451911, 4839639, 5261067, 5717234, 6218030, 6759960, 7335930, 7958128, 8628601, 9351223, 10124871, 10954252, 11843815, 12803150, 13852694, 14955612, 16130128, 17390800, 18724037, 20147057, 21672913, 23303629, 25059909, 26945144, 28965678, 31153056, 33453105, 35883715, 38490363, 41284274, 44311781, 47556207, 50917974, 54416144, 58216056, 62174887, 66291888, 70515423, 74848372, 79404305, 84157527, 89209147, 94471028, 99857920, 105317116, 111028328, 116939549, 123289439, 130030026, 137275327, 145069112, 153548719, 161907244, 169905804, 177886839, 185830162, 194592334, 203383663, 212695914, 222350306, 232159462, 242040951, 251514511, 260202731, 268769952, 278511000, 289919552, 300273807, 309815832, 319892274, 331241231, 342176869, 352467656, 365061316, 375410309, 383675808, 390894527]
+        Mstar_ar = [1215764100000.0, 1254275500000.0, 1293225400000.0, 1332839300000.0, 1373199400000.0, 1414346300000.0, 1456465800000.0, 1499649100000.0, 1543340700000.0, 1587188200000.0, 1631277400000.0, 1676285400000.0, 1723836500000.0, 1770465500000.0, 1818711300000.0, 1868407000000.0, 1921189400000.0, 1975527500000.0, 2031582000000.0, 2091765200000.0, 2152079200000.0, 2214667500000.0, 2279144400000.0, 2346879800000.0, 2415670000000.0, 2483960200000.0, 2560993300000.0, 2639518500000.0, 2717090000000.0, 2789425800000.0, 2865190000000.0, 2938990200000.0, 3014576300000.0, 3088882300000.0, 3166544000000.0, 3234522200000.0, 3303603000000.0, 3403499700000.0, 3475743700000.0, 3541706200000.0, 3611283200000.0, 3671716800000.0, 3740037800000.0, 3803736700000.0, 3863171600000.0, 3924207300000.0, 3984920700000.0, 4047178600000.0, 4116152300000.0, 4179430200000.0, 4235346300000.0, 4302655000000.0, 4361331100000.0, 4432361700000.0, 4508296400000.0, 4587731300000.0, 4649099700000.0, 4724291500000.0, 4775264400000.0, 4826232000000.0, 4874225000000.0, 4915582000000.0, 4958145500000.0, 4994681500000.0, 5043397300000.0, 5096712000000.0, 5136737400000.0, 5176501500000.0, 5222220400000.0, 5250391500000.0, 5282301000000.0, 5315951000000.0, 5351944000000.0, 5401151000000.0, 5537075300000.0, 5626221000000.0, 5672295500000.0, 5750817000000.0, 5774166000000.0, 5900201400000.0, 5929926000000.0, 5960066700000.0, 5986782300000.0, 6014626000000.0, 6088623000000.0, 6145640500000.0, 6163691000000.0, 6178112000000.0, 6282066000000.0, 6651228000000.0, 6749657000000.0, 6765084700000.0, 6809034700000.0, 6949706000000.0, 6986958000000.0, 7002995600000.0, 7282621400000.0, 7327393000000.0, 7357744000000.0, 7428319000000.0]
+    elif fofno == 1:
+        Ndm_ar =  [786023, 841839, 902134, 966380, 1035837, 1110113, 1189602, 1274186, 1364366, 1460423, 1562817, 1672316, 1788483, 1913425, 2046885, 2190148, 2343775, 2511901, 2690528, 2878121, 3078467, 3294791, 3528395, 3780942, 4053436, 4350232, 4685298, 5050150, 5416132, 5796879, 6199598, 6623522, 7072307, 7546453, 8050591, 8585909, 9153650, 9756524, 10397233, 11074877, 11795747, 12560524, 13376455, 14255740, 15217979, 16289952, 17349673, 18430107, 19555220, 20756630, 22010268, 23314416, 24673283, 26107659, 27631468, 29312494, 31108073, 32886889, 34739969, 36734573, 38844189, 41049934, 43382025, 45812785, 48395953, 51173751, 54141628, 57270029, 60739449, 64360174, 68074798, 71803090, 75817335, 80041042, 84373691, 89111485, 94087743, 99601105, 104804935, 109994769, 115260983, 121202017, 127487242, 133053679, 138547841, 144456102, 151341815, 158789550, 164815392, 169912646, 174986366, 179518933, 183635753, 187442091, 191210434, 194512610, 197453028, 199783883, 201489573, 202770641]
+        Mstar_ar = [735365200000.0, 752437950000.0, 769758000000.0, 786811060000.0, 803612500000.0, 819888000000.0, 835624570000.0, 850837800000.0, 865607700000.0, 879804150000.0, 893492400000.0, 906636800000.0, 919314960000.0, 931422670000.0, 942965800000.0, 953885000000.0, 964442060000.0, 978516050000.0, 990955000000.0, 999915700000.0, 1008391160000.0, 1016919560000.0, 1025774060000.0, 1036594640000.0, 1047105040000.0, 1059257000000.0, 1096440500000.0, 1151949900000.0, 1165945200000.0, 1177803400000.0, 1188600200000.0, 1198653700000.0, 1208132700000.0, 1217186100000.0, 1225809000000.0, 1234269200000.0, 1242689600000.0, 1251252200000.0, 1259951800000.0, 1268457100000.0, 1279594100000.0, 1288064300000.0, 1296732400000.0, 1306350800000.0, 1320749400000.0, 1368368600000.0, 1382908300000.0, 1394449200000.0, 1403701300000.0, 1421870400000.0, 1442400400000.0, 1459726700000.0, 1469102700000.0, 1477989500000.0, 1487951800000.0, 1513011500000.0, 1560199000000.0, 1570833800000.0, 1579861900000.0, 1589710300000.0, 1600094000000.0, 1609801100000.0, 1621373700000.0, 1629216000000.0, 1637721200000.0, 1656113300000.0, 1669808800000.0, 1678819000000.0, 1717836000000.0, 1776533500000.0, 1813434300000.0, 1823228400000.0, 1850019700000.0, 1866819000000.0, 1877642600000.0, 1930809000000.0, 1948741300000.0, 2024119300000.0, 2043187400000.0, 2065576000000.0, 2079388200000.0, 2136806900000.0, 2310955000000.0, 2327082700000.0, 2336245700000.0, 2360786300000.0, 2592580000000.0, 2962172000000.0, 3038592400000.0, 3052858500000.0, 3091299600000.0, 3104512700000.0, 3113781600000.0, 3118984300000.0, 3128386000000.0, 3134713000000.0, 3149529400000.0, 3163836000000.0, 3166528300000.0, 3167405700000.0]
 
     rpl = np.logspace(1, 3.2, 100)
     rho_dm = Ndm_ar = np.array(Ndm_ar)*4.5e5 #This would be the density in Msun/kpc^3
@@ -615,13 +625,64 @@ def plot_radial_density_dist_3panel():
             mplcutoff = 10**1
             mmaxcutoff = 10**5
             axs[jx].set_title(r'$M_{\star} < 10^{5}\,\rm{M_\odot}$', fontsize = label_font)
-        rpl2 = np.logspace(1, 3.2, 20)
+
+        pm_cond = (pmmstar_all > mplcutoff) & (pmmstar_all < mmaxcutoff) & (pmfof == fofno) #This is the condition for pwoer law merged 
+        ps_cond = (psmstar_all > mplcutoff) & (psmstar_all < mmaxcutoff) & (psfof == fofno) #This is the condition for power law surviving
+        cm_cond = (cmmstar_all > mplcutoff) & (cmmstar_all < mmaxcutoff) & (cmfof == fofno) #This is the condition for cutoff merged
+        cs_cond = (csmstar_all > mplcutoff) & (csmstar_all < mmaxcutoff) & (csfof == fofno) #This is the condition for cutoff surviving
+
+        ps_vr_ar = np.einsum('ij,ij->i', psvel_f_ar, pspos_f_ar)/psdist_f_ar
+        pm_vr_ar = np.einsum('ij,ij->i', pmvel_f_ar, pmpos_ar)/pmdist_f_ar
+        cs_vr_ar = np.einsum('ij,ij->i', csvel_f_ar, cspos_f_ar)/csdist_f_ar
+        cm_vr_ar = np.einsum('ij,ij->i', cmvel_f_ar, cmpos_ar)/cmdist_f_ar
+
+        #We will need the radial velocties, distances and infall times in these bins
+        pm_dist_this_range = pmdist_f_ar[pm_cond]
+        pm_vr_this_range = pm_vr_ar[pm_cond]
+        pm_tinf_this_range = pmtinf_ar[pm_cond]
+
+        ps_dist_this_range = psdist_f_ar[ps_cond]
+        ps_vr_this_range = ps_vr_ar[ps_cond]
+        ps_tinf_this_range = pstinf_ar[ps_cond]
+
+        cm_dist_this_range = cmdist_f_ar[cm_cond]
+        cm_vr_this_range = cm_vr_ar[cm_cond]
+        cm_tinf_this_range = cmtinf_ar[cm_cond]
+
+        cs_dist_this_range = csdist_f_ar[cs_cond]
+        cs_vr_this_range = cs_vr_ar[cs_cond]
+        cs_tinf_this_range = cstinf_ar[cs_cond]
+
+        #Let us merge arrays for power law case
+        # print(f'Number of subhalos outside virial radius for power law merged case are {len(pm_dist_this_range[pm_dist_this_range > rvir_fof0])} and for power law surviving case are {len(ps_dist_this_range[ps_dist_this_range > rvir_fof0])}')
+
+        p_dist_ar_this_bin = np.append(pm_dist_this_range, ps_dist_this_range)
+        p_vr_ar_this_bin = np.append(pm_vr_this_range, ps_vr_this_range)
+        p_tinf_ar_this_bin = np.append(pm_tinf_this_range, ps_tinf_this_range)
+
+
+        #Plotting time! Let us plot vr_vs_r in the second row and histogram of infall time in the thirs row of subplots
+
+        #Second row of subplots
+        axes[1, jx].scatter(p_dist_ar_this_bin, p_vr_ar_this_bin, color = 'red', alpha = 0.1, label = 'Power law', s = 5-2*jx)
+        axes[1, jx].set_xlabel('Distance from center (kpc)')
+        axes[1, jx].set_ylabel('Radial velocity (km/s)')
+
+        #Third row of subplots
+        axes[2, jx].hist(p_tinf_ar_this_bin, bins = 50, color = 'red', alpha = 0.5, label = 'Power law')
+        axes[2, jx].set_xlabel('Infall time (Gyr)')
+        axes[2, jx].set_ylabel('Number of subhalos')
+
+
+
+        tinf_cutoff = 20
+        rpl2 = np.logspace(1, 3.2, 20) #These are the bins into which we will bin the subhalos
         for (ix, rs) in enumerate(rpl2): #rs is still radius, has nothing to do with rs of NFW profile
-            pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > mplcutoff) & (pmmstar_all < mmaxcutoff) & (pmdist_f_ar < rs) & (pmfof == 0)]))
-            pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > mplcutoff) & (psmstar_all < mmaxcutoff) & (psdist_f_ar < rs) & (psfof == 0)]))
-            cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > mplcutoff) & (cmmstar_all < mmaxcutoff) & (cmdist_f_ar < rs) & (cmfof == 0)]))
-            cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > mplcutoff) & (csmstar_all < mmaxcutoff) & (csdist_f_ar < rs) & (csfof == 0)]))
-            Ntng_ar = np.append(Ntng_ar, len(psmstar_f_ar_tng[(psmstar_f_ar_tng > mplcutoff) & (psmstar_f_ar_tng < mmaxcutoff)  & (psdist_f_ar < rs)]))
+            pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > mplcutoff) & (pmmstar_all < mmaxcutoff) & (pmdist_f_ar < rs) & (pmfof == fofno) & (pmtinf_ar < tinf_cutoff)]))
+            pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > mplcutoff) & (psmstar_all < mmaxcutoff) & (psdist_f_ar < rs) & (psfof == fofno) & (pstinf_ar < tinf_cutoff)]))
+            cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > mplcutoff) & (cmmstar_all < mmaxcutoff) & (cmdist_f_ar < rs) & (cmfof == fofno) & (cmtinf_ar < tinf_cutoff)]))
+            cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > mplcutoff) & (csmstar_all < mmaxcutoff) & (csdist_f_ar < rs) & (csfof == fofno) & (cstinf_ar < tinf_cutoff)]))
+            Ntng_ar = np.append(Ntng_ar, len(psmstar_f_ar_tng[(psmstar_f_ar_tng > mplcutoff) & (psmstar_f_ar_tng < mmaxcutoff)  & (psdist_f_ar < rs) & (psfof == fofno) & (pstinf_ar < tinf_cutoff)]))
 
         
 
@@ -647,18 +708,547 @@ def plot_radial_density_dist_3panel():
         axs[jx].set_xscale('log')
         axs[jx].set_yscale('log')
     plt.tight_layout()
-    plt.savefig(this_fof_plotppath + 'radial_density_dist_3panel.png')
+    plt.savefig(this_fof_plotppath + 'properties_3panel.png')
 
         
 
 
     return
 
-plot_radial_density_dist_3panel()
+plot_properties_3panel(0)
 
 
-# def tidal_tracks():
-#     return None
+
+
+def plot_fig1():
+    '''
+    This plot will have a dual panel for Abundance matching relation and Size-stellar mass relation that we use
+    '''
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize = (12, 6))
+
+    psmstar_if_ar[psmstar_if_ar == 0] = 1e3
+    lvmax_pl = np.linspace(0.1, np.log10(600), 100)
+    # ax.scatter(psvmax_if_ar, psmstar_if_ar, color = 'dodgerblue', marker = 'o', s = 1, alpha = 0.1, label = 'TNG at infall')
+    # ax.plot(10**lvmax_pl, 10**get_mstar_pl(lvmax_pl), color = 'red', label = 'Power law')
+    # ax.fill_between(10**lvmax_pl, 10**get_mstar_pl(lvmax_pl) - 2.303*10**get_mstar_pl(lvmax_pl)*get_scatter(lvmax_pl), 10**get_mstar_pl(lvmax_pl) + 2.303*10**get_mstar_pl(lvmax_pl)*get_scatter(lvmax_pl), color = 'red', alpha = 0.3)
+    # ax.plot(10**lvmax_pl, 10**get_mstar_co(lvmax_pl), color = 'darkgreen', label = 'Cutoff')
+    # ax.fill_between(10**lvmax_pl, 10**get_mstar_co(lvmax_pl) - 2.303*10**get_mstar_co(lvmax_pl) * get_scatter(lvmax_pl), 10**get_mstar_co(lvmax_pl) + 2.303*10**get_mstar_co(lvmax_pl) * get_scatter(lvmax_pl), color = 'darkgreen', alpha = 0.3)
+    ax.scatter(np.log10(psvmax_if_ar), np.log10(psmstar_if_ar), color = 'gray', marker = 'o', s = 1, alpha = 0.1, label = 'TNG at infall')
+    ax.plot(lvmax_pl, get_mstar_pl(lvmax_pl), color = 'red', label = 'Power law', lw = 2)
+    ax.fill_between(lvmax_pl, get_mstar_pl(lvmax_pl) - get_scatter(lvmax_pl), get_mstar_pl(lvmax_pl) + get_scatter(lvmax_pl), color = 'red', alpha = 0.1)
+    ax.plot(lvmax_pl, get_mstar_co(lvmax_pl), color = 'darkgreen', label = 'Cutoff', ls = '--', lw = 2)
+    ax.fill_between(lvmax_pl, get_mstar_co(lvmax_pl) - get_scatter(lvmax_pl), get_mstar_co(lvmax_pl) + get_scatter(lvmax_pl), color = 'darkgreen', alpha = 0.1)
+    ax.set_ylabel(r'$\log M_{\rm{star}}(M_\odot)$', fontsize = label_font)
+    ax.set_xlabel(r'$\log V_{\rm{max}}(\rm{km/s})$', fontsize = label_font)
+    ax.axhline(np.log10(5e6), ls = ':', color = 'gray', alpha = 0.4)
+    ax.text(0.31, 6, 'Unresolved in size\nand mass', fontsize = 8)
+    ax.axhline(np.log10(1e8), ls = ':', color = 'gray', alpha = 0.4)
+    ax.text(0.31, 7.3, 'Unresolved in size,\nresolved in mass', fontsize = 8)
+    ax.text(0.31, 9, 'Resolved in size and mass', fontsize = 8)
+
+    ax.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
+    ax.tick_params(axis='x', which = 'both', direction = 'in', top = True)
+    # ax.set_xscale('log')
+    # ax.set_yscale('log')
+    ax.set_ylim(bottom = np.log10(7e1), top = 12)
+    ax.set_xlim(left = 0.25)
+    ax.legend(fontsize = 8, loc = 'lower right') 
+    
+    #We will be plotting all the subhalos with at least 1e8 Msun from TNG at infall in second panel
+    # ax2.plot()
+    df_1e6 = pd.read_csv(misc_path + '1e6_tidal_tracks.csv')
+    lmstar_1e6 = np.log10(df_1e6['mstar'].values)
+    lrh_1e6 = np.log10(df_1e6['rh'].values)
+    df_5e9 = pd.read_csv(misc_path + '5e9_tidal_tracks.csv')
+    lmstar_5e9 = np.log10(df_5e9['mstar'].values)
+    lrh_5e9 = np.log10(df_5e9['rh'].values)
+
+    ax2.plot(lmstar_1e6, lrh_1e6, color = 'green', zorder = 1000, lw = 2, ls = '--', label = r'Tidal track for subhalo of $M_{\rm{star}} = 10^6 \, \rm{M_\sun}$')
+    ax2.plot(lmstar_5e9, lrh_5e9, color = 'red', zorder = 1000, lw = 2, ls = '-.', label = r'Tidal track for subhalo of $M_{\rm{star}} = 5 \times 10^9 \, \rm{M_\sun}$')
+
+    mspl_log = np.linspace(1, 13, 100)
+    ax2.scatter(np.log10(psmstar_max_ar[psmstar_max_ar >= 1e8]), np.log10(1e3 * psrh_max_ar[psmstar_max_ar >= 1e8]), color = 'gray', marker = 'o', s = 2.5, alpha = 0.75, label = 'TNG at infall')
+    plot_lg_virgo_some(ax2, alpha = 0.2, mec = 'green')
+    ax2.plot(mspl_log, np.log10(1e3 * 10**get_lrh(mspl_log)), color = 'k', zorder = 500, lw = 1)
+    ax2.fill_between(mspl_log, np.log10(1e3 * 10**get_lrh(mspl_log)) - 0.2, np.log10(1e3 * 10**get_lrh(mspl_log)) + 0.2, color = 'k', alpha = 0.1, zorder = 500)
+    ax2.set_ylabel(r'$\log R_{\rm{h}}(\rm{pc})$', fontsize = label_font)
+    ax2.set_xlabel(r'$\log M_{\rm{star}}(M_\odot)$', fontsize = label_font)
+    ax2.legend(fontsize = 8)
+
+
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'fig1.png')
+
+    return None
+
+plot_fig1()
+
+
+
+def plot_fig2():
+    '''
+    Figure 2 would be the stellar segregation, justifying the segregations that we have
+    '''
+    fig, ax = plt.subplots(figsize = (6, 6))
+    ax.scatter(np.log10(psmstar_max_all), np.log10(psrh_max_all/psrmx_if_ar), color = 'gray', marker = 'o', s = 2, alpha = 0.1, label = 'TNG at infall')
+    ax.scatter(np.log10(pmmstar_max_all), np.log10(pmrh_max_all/pmrmx_if_ar), color = 'gray', marker = 'o', s = 2, alpha = 0.1)
+    ax.axhline(np.log10(0.5), ls = '-', color = 'gray', alpha = 0.4, lw = 1)
+    ax.text(11.9, np.log10(0.5) + 0.05, '1/2', fontsize = 8, ha = 'right')
+    ax.axhline(np.log10(0.25), ls = '-', color = 'gray', alpha = 0.4, lw = 1)
+    ax.text(11.9, np.log10(0.25) + 0.05, '1/4', fontsize = 8, ha = 'right')
+    ax.axhline(np.log10(0.125), ls = '-', color = 'gray', alpha = 0.4, lw = 1)
+    ax.text(11.9, np.log10(0.125) + 0.05, '1/8', fontsize = 8, ha = 'right')
+    ax.axhline(np.log10(0.0625), ls = '-', color = 'gray', alpha = 0.4, lw = 1)
+    ax.text(11.9, np.log10(0.0625) + 0.05, '1/16', fontsize = 8, ha = 'right')
+    ax.axhline(np.log10(1/66), ls = ':', color = 'gray', alpha = 0.4, lw = 1)
+    ax.text(11.9, np.log10(1/66) + 0.05, '1/66', fontsize = 8, ha = 'right')
+    ax.axhline(np.log10(1/250), ls = ':', color = 'gray', alpha = 0.4, lw = 1)
+    ax.text(11.9, np.log10(1/250) + 0.05, '1/250', fontsize = 8, ha = 'right')
+    ax.axhline(np.log10(1/1000), ls = ':', color = 'gray', alpha = 0.4, lw = 1)
+    ax.text(11.9, np.log10(1/1000) + 0.05, '1/1000', fontsize = 8, ha = 'right')
+
+    ax.set_xlabel(r'$\log M_{\rm{star}}(M_\odot)$', fontsize = label_font)
+    ax.set_ylabel(r'$\log (R_{\rm{h0}}/r_{\rm{mx0}})$', fontsize = label_font)
+    # ax.axhline()
+    ax.set_xlim(left = 2, right = 12)
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'fig2.png')
+    return None
+
+plot_fig2()
+
+
+
+def tidal_tracks():
+    '''
+    This is to plot the tidal tracks of the satellites based on Errani 22 or the plots given by Rapha
+    '''
+    
+    fig, (ax, ax2) = plt.subplots(nrows = 2, ncols = 1, figsize = (6,6), sharex = True)
+    fpl = np.linspace(-6.4, 0, 100)
+
+    # def get_first_set_l10rhbyrmx0(fpl_ar, Rh0byrmx0):
+    #     '''
+    #     fpl should be in log pleaseee
+    #     '''
+    #     l10rhbyrmx0_ar = np.zeros(0)
+    #     for fpl in fpl_ar:
+    #         if fpl > -2.5:
+    #             if Rh0byrmx0 == 1/2:
+    #                 l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by2_spl(fpl))
+    #             elif Rh0byrmx0 == 1/4:
+    #                 l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by4_spl(fpl))
+    #             elif Rh0byrmx0 == 1/8:
+    #                 l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by8_spl(fpl))
+    #             elif Rh0byrmx0 == 1/16:
+    #                 l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by16_spl(fpl))
+    #         else:
+    #             l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, np.log10(get_rmxbyrmx0(10**fpl)))
+    #     return l10rhbyrmx0_ar
+    #     # if fpl > -2.5:
+    #     #     if Rh0byrmx0 == 1/2:
+    #     #         return l10rbyrmx0_1by2_spl(fpl)
+    #     #     elif Rh0byrmx0 == 1/4:
+    #     #         return l10rbyrmx0_1by4_spl(fpl)
+    #     #     elif Rh0byrmx0 == 1/8:
+    #     #         return l10rbyrmx0_1by8_spl(fpl)
+    #     #     elif Rh0byrmx0 == 1/16:
+    #     #         return l10rbyrmx0_1by16_spl(fpl)
+    #     # else:
+    #     #     return np.log10(get_rmxbyrmx0(10**fpl))
+        
+    def get_l10rhbyrmx0(fpl_ar, Rh0byrmx0):
+        l10rhbyrmx0_ar = np.zeros(0)
+
+        for fpl in fpl_ar:
+            if (fpl > -5) and (Rh0byrmx0 == 1/66 or Rh0byrmx0 == 1/250):
+                if Rh0byrmx0 == 1/66:
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by66_spl(fpl))
+                elif Rh0byrmx0 == 1/250:
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by250_spl(fpl))
+            elif (fpl > -2.5) and (Rh0byrmx0 in [1/2, 1/4, 1/8, 1/16]):
+                if Rh0byrmx0 == 1/2:
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by2_spl(fpl))
+                elif Rh0byrmx0 == 1/4:
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by4_spl(fpl))
+                elif Rh0byrmx0 == 1/8:
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by8_spl(fpl))
+                elif Rh0byrmx0 == 1/16:
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by16_spl(fpl))
+            elif (fpl > -6.4) and (Rh0byrmx0 == 1/1000):
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by1000_spl(fpl))
+            else:
+                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, np.log10(get_rmxbyrmx0(10**fpl)))
+        return l10rhbyrmx0_ar
+
+        # return l10rhbyrmx0
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/2), c = 'r', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/2$')
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/4), c = 'orange', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/4$')
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/8), c = 'skyblue', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/8$')
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/16), c = 'darkblue', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/16$')
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/66), c = 'purple', ls = ':')
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/250), c = 'limegreen', ls = ':')
+    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/1000), c = 'darkgreen', ls = ':')
+
+    ax.plot(fpl, np.log10(get_rmxbyrmx0(10**fpl)), c = 'black', ls = '--')
+    ax.annotate(r'$r_{\rm{mx}}$', xy = (fpl[-20], np.log10(get_rmxbyrmx0(10**fpl))[-20]), xytext = (fpl[-20], 0.8* np.log10(get_rmxbyrmx0(10**fpl))[-20]), 
+                rotation=30, color='black', fontsize=10, rotation_mode='anchor')
+
+    # ax.set_xlabel(r'$\log M_{\rm{mx}}/M_{\rm{mx0}}$', fontsize = 14)
+    ax.set_ylabel(r'$\log R_{\rm{h}}/r_{\rm{mx0}}$', fontsize = 14)
+    ax.legend(fontsize = 8, frameon=False)
+    ax.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
+    ax.tick_params(axis='x', which = 'both', direction = 'in')
+
+    # print('Why are you like this!', get_LbyL0(fpl, 1/2))
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/2)), c = 'r')
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/4)), c = 'orange')
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/8)), c = 'skyblue')
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/16)), c = 'darkblue')
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/66)), c = 'purple', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/66$', ls = ':')
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/250)), c = 'limegreen', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/250$', ls = ':')
+    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/1000)), c = 'darkgreen', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/1000$', ls = ':')
+
+    ax2.set_xlabel(r'$\log M_{\rm{mx}}/M_{\rm{mx0}}$', fontsize = 14)
+    ax2.set_ylabel(r'$\log M_{\rm{star}}/M_{\rm{star,0}}$', fontsize = 14)
+    ax2.set_ylim(bottom = -3)
+    ax2.legend(fontsize = 8, frameon=False)
+    ax2.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
+    ax2.tick_params(axis='x', which = 'both', direction = 'in')
+
+
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'tidal_tracks.png')
+
+    return None
+
+tidal_tracks()
+
+
+
+
+
+def plot_fig5():
+    '''
+    This will be a multi panel for the satellite mass functions
+    We will have three subplots, a square plot on the left and the 2 panel (two in the right half of the plot)
+    '''
+    fig = plt.figure(figsize=(12, 6))
+
+    # Create a grid of subplots with specified width ratios
+    # GridSpec allows more complex layouts
+    gs = fig.add_gridspec(2, 2, width_ratios=[1, 1])
+
+    # Add subplots to the grid
+    ax1 = fig.add_subplot(gs[:, 0])  # Left half, occupying both rows
+    ax2 = fig.add_subplot(gs[0, 1])  # Right half, top plot
+    ax3 = fig.add_subplot(gs[1, 1], sharex=ax2) 
+
+    if True:
+        mstarpl = np.logspace(1, 11, 100)
+        # fig, ax = plt.subplots(figsize = (6, 6.25))
+        ls_ar = ['-.', '--', '-']
+        alpha_ar = [1, 0.7, 0.3]
+        
+
+        Ntng_ar = np.zeros(0) #We will be plotting the averge value for all FoFs combined
+        p1_ar = []
+        p2_ar = []
+
+        for this_fof in [0, 1, 2]:
+            pNm_ar = np.zeros(0) #shmf for merged subhalos
+            pNs_ar = np.zeros(0) #shmf for surviving subhalos 
+            cNm_ar = np.zeros(0) #shmf for merged subhalos
+            cNs_ar = np.zeros(0) #shmf for surviving subhalos 
+            
+            if this_fof == 0:
+                this_rvir = rvir_fof0
+            elif this_fof == 1:
+                this_rvir = rvir_fof1
+            elif this_fof == 2:
+                this_rvir = rvir_fof2
+
+            for (ix, ms) in enumerate(mstarpl):
+
+                pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > ms) & (pmfof == this_fof) & (pmxydist_f_ar < this_rvir) & (pmdist_f_ar < this_rvir)]))
+                pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > ms) &  (psfof == this_fof) & (psxydist_f_ar < this_rvir) & (psdist_f_ar < this_rvir)]))
+                cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > ms) & (cmfof == this_fof) & (cmxydist_f_ar < this_rvir) & (cmdist_f_ar < this_rvir)]))
+                cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > ms) & (csfof == this_fof) & (csxydist_f_ar < this_rvir) & (csdist_f_ar < this_rvir)]))
+                Ntng_ar = np.append(Ntng_ar, len(psmstar_f_ar_tng[(psmstar_f_ar_tng > ms) & (psfof == this_fof) & (psxydist_f_ar < this_rvir) & (psdist_f_ar < this_rvir)]))
+        
+            p1, = ax1.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', alpha = alpha_ar[this_fof])
+            p2, = ax1.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', alpha = alpha_ar[this_fof])
+            p1_ar = p1_ar + [p1]
+            p2_ar = p2_ar + [p2]
+            
+            # ax1.legend([p1, p2], ['Cutoff', 'Power law'], fontsize = 8)
+
+            # ax1.plot([1e1, 2e1], [1, 2], alpha = alpha_ar[this_fof], color = 'black', label = f'FoF{this_fof}') #This is just for the legend
+
+        NTNGpl = (Ntng_ar[:int(len(Ntng_ar)/3)] + Ntng_ar[int(len(Ntng_ar)/3) : int(2 * len(Ntng_ar)/3)] + Ntng_ar[int(2 * len(Ntng_ar)/3) :])/3.
+        tng1, = ax1.plot(mstarpl[::4], NTNGpl[::4], color = 'black', marker = 'o', label = 'TNG average for FoFs', markersize = 6, lw = 0)
+        ax1.annotate(r'Power Law', xy = (2e2, 5e4), xytext = (2e2, 5e4), rotation=-28, 
+                     color='red', fontsize=10, rotation_mode='anchor')
+        ax1.annotate(r'Cutoff', xy = (2e2, 8e3), xytext = (2e2, 9e3), rotation=-20, 
+                     color='darkgreen', fontsize=10, rotation_mode='anchor')
+        ax1.legend([(p1_ar[0], p2_ar[0]), (p1_ar[1], p2_ar[1]), (p1_ar[2], p2_ar[2]), tng1], ['FoF0', 'FoF1', 'FoF2', 'TNG average of 3 FoFs'], fontsize = 8, handler_map={tuple: HandlerTuple(ndivide=None)})
+        ax1.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
+        ax1.set_ylabel(r'$N(>M_{\bigstar})$')
+        ax1.set_xscale('log')
+        ax1.set_yscale('log')
+        ax1.set_xlim(left = 1e1)
+        ax1.set_ylim(bottom = 3)
+        ax1.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
+        ax1.tick_params(axis='x', which = 'both', direction = 'in')
+        
+        # ax.set_title('FoF'+str(fof_no))
+
+    if True: #This is for the second panel
+        rcore_virgo = 309 #This is assumed to be the core radius temporarily
+    
+
+        mstarpl = np.logspace(1, 11, 100)
+
+        # rvir_fornax = 700 #kpc
+
+        # fig, ax = plt.subplots(figsize = (6, 6.25))
+        ls_ar = ['-.', '--', '-']
+        pNm_ar = np.zeros(0) #shmf for merged subhalos
+        pNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        cNm_ar = np.zeros(0) #shmf for merged subhalos
+        cNs_ar = np.zeros(0) #shmf for surviving subhalos
+        mstar_match = 1e7 #This is the stellar mass where we try to match the fornax and the model
+        N_fitting = np.zeros(0)
+        mvir_ar = np.array([mvir_fof0, mvir_fof0, mvir_fof0, mvir_fof1, mvir_fof1, mvir_fof1, mvir_fof2, mvir_fof2, mvir_fof2])
+
+
+
+        for this_fof in [0, 1, 2]:
+            for projection in [0, 1, 2]:
+                if projection == 0:
+                    pm_proj_dist = pmxydist_f_ar
+                    ps_proj_dist = psxydist_f_ar
+                    cm_proj_dist = cmxydist_f_ar
+                    cs_proj_dist = csxydist_f_ar
+                elif projection == 1:
+                    pm_proj_dist = pmyzdist_f_ar
+                    ps_proj_dist = psyzdist_f_ar
+                    cm_proj_dist = cmyzdist_f_ar
+                    cs_proj_dist = csyzdist_f_ar
+                elif projection == 2:
+                    pm_proj_dist = pmxzdist_f_ar
+                    ps_proj_dist = psxzdist_f_ar
+                    cm_proj_dist = cmxzdist_f_ar
+                    cs_proj_dist = csxzdist_f_ar
+
+
+                N_fitting = np.append(N_fitting, len(psmstar_f_ar[(psmstar_all > mstar_match) & (psfof == this_fof) & (ps_proj_dist <= rcore_virgo)]))
+
+
+                for (ix, ms) in enumerate(mstarpl):
+                    pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > ms) & (pmfof == this_fof) & (pm_proj_dist <= rcore_virgo)]))
+                    pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > ms) &  (psfof == this_fof) & (ps_proj_dist <= rcore_virgo) ]))
+                    cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > ms) & (cmfof == this_fof) & (cm_proj_dist <= rcore_virgo) ]))
+                    cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > ms) & (csfof == this_fof) & (cs_proj_dist <= rcore_virgo) ]))
+                
+        print(np.log10(mvir_ar), np.log10(N_fitting))
+        m_bf, b_bf = np.polyfit(np.log10(mvir_ar), np.log10(N_fitting), 1) #This returns slope and intercept
+        Nvirg_1e7 = 183.5 #Number of galaxies above 1e7 Msun in Fornax
+        lmvir_virgo_calc = ((np.log10(Nvirg_1e7) - b_bf)/m_bf) #These are the number of galaxies above 1e7 Msun in Fornax
+        print(f'Virgo virial mass is (log Msun): {lmvir_virgo_calc}')
+
+        diffN = np.log10(np.median(N_fitting)) - np.log10(Nvirg_1e7)
+        print(f'median: {np.median(N_fitting)} and diffN: {diffN}')
+        
+        ax2.plot(mstarpl, get_med_values(cNs_ar + cNm_ar, 9), color = 'darkgreen', label = 'Cutoff', alpha = 0.5, ls = '-')
+        ax2.plot(mstarpl, get_med_values(pNs_ar + pNm_ar, 9), color = 'red', label = 'Power', alpha = 0.5, ls = '-')
+        # ax2.fill_between(mstarpl, get_quantiles(cNs_ar + cNm_ar, 9)[0], get_quantiles(cNs_ar + cNm_ar, 9)[1], color = 'darkgreen', alpha = 0.3)
+        # ax2.fill_between(mstarpl, get_quantiles(pNs_ar + pNm_ar, 9)[0], get_quantiles(pNs_ar + pNm_ar, 9)[1], color = 'red', alpha = 0.3)
+        ax2.plot(10**fmstar, fngal_cum, color = 'indigo', marker = '^', label = 'Ferrarese+16 Virgo core', markersize = 6, markerfacecolor = 'none')
+        ax2.legend(fontsize = 8)
+        # ax2.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
+        ax2.set_ylabel(r'$N(>M_{\bigstar})$')
+        ax2.set_xscale('log')
+        ax2.set_yscale('log')
+        ax2.set_xlim(left = 1e1)
+        ax2.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
+        ax2.tick_params(axis='x', which = 'both', direction = 'in')
+        ax2.text(0.02, 0.05, r'Virgo, $M_{\rm{vir}} = 1 \times 10^{14}\,M_{\odot}$', ha = 'left', va = 'bottom', transform=ax2.transAxes)
+
+
+    if True: #This is for the third panel
+        mstarpl = np.logspace(1, 11, 100)
+
+        rvir_fornax = 700 #kpc
+        
+        # fig, ax = plt.subplots(figsize = (6, 6.25))
+        ls_ar = ['-.', '--', '-']
+        pNm_ar = np.zeros(0) #shmf for merged subhalos
+        pNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        cNm_ar = np.zeros(0) #shmf for merged subhalos
+        cNs_ar = np.zeros(0) #shmf for surviving subhalos
+        mstar_match = 1e7 #This is the stellar mass where we try to match the fornax and the model
+        N_fitting = np.zeros(0)
+        mvir_ar = np.array([mvir_fof0, mvir_fof0, mvir_fof0, mvir_fof1, mvir_fof1, mvir_fof1, mvir_fof2, mvir_fof2, mvir_fof2])
+
+        for this_fof in [0, 1, 2]:
+            for projection in [0, 1, 2]:
+                
+                if projection == 0:
+                    pm_proj_dist = pmxydist_f_ar
+                    ps_proj_dist = psxydist_f_ar
+                    cm_proj_dist = cmxydist_f_ar
+                    cs_proj_dist = csxydist_f_ar
+                elif projection == 1:
+                    pm_proj_dist = pmyzdist_f_ar
+                    ps_proj_dist = psyzdist_f_ar
+                    cm_proj_dist = cmyzdist_f_ar
+                    cs_proj_dist = csyzdist_f_ar
+                elif projection == 2:
+                    pm_proj_dist = pmxzdist_f_ar
+                    ps_proj_dist = psxzdist_f_ar
+                    cm_proj_dist = cmxzdist_f_ar
+                    cs_proj_dist = csxzdist_f_ar
+
+                N_fitting = np.append(N_fitting, len(psmstar_f_ar[(psmstar_all > mstar_match) & (psfof == this_fof) & (ps_proj_dist <= rvir_fornax)]))
+
+
+                for (ix, ms) in enumerate(mstarpl):
+                    pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > ms) & (pmfof == this_fof) & (pm_proj_dist <= rvir_fornax)]))
+                    pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > ms) &  (psfof == this_fof) & (ps_proj_dist <= rvir_fornax) ]))
+                    cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > ms) & (cmfof == this_fof) & (cm_proj_dist <= rvir_fornax) ]))
+                    cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > ms) & (csfof == this_fof) & (cs_proj_dist <= rvir_fornax) ]))
+        
+        #We now have to fit a straight line to log N_fitting vs log mvir_ar
+        m_bf, b_bf = np.polyfit(np.log10(mvir_ar), np.log10(N_fitting), 1) #This returns slope and intercept
+        Nforn_1e7 = 217.37 #Number of galaxies above 1e7 Msun in Fornax
+        lmvir_fornax_calc = ((np.log10(Nforn_1e7) - b_bf)/m_bf) #These are the number of galaxies above 1e7 Msun in Fornax
+        print(f'Fornax virial mass is (log Msun): {lmvir_fornax_calc}')
+
+        diffN = np.log10(np.median(N_fitting)) - np.log10(Nforn_1e7)
+        print(f'median: {np.median(N_fitting)} and diffN: {diffN}')
+        # dif
+        # fN = 0
+
+
+
+        ax3.plot(mstarpl, 10**(np.log10(get_med_values(cNs_ar + cNm_ar, 9)) - diffN), color = 'darkgreen', label = 'Cutoff', alpha = 0.5, ls = '-')
+        ax3.plot(mstarpl, 10**(np.log10(get_med_values(pNs_ar + pNm_ar, 9)) - diffN), color = 'red', label = 'Power', alpha = 0.5, ls = '-')
+        # ax.fill_between(mstarpl, get_quantiles(cNs_ar + cNm_ar, 9)[0] - diffN, get_quantiles(cNs_ar + cNm_ar, 9)[1] - diffN, color = 'darkgreen', alpha = 0.3)
+        # ax.fill_between(mstarpl, get_quantiles(pNs_ar + pNm_ar, 9)[0] - diffN, get_quantiles(pNs_ar + pNm_ar, 9)[1] - diffN, color = 'red', alpha = 0.3)
+        ax3.plot(10**vmstar, vngal_cum, color = 'indigo', marker = 's', label = 'Venhola+19 Fornax', markersize = 6, markerfacecolor = 'none')
+        # for jx in range(len(sigma_pl_ar) + 1): #+2 because we also need to plot without any surface brightness limits
+        # pNm_ar = np.zeros(0) #shmf for merged subhalos
+        # pNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        # cNm_ar = np.zeros(0) #shmf for merged subhalos
+        # cNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        # Ntng_ar = np.zeros(0)
+
+
+        # for (ix, ms) in enumerate(mstarpl):
+        #     pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > ms) & (pmfof == 0) & (pmxydist_f_ar < rvir_fornax)]))
+        #     pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > ms) &  (psfof == 0) & (psxydist_f_ar < rvir_fornax)]))
+        #     cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > ms) & (cmfof == 0) & (cmxydist_f_ar < rvir_fornax)]))
+        #     cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > ms) & (csfof == 0) & (csxydist_f_ar < rvir_fornax)]))
+        #     # Ntng_ar = np.append(Ntng_ar, len(psmstar_f_ar_tng[psmstar_f_ar_tng > ms]))
+
+        # fig, ax = plt.subplots(figsize = (6, 6.25))
+        
+        # # ax.plot(mstarpl, Ns_ar, color = 'darkgreen', label = 'Model Surviving', alpha = 0.5)
+        # ax.plot(mstarpl, cNs_ar + cNm_ar, color = 'darkgreen', label = 'Cutoff', alpha = 0.5)
+        # ax.plot(mstarpl, pNs_ar + pNm_ar, color = 'red', label = 'Power law', alpha = 0.5)
+        # plot_sachi(ax)
+        # ax.plot(mstarpl, Ntng_ar, color = 'blue', label = 'TNG surviving', alpha = 0.5)
+        ax3.legend(fontsize = 8)
+        ax3.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$')
+        ax3.set_ylabel(r'$N(>M_{\bigstar})$')
+        ax3.set_xscale('log')
+        ax3.set_yscale('log')
+        ax3.set_xlim(left = 1e1)
+        ax3.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
+        ax3.tick_params(axis='x', which = 'both', direction = 'in')
+        ax3.text(0.02, 0.05, r'Fornax, $M_{\rm{vir}} = 3.5 \times 10^{13}\,M_{\odot}$', ha = 'left', va = 'bottom', transform=ax3.transAxes)
+        # ax3
+        
+
+    
+    
+    
+    
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'fig5.png')
+        # plt.savefig(this_fof_plotppath + '3d_mass_fn.png')
+
+
+    return 
+
+plot_fig5()
+
+
+
+
+sys.exit()
+
+
+def plot_fstar_fdm():
+    '''
+    This is to plot the fraction of stars and dark matter that remain in the subhalos as a function of infall stellar mass
+    '''
+    fig, (ax, ax2) = plt.subplots(nrows = 1, ncols = 2, figsize = (12, 6))
+    mstar_bins = np.linspace(2, 12, 10) #These are the bins into which we will bin the subhalos
+    mstar_pl = np.zeros(0) #This will be the midpoint of bin edges defined above
+    fstar_median = np.zeros(0) #This will be the median of the fraction of stars that remain in the subhalos
+    fdm_median = np.zeros(0) #This will be the median of the fraction of dark matter that remain in the subhalos
+    fstar_25 = np.zeros(0) #This will be the 25th percentile of the fraction of stars that remain in the subhalos
+    fdm_25 = np.zeros(0) #This will be the 25th percentile of the fraction of dark matter that remain in the subhalos
+    fstar_75 = np.zeros(0) #This will be the 75th percentile of the fraction of stars that remain in the subhalos
+    fdm_75 = np.zeros(0) #This will be the 75th percentile of the fraction of dark matter that remain in the subhalos
+
+    for i in range(len(mstar_bins) - 1):
+        mstar_pl = np.append(mstar_pl, (mstar_bins[i] + mstar_bins[i + 1]) / 2)
+        fstar_median_this_bin = np.median(np.append((psmstar_all/psmstar_max_all)[(psmstar_max_all < 10**mstar_bins[i + 1]) & (psmstar_max_all >= 10**mstar_bins[i])], (pmmstar_all/pmmstar_max_all)[(pmmstar_max_all < 10**mstar_bins[i + 1]) & (pmmstar_max_all >= 10**mstar_bins[i])]))
+        fstar_25_this_bin = np.percentile(np.append((psmstar_all/psmstar_max_all)[(psmstar_max_all < 10**mstar_bins[i + 1]) & (psmstar_max_all >= 10**mstar_bins[i])], (pmmstar_all/pmmstar_max_all)[(pmmstar_max_all < 10**mstar_bins[i + 1]) & (pmmstar_max_all >= 10**mstar_bins[i])]), 25)
+        fstar_75_this_bin = np.percentile(np.append((psmstar_all/psmstar_max_all)[(psmstar_max_all < 10**mstar_bins[i + 1]) & (psmstar_max_all >= 10**mstar_bins[i])], (pmmstar_all/pmmstar_max_all)[(pmmstar_max_all < 10**mstar_bins[i + 1]) & (pmmstar_max_all >= 10**mstar_bins[i])]), 75)
+        fstar_median = np.append(fstar_median, fstar_median_this_bin)
+        fstar_25 = np.append(fstar_25, fstar_25_this_bin)
+        fstar_75 = np.append(fstar_75, fstar_75_this_bin)
+
+        fdm_median_this_bin = np.nanmedian(np.append((psmmx_f_ar/psmmx_if_ar)[(psmstar_max_all < 10**mstar_bins[i + 1]) & (psmstar_max_all >= 10**mstar_bins[i])], (pmmmx_f_ar/pmmmx_if_ar)[(pmmstar_max_all < 10**mstar_bins[i + 1]) & (pmmstar_max_all >= 10**mstar_bins[i])]))
+        # print(np.append((psmmx_f_ar/psmmx_if_ar)[(psmstar_max_all < 10**mstar_bins[i + 1]) & (psmstar_max_all >= 10**mstar_bins[i])], (pmmmx_f_ar/pmmmx_if_ar)[(pmmstar_max_all < 10**mstar_bins[i + 1]) & (pmmstar_max_all >= 10**mstar_bins[i])]))
+        fdm_25_this_bin = np.nanpercentile(np.append((psmmx_f_ar/psmmx_if_ar)[(psmstar_max_all < 10**mstar_bins[i + 1]) & (psmstar_max_all >= 10**mstar_bins[i])], (pmmmx_f_ar/pmmmx_if_ar)[(pmmstar_max_all < 10**mstar_bins[i + 1]) & (pmmstar_max_all >= 10**mstar_bins[i])]), 25)
+        fdm_75_this_bin = np.nanpercentile(np.append((psmmx_f_ar/psmmx_if_ar)[(psmstar_max_all < 10**mstar_bins[i + 1]) & (psmstar_max_all >= 10**mstar_bins[i])], (pmmmx_f_ar/pmmmx_if_ar)[(pmmstar_max_all < 10**mstar_bins[i + 1]) & (pmmstar_max_all >= 10**mstar_bins[i])]), 75)
+        fdm_median = np.append(fdm_median, fdm_median_this_bin)
+        fdm_25 = np.append(fdm_25, fdm_25_this_bin)
+        fdm_75 = np.append(fdm_75, fdm_75_this_bin)
+
+    ax.fill_between(10**mstar_pl, fstar_25, fstar_75, color = 'blue', alpha = 0.5)
+    ax.plot(10**mstar_pl, fstar_median, color = 'blue')
+    ax.set_xlabel(r'$\log M_{\rm{star, inf}}$')
+    ax.set_ylabel(r'$f_{\rm{star}}$')
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+
+    ax2.fill_between(10**mstar_pl, fdm_25, fdm_75, color = 'blue', alpha = 0.5)
+    # print(fdm_median)
+    # ax2.scatter(psmstar_max_all, psmmx_f_ar/psmmx_if_ar, color = 'gray', alpha = 0.1, s = 0.5)
+    # ax2.scatter(pmmstar_max_all, pmmmx_f_ar/pmmmx_if_ar, color = 'yellow', alpha = 0.1, s = 0.5)
+    ax2.plot(10**mstar_pl, fdm_median, color = 'blue')
+    ax2.set_xlabel(r'$\log M_{\rm{star, inf}}$')
+    ax2.set_ylabel(r'$f_{\rm{dm}}$')
+    ax2.set_yscale('log')
+    ax2.set_xscale('log')
+
+
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'fstar_fdm.png')
+    
+    return None
+
+plot_fstar_fdm()
+
+
+
+
 
 def plot_radial_density_dist(fof_no = 0):
     '''
@@ -828,7 +1418,8 @@ def plot_radial_density_dist(fof_no = 0):
         dm_dens = this_nfw.mean_density(2 * rh) #Assuming here that rh is in kpc
 
         # dm_dens = mdm_rh / ((4/3.) * np.pi * rh**3)
-        star_dens = mstar / ((4/3.) * np.pi * 2 * rh**3)
+        star_dens = mstar / ((4/3.) * np.pi * (2 * rh)**3)
+        star_dens = 0
         dens_rh = dm_dens + star_dens
 
         return mstar, dens_rh
@@ -867,7 +1458,544 @@ def plot_radial_density_dist(fof_no = 0):
 
 plot_radial_density_dist()
 
-sys.exit()
+
+
+
+
+def plot_rh_vs_mstar_hist2d_infall(fof_no, alpha_points = 0.1, size_points = 7.5):
+    '''
+    This is to plot the 2d histogram of size-mass relation
+    '''
+    def get_line_of_constant_surfb(mstar, S):
+        '''
+        This is to plot the line of constant surface brightness
+        mstar: Stellar mass
+        S: Surface brightness
+
+        Returns:
+        R: Half light radius in pc
+        '''
+        logR = -(1/5.)*(4.83+21.57-2.5*np.log10(mstar)+2.5*np.log10(np.pi)-S)
+        return 10**logR
+
+    def inverse_get_line_of_constant_surfb(R, S):
+        '''
+        Inverse function of get_line_of_constant_surfb
+        R: Half light radius in pc
+        S: Surface brightness
+
+        Returns:
+        mstar: Stellar mass
+        '''
+        def equation(mstar):
+            return R - get_line_of_constant_surfb(mstar, S)
+
+        mstar_guess = 1e3  # Initial guess for mstar
+        mstar_solution = fsolve(equation, mstar_guess)
+        return mstar_solution[0]
+
+    fig, (ax, ax2) = plt.subplots(nrows = 1, ncols = 2, figsize = (12, 6.15))
+    mspl_log = np.linspace(1, 13, 100)
+    # plot_lg_virgo(ax)
+    # plot_lg_virgo(ax2)
+    
+
+
+    if fof_no == 210:
+        csix = np.where((csfof == 0) | (csfof == 1 )| (csfof == 2))[0]
+        cmix = np.where((cmfof == 0) |( cmfof == 1) | (cmfof == 2))[0]
+        psix = np.where((psfof == 0) |( psfof == 1) | (psfof == 2))[0]
+        pmix = np.where((pmfof == 0) | (pmfof == 1) | (pmfof == 2))[0]
+    else:
+        csix = np.where(csfof == fof_no)[0]
+        cmix = np.where(cmfof == fof_no)[0]
+        psix = np.where(psfof == fof_no)[0]
+        pmix = np.where(pmfof == fof_no)[0]
+
+
+    # ax.scatter(csmstar_all[csix], np.array(csrh_all[csix]) * 1e3, marker = 's', fc = 'darkgreen', alpha = alpha_points, s = size_points, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
+    # ax.scatter(cmmstar_all[cmix], np.array(cmrh_all[cmix]) * 1e3, marker = 's', fc = 'purple', alpha = alpha_points, s = size_points, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
+    
+    cmstar = np.append(csmstar_max_all[csix], cmmstar_max_all[cmix]) #msun, THis is all the subhalos in the cutoff model
+    crh = np.append(csrh_max_all[csix], cmrh_max_all[cmix]) * 1e3 #kpc, This is rh of all the subhalos in the cutoff model
+    cmstar = cmstar[crh > 0]
+    crh = crh[crh > 0]
+
+
+    pmstar = np.append(psmstar_max_all[psix], pmmstar_max_all[pmix])
+    prh = np.append(psrh_max_all[psix], pmrh_max_all[pmix]) * 1e3
+    pmstar = pmstar[prh > 0]
+    prh = prh[prh > 0]
+
+
+    y_space = np.logspace(np.log10(min(crh)), np.log10(max(crh)), 100)
+    x_space = np.logspace(np.log10(min(cmstar)), np.log10(max(cmstar)), 100)
+
+
+    y_space1 = np.logspace(np.log10(min(prh)), np.log10(max(prh)), 100)
+    x_space1 = np.logspace(np.log10(min(pmstar)), np.log10(max(pmstar)), 100)
+
+    hist1, _, _ = np.histogram2d(cmstar, crh, bins=(x_space, y_space))
+    hist2, _, _ = np.histogram2d(pmstar, prh, bins=(x_space1, y_space1))
+
+    vmin = min(hist1.min(), hist2.min())
+    vmax = max(hist1.max(), hist2.max())
+
+    print(vmin, vmax)
+
+    ax.scatter(cmstar, crh, marker = 's', fc = 'darkblue', alpha = alpha_points, s = size_points, zorder = 0, edgecolor = 'darkblue', linewidth = 0.7)
+    ax.hist2d(cmstar, crh, bins = (x_space, y_space), cmin = 9, norm = 'log', zorder = 100, vmin = 9, vmax = vmax)
+    ax.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k', zorder = 200)
+    top_data = ax.get_ylim()[1]
+    right_data = ax.get_xlim()[1]
+    ax.set_xlim(left = 1e1, right = right_data)
+    ax.set_ylim(bottom = 10, top = top_data)
+
+    # ax2.scatter(psmstar_all[psix], np.array(psrh_all[psix]) * 1e3, marker = 's', fc = 'darkgreen', alpha = alpha_points, s = size_points, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
+    # ax2.scatter(pmmstar_all[pmix], np.array(pmrh_all[pmix]) * 1e3, marker = 's', fc = 'purple', alpha = alpha_points, s = size_points, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
+    
+    
+    
+    ax2.scatter(pmstar, prh, marker = 's', fc = 'darkblue', alpha = alpha_points, s = size_points, zorder = 0, edgecolor = 'darkblue', linewidth = 0.7)
+    
+    ax2.hist2d(pmstar, prh, bins = (x_space1, y_space1), cmin = 9, norm = 'linear', zorder = 100, vmin = 9, vmax = vmax)
+    ax2.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k', zorder = 200)
+    top_data2 = ax2.get_ylim()[1]
+    right_data2 = ax2.get_xlim()[1]
+    ax2.set_xlim(left = 1e1, right = right_data2)
+    ax2.set_ylim(bottom = 10, top = top_data2)
+
+
+    if False: #This section is for lines of constant surface brightness
+        angle = 62
+        yval = 0.21*top_data
+        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 24), ls = '--', color = 'gray')
+        ax.annotate(r'24 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 24), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 24), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 28), ls = '--', color = 'gray')
+        ax.annotate(r'28 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 28), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 28), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 35), ls = '--', color = 'gray')
+        ax.annotate(r'35 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 35), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 35), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        
+        yval = 0.21*top_data2
+        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 24), ls = '--', color = 'gray')
+        ax2.annotate(r'24 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 24), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 24), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 28), ls = '--', color = 'gray')
+        ax2.annotate(r'28 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 28), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 28), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 35), ls = '--', color = 'gray')
+        ax2.annotate(r'35 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 35), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 35), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+    
+
+    # plot_lg_virgo_some(ax, alpha = 0.2)
+    # plot_lg_virgo_some(ax2, alpha = 0.2)
+
+    # # Example usage:
+    # R = 100  # Half light radius in pc
+    # S = 25  # Surface brightness
+    # mstar_inverse = inverse_get_line_of_constant_surfb(R, S)
+    # print(mstar_inverse)
+    ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$', fontsize = label_font)
+    ax.set_ylabel(r'$R_{\rm{h}}$ (pc)', fontsize = label_font)
+    ax.text(0.01, 0.99, 'Cutoff', ha = 'left', va = 'top', transform=ax.transAxes)
+    ax.legend(fontsize = 8, loc = 'lower right')
+    ax.tick_params(axis='both', which = 'both', left=True, right=True, bottom = True, top = True, direction = 'in')
+    ax.set_xlim(right = 5e11)
+    ax.set_ylim(top = 8e3)
+
+    ax2.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$', fontsize = label_font)
+    ax2.set_ylabel(r'$R_{\rm{h}}$ (pc)', fontsize = label_font)
+    ax2.text(0.01, 0.99, 'Power law', ha = 'left', va = 'top', transform=ax2.transAxes)
+    ax2.legend(fontsize = 8, loc = 'lower right')
+    ax2.tick_params(axis='both', which = 'both', left=True, right=True, bottom = True, top = True, direction = 'in')
+    ax2.set_xlim(right = 5e11)
+    ax2.set_ylim(top = 8e3)
+
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    # fig.suptitle('FoF'+str(fof_no), fontsize = 14)
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'rh_vs_mstar_hist_infall.png')
+    plt.close()
+    return None
+
+plot_rh_vs_mstar_hist2d_infall(210)
+
+
+
+
+
+def plot_rh_vs_mstar_hist2d(fof_no, alpha_points = 0.1, size_points = 7.5):
+    '''
+    This is to plot the 2d histogram of size-mass relation
+    '''
+    def get_line_of_constant_surfb(mstar, S):
+        '''
+        This is to plot the line of constant surface brightness
+        mstar: Stellar mass
+        S: Surface brightness
+
+        Returns:
+        R: Half light radius in pc
+        '''
+        logR = -(1/5.)*(4.83+21.57-2.5*np.log10(mstar)+2.5*np.log10(np.pi)-S)
+        return 10**logR
+
+    def inverse_get_line_of_constant_surfb(R, S):
+        '''
+        Inverse function of get_line_of_constant_surfb
+        R: Half light radius in pc
+        S: Surface brightness
+
+        Returns:
+        mstar: Stellar mass
+        '''
+        def equation(mstar):
+            return R - get_line_of_constant_surfb(mstar, S)
+
+        mstar_guess = 1e3  # Initial guess for mstar
+        mstar_solution = fsolve(equation, mstar_guess)
+        return mstar_solution[0]
+
+    fig, (ax, ax2) = plt.subplots(nrows = 1, ncols = 2, figsize = (12, 6.15))
+    mspl_log = np.linspace(1, 13, 100)
+    # plot_lg_virgo(ax)
+    # plot_lg_virgo(ax2)
+    
+
+
+    if fof_no == 210:
+        csix = np.where((csfof == 0) | (csfof == 1 )| (csfof == 2))[0]
+        cmix = np.where((cmfof == 0) |( cmfof == 1) | (cmfof == 2))[0]
+        psix = np.where((psfof == 0) |( psfof == 1) | (psfof == 2))[0]
+        pmix = np.where((pmfof == 0) | (pmfof == 1) | (pmfof == 2))[0]
+    else:
+        csix = np.where(csfof == fof_no)[0]
+        cmix = np.where(cmfof == fof_no)[0]
+        psix = np.where(psfof == fof_no)[0]
+        pmix = np.where(pmfof == fof_no)[0]
+
+
+    # ax.scatter(csmstar_all[csix], np.array(csrh_all[csix]) * 1e3, marker = 's', fc = 'darkgreen', alpha = alpha_points, s = size_points, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
+    # ax.scatter(cmmstar_all[cmix], np.array(cmrh_all[cmix]) * 1e3, marker = 's', fc = 'purple', alpha = alpha_points, s = size_points, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
+    
+    cmstar = np.append(csmstar_all[csix], cmmstar_all[cmix]) #msun, THis is all the subhalos in the cutoff model
+    crh = np.append(csrh_all[csix], cmrh_all[cmix]) * 1e3 #kpc, This is rh of all the subhalos in the cutoff model
+    cmstar = cmstar[crh > 0]
+    crh = crh[crh > 0]
+
+
+    pmstar = np.append(psmstar_all[psix], pmmstar_all[pmix])
+    prh = np.append(psrh_all[psix], pmrh_all[pmix]) * 1e3
+    pmstar = pmstar[prh > 0]
+    prh = prh[prh > 0]
+
+
+    y_space = np.logspace(np.log10(min(crh)), np.log10(max(crh)), 100)
+    x_space = np.logspace(np.log10(min(cmstar)), np.log10(max(cmstar)), 100)
+
+
+    y_space1 = np.logspace(np.log10(min(prh)), np.log10(max(prh)), 100)
+    x_space1 = np.logspace(np.log10(min(pmstar)), np.log10(max(pmstar)), 100)
+
+    hist1, _, _ = np.histogram2d(cmstar, crh, bins=(x_space, y_space))
+    hist2, _, _ = np.histogram2d(pmstar, prh, bins=(x_space1, y_space1))
+
+    vmin = min(hist1.min(), hist2.min())
+    vmax = max(hist1.max(), hist2.max())
+
+    print(vmin, vmax)
+
+    ax.scatter(cmstar, crh, marker = 's', fc = 'darkblue', alpha = alpha_points, s = size_points, zorder = 0, edgecolor = 'darkblue', linewidth = 0.7)
+    ax.hist2d(cmstar, crh, bins = (x_space, y_space), cmin = 9, norm = 'log', zorder = 100, vmin = 9, vmax = vmax)
+    ax.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k', zorder = 200)
+    top_data = ax.get_ylim()[1]
+    right_data = ax.get_xlim()[1]
+    ax.set_xlim(left = 1e1, right = right_data)
+    ax.set_ylim(bottom = 10, top = top_data)
+
+    # ax2.scatter(psmstar_all[psix], np.array(psrh_all[psix]) * 1e3, marker = 's', fc = 'darkgreen', alpha = alpha_points, s = size_points, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
+    # ax2.scatter(pmmstar_all[pmix], np.array(pmrh_all[pmix]) * 1e3, marker = 's', fc = 'purple', alpha = alpha_points, s = size_points, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
+    
+    
+    
+    ax2.scatter(pmstar, prh, marker = 's', fc = 'darkblue', alpha = alpha_points, s = size_points, zorder = 0, edgecolor = 'darkblue', linewidth = 0.7)
+    
+    ax2.hist2d(pmstar, prh, bins = (x_space1, y_space1), cmin = 9, norm = 'linear', zorder = 100, vmin = 9, vmax = vmax)
+    ax2.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k', zorder = 200)
+    top_data2 = ax2.get_ylim()[1]
+    right_data2 = ax2.get_xlim()[1]
+    ax2.set_xlim(left = 1e1, right = right_data2)
+    ax2.set_ylim(bottom = 10, top = top_data2)
+
+
+    if True: #This section is for lines of constant surface brightness
+        angle = 62
+        yval = 0.21*top_data
+        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 24), ls = '--', color = 'gray')
+        ax.annotate(r'24 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 24), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 24), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 28), ls = '--', color = 'gray')
+        ax.annotate(r'28 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 28), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 28), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 35), ls = '--', color = 'gray')
+        ax.annotate(r'35 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 35), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 35), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        
+        yval = 0.21*top_data2
+        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 24), ls = '--', color = 'gray')
+        ax2.annotate(r'24 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 24), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 24), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 28), ls = '--', color = 'gray')
+        ax2.annotate(r'28 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 28), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 28), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 35), ls = '--', color = 'gray')
+        ax2.annotate(r'35 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 35), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 35), 1.05* yval), 
+                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
+    
+
+    # plot_lg_virgo_some(ax, alpha = 0.2)
+    # plot_lg_virgo_some(ax2, alpha = 0.2)
+
+    # # Example usage:
+    # R = 100  # Half light radius in pc
+    # S = 25  # Surface brightness
+    # mstar_inverse = inverse_get_line_of_constant_surfb(R, S)
+    # print(mstar_inverse)
+    ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$', fontsize = label_font)
+    ax.set_ylabel(r'$R_{\rm{h}}$ (pc)', fontsize = label_font)
+    ax.text(0.01, 0.99, 'Cutoff', ha = 'left', va = 'top', transform=ax.transAxes)
+    ax.legend(fontsize = 8, loc = 'lower right')
+    ax.tick_params(axis='both', which = 'both', left=True, right=True, bottom = True, top = True, direction = 'in')
+
+    ax2.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$', fontsize = label_font)
+    ax2.set_ylabel(r'$R_{\rm{h}}$ (pc)', fontsize = label_font)
+    ax2.text(0.01, 0.99, 'Power law', ha = 'left', va = 'top', transform=ax2.transAxes)
+    ax2.legend(fontsize = 8, loc = 'lower right')
+    ax2.tick_params(axis='both', which = 'both', left=True, right=True, bottom = True, top = True, direction = 'in')
+
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    # fig.suptitle('FoF'+str(fof_no), fontsize = 14)
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'rh_vs_mstar_hist.png')
+    plt.close()
+    return None
+
+plot_rh_vs_mstar_hist2d(210)
+
+
+
+
+def plot_radial_density_dist_3panel():
+    '''
+    This is to plot the radial density of subhalos in 3 panels for FoF0 in three mass ranges
+    '''
+    fig, axs = plt.subplots(1, 3, figsize = (18, 6))
+    Ndm_ar =[721148, 778322, 839804, 905710, 976898, 1054137, 1137501, 1227676, 1325214, 1430877, 1545758, 1669730, 1805234, 1953330, 2114837, 2291374, 2484727, 2697632, 2929798, 3184435, 3461447, 3763454, 4093457, 4451911, 4839639, 5261067, 5717234, 6218030, 6759960, 7335930, 7958128, 8628601, 9351223, 10124871, 10954252, 11843815, 12803150, 13852694, 14955612, 16130128, 17390800, 18724037, 20147057, 21672913, 23303629, 25059909, 26945144, 28965678, 31153056, 33453105, 35883715, 38490363, 41284274, 44311781, 47556207, 50917974, 54416144, 58216056, 62174887, 66291888, 70515423, 74848372, 79404305, 84157527, 89209147, 94471028, 99857920, 105317116, 111028328, 116939549, 123289439, 130030026, 137275327, 145069112, 153548719, 161907244, 169905804, 177886839, 185830162, 194592334, 203383663, 212695914, 222350306, 232159462, 242040951, 251514511, 260202731, 268769952, 278511000, 289919552, 300273807, 309815832, 319892274, 331241231, 342176869, 352467656, 365061316, 375410309, 383675808, 390894527]
+    Mstar_ar = [1215764100000.0, 1254275500000.0, 1293225400000.0, 1332839300000.0, 1373199400000.0, 1414346300000.0, 1456465800000.0, 1499649100000.0, 1543340700000.0, 1587188200000.0, 1631277400000.0, 1676285400000.0, 1723836500000.0, 1770465500000.0, 1818711300000.0, 1868407000000.0, 1921189400000.0, 1975527500000.0, 2031582000000.0, 2091765200000.0, 2152079200000.0, 2214667500000.0, 2279144400000.0, 2346879800000.0, 2415670000000.0, 2483960200000.0, 2560993300000.0, 2639518500000.0, 2717090000000.0, 2789425800000.0, 2865190000000.0, 2938990200000.0, 3014576300000.0, 3088882300000.0, 3166544000000.0, 3234522200000.0, 3303603000000.0, 3403499700000.0, 3475743700000.0, 3541706200000.0, 3611283200000.0, 3671716800000.0, 3740037800000.0, 3803736700000.0, 3863171600000.0, 3924207300000.0, 3984920700000.0, 4047178600000.0, 4116152300000.0, 4179430200000.0, 4235346300000.0, 4302655000000.0, 4361331100000.0, 4432361700000.0, 4508296400000.0, 4587731300000.0, 4649099700000.0, 4724291500000.0, 4775264400000.0, 4826232000000.0, 4874225000000.0, 4915582000000.0, 4958145500000.0, 4994681500000.0, 5043397300000.0, 5096712000000.0, 5136737400000.0, 5176501500000.0, 5222220400000.0, 5250391500000.0, 5282301000000.0, 5315951000000.0, 5351944000000.0, 5401151000000.0, 5537075300000.0, 5626221000000.0, 5672295500000.0, 5750817000000.0, 5774166000000.0, 5900201400000.0, 5929926000000.0, 5960066700000.0, 5986782300000.0, 6014626000000.0, 6088623000000.0, 6145640500000.0, 6163691000000.0, 6178112000000.0, 6282066000000.0, 6651228000000.0, 6749657000000.0, 6765084700000.0, 6809034700000.0, 6949706000000.0, 6986958000000.0, 7002995600000.0, 7282621400000.0, 7327393000000.0, 7357744000000.0, 7428319000000.0]
+
+    rpl = np.logspace(1, 3.2, 100)
+    rho_dm = Ndm_ar = np.array(Ndm_ar)*4.5e5 #This would be the density in Msun/kpc^3
+        # Ndm_ar = Ndm_ar/Ndm_ar[-1]
+    rho_star = Mstar_ar = np.array(Mstar_ar) #This would be the density in Msun/kpc^3
+    rho_dm = Ndm_ar/((4/3.) * np.pi * rpl**3)
+    rho_star = Mstar_ar/((4/3.) * np.pi * rpl**3)  
+    Nstar_and_dm = (rho_dm + rho_star) / (rho_dm[-1] + rho_star[-1])
+
+    Ndm_ar = Ndm_ar / (rho_dm[-1] + rho_star[-1]) /((4/3.) * np.pi * rpl**3)
+    Mstar_ar = Mstar_ar / (rho_dm[-1] + rho_star[-1]) /((4/3.) * np.pi * rpl**3)
+
+    
+    # Nstar_ar = Nstar_ar/Nstar_ar[-1]
+    
+
+
+
+    for jx in range(3):
+        pNm_ar = np.zeros(0) #shmf for merged subhalos
+        pNs_ar = np.zeros(0) #shmf for surviving subhalos 
+        cNm_ar = np.zeros(0) #shmf for merged subhalos
+        cNs_ar = np.zeros(0) #shmf for surviving subhalos
+
+        N_all_ar = np.zeros(0) #This is for all the subhalos inside virial radius
+        Ntng_ar = np.zeros(0)
+              
+
+
+        if jx == 0:
+            mplcutoff = 10**8.5
+            mmaxcutoff = 10**15
+            axs[jx].set_title(r'$M_{\star} > 10^{8.5}\,\rm{M_\odot}$', fontsize = label_font)
+        elif jx == 1:
+            mplcutoff = 10**5
+            mmaxcutoff = 10**8.5
+            axs[jx].set_title(r'$10^{5} < M_{\star} < 10^{8.5}\,\rm{M_\odot}$', fontsize = label_font)
+        elif jx ==2:
+            mplcutoff = 10**1
+            mmaxcutoff = 10**5
+            axs[jx].set_title(r'$M_{\star} < 10^{5}\,\rm{M_\odot}$', fontsize = label_font)
+        rpl2 = np.logspace(1, 3.2, 20)
+        for (ix, rs) in enumerate(rpl2): #rs is still radius, has nothing to do with rs of NFW profile
+            pNm_ar = np.append(pNm_ar, len(pmmstar_f_ar[(pmmstar_all > mplcutoff) & (pmmstar_all < mmaxcutoff) & (pmdist_f_ar < rs) & (pmfof == 0)]))
+            pNs_ar = np.append(pNs_ar, len(psmstar_f_ar[(psmstar_all > mplcutoff) & (psmstar_all < mmaxcutoff) & (psdist_f_ar < rs) & (psfof == 0)]))
+            cNm_ar = np.append(cNm_ar, len(cmmstar_f_ar[(cmmstar_all > mplcutoff) & (cmmstar_all < mmaxcutoff) & (cmdist_f_ar < rs) & (cmfof == 0)]))
+            cNs_ar = np.append(cNs_ar, len(csmstar_f_ar[(csmstar_all > mplcutoff) & (csmstar_all < mmaxcutoff) & (csdist_f_ar < rs) & (csfof == 0)]))
+            Ntng_ar = np.append(Ntng_ar, len(psmstar_f_ar_tng[(psmstar_f_ar_tng > mplcutoff) & (psmstar_f_ar_tng < mmaxcutoff)  & (psdist_f_ar < rs)]))
+
+        
+
+        
+        Ntng_ar = Ntng_ar/Ntng_ar[-1] * (rpl2[-1]**3 / rpl2**3)
+        pN_ar = (pNs_ar + pNm_ar) / (pNs_ar[-1] + pNm_ar[-1]) *  (rpl2[-1]**3 / rpl2**3)
+        cN_ar = (cNs_ar + cNm_ar) / (cNs_ar[-1] + cNm_ar[-1]) *  (rpl2[-1]**3 / rpl2**3)
+        
+
+        axs[jx].plot(rpl2, Ntng_ar, 'bo-', label = r'TNG')
+        axs[jx].plot(rpl2, pN_ar, color = 'red', label = r'Power law', lw  = 1.5)
+        axs[jx].plot(rpl2, cN_ar, color = 'darkgreen', label = r'Cutoff', lw = 1.5)
+
+        axs[jx].plot(rpl, Ndm_ar, color = 'black', ls = '--', label = 'DM in TNG', alpha = 0.5)
+        axs[jx].plot(rpl, Mstar_ar, color = 'black', ls = ':', label = 'Stars in TNG', alpha = 0.5)
+        axs[jx].plot(rpl, Nstar_and_dm, color = 'black', ls = '-', label = 'Stars and DM in TNG', alpha = 0.5)
+        if jx == 0:
+            axs[jx].legend(fontsize = 8)
+            axs[jx].set_ylabel(r'Number density in each bin $[\rm{kpc^{-3}}]$')
+        axs[jx].set_xlabel('Distance from center (kpc)')
+        axs[jx].set_ylim(bottom = 0.5)
+        
+        axs[jx].set_xscale('log')
+        axs[jx].set_yscale('log')
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'radial_density_dist_3panel.png')
+
+        
+
+
+    return
+
+plot_radial_density_dist_3panel()
+
+
+# def tidal_tracks():
+#     return None
+
+
+
+
+
+
+def surv_comp(cmap = 'turbo_r'):
+    '''
+    This is to compare mmx, rmx, mstar and rh between tng and the model
+    '''
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows = 2, ncols=2, figsize = (12*1/0.9, 12))
+    alpha = 0.8
+    msize = 8
+
+    pix = (psmstar_max_ar > 10**8) & (psmstar_max_ar < 10**9.5)
+
+
+    # col_ar = pstinf_ar[pix]
+    # col_label = r'$t_{\rm{inf}}$'
+    col_ar = np.log10(psmstar_max_ar)[pix]
+    col_label = r'$\log M_{\rm{\bigstar, max}}$'
+    sc = ax1.scatter(psmmx_f_ar[pix], psmmx_f_ar_tng[pix], c=col_ar, cmap=cmap, alpha = alpha, s = msize, marker='o', zorder = 20)
+
+    # cbar = plt.colorbar(sc, ax = ax1)
+    # cbar.set_label(col_label)
+
+    dummy = np.linspace(ax1.get_xlim()[0], ax1.get_xlim()[1], 3) 
+    ax1.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+    ax1.set_xlabel(r'$M_{\rm{mx}}$ from model (M$_{\odot}$)')
+    ax1.set_ylabel(r'$M_{\rm{mx}}$ from TNG (M$_{\odot}$)')
+    ax1.set_xscale('log')
+    ax1.set_yscale('log')
+    ax1.set_xlim(10**7.5, 1e11)
+    ax1.set_ylim(10**7.5, 1e11)
+
+    sc = ax2.scatter(psrmx_f_ar[pix]*1e3, psrmx_f_ar_tng[pix]*1e3, c=col_ar, cmap=cmap, alpha = alpha, s = msize, marker='o', zorder = 20)
+
+    dummy = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], 3) 
+    ax2.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+    ax2.set_xlabel(r'$r_{\rm{mx}}$ from model (pc)')
+    ax2.set_ylabel(r'$r_{\rm{mx}}$ from TNG (pc)')
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.set_xlim(10**2, 3*10**4)
+    ax2.set_ylim(10**2, 3*10**4)
+
+    sc = ax3.scatter(psmstar_f_ar[pix], psmstar_f_ar_tng[pix], c=col_ar, cmap=cmap, alpha = alpha, s = msize, marker='o', zorder = 20)
+
+    dummy = np.linspace(ax3.get_xlim()[0], ax3.get_xlim()[1], 3)
+    ax3.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+    ax3.set_xlabel(r'$M_{\rm{star}}$ from model (M$_{\odot}$)')
+    ax3.set_ylabel(r'$M_{\rm{star}}$ from TNG (M$_{\odot}$)')
+
+    ax3.set_xscale('log')
+    ax3.set_yscale('log')
+    # ax3.set_xlim(1*10**8, 5*10**9)
+    # ax3.set_ylim(1*10**8, 5*10**9)
+
+    sc = ax4.scatter(psrh_f_ar[pix]*1e3, psrh_f_ar_tng[pix]*1e3, c=col_ar, cmap=cmap, alpha = alpha, s = msize, marker='o', zorder = 20)
+
+    dummy = np.linspace(ax4.get_xlim()[0], ax4.get_xlim()[1], 3)
+    ax4.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+    ax4.set_xlabel(r'$R_{\rm{h}}$ from model (pc)')
+    ax4.set_ylabel(r'$R_{\rm{h}}$ from TNG (pc)')
+
+    ax4.set_xscale('log')
+    ax4.set_yscale('log')
+    ax4.set_xlim(10**2, 4*10**3)
+    ax4.set_ylim(10**2, 4*10**3)
+
+    for ax in [ax1, ax2, ax3, ax4]:
+        ax.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
+        ax.tick_params(axis='x', which = 'both', direction = 'in')
+
+    plt.tight_layout()
+
+    fig.subplots_adjust(right=0.9)
+    cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
+    cbar = fig.colorbar(sc, cax=cbar_ax)
+    cbar.set_label(col_label)
+
+
+    plt.savefig(this_fof_plotppath + 'surv_comp.png')
+
+    # The following part is to plot the fractional stellar mass remaining for TNG vs the model
+    fig, ax = plt.subplots(1, 1, figsize = (6,6))
+    ax.scatter(np.log10(psmstar_f_ar[pix]/psmstar_max_ar[pix]), np.log10(psmstar_f_ar_tng[pix]/psmstar_max_ar[pix]), s = 8, color = 'black', alpha = 0.4)
+    dummy = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 3)
+    ax.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
+
+    ax.set_xlabel(r'$\log (M_{\rm{star}}/M_{\rm{star, max}})$ from model')
+    ax.set_ylabel(r'$\log (M_{\rm{star}}/M_{\rm{star, max}})$ from TNG')
+    ax.set_xlim(-3, 0)
+    ax.set_ylim(-3, 0)
+    plt.tight_layout()
+    plt.savefig(this_fof_plotppath + 'fstar_comp_validation.png')
+
+    return None
+
+surv_comp()
+
+
+
+
+
 
 
 def plot_fig1():
@@ -932,39 +2060,6 @@ def plot_fig1():
     return None
 
 plot_fig1()
-
-
-def plot_fig2():
-    '''
-    Figure 2 would be the stellar segregation, justifying the segregations that we have
-    '''
-    fig, ax = plt.subplots(figsize = (6, 6))
-    ax.scatter(np.log10(psmstar_max_all), np.log10(psrh_max_all/psrmx_if_ar), color = 'gray', marker = 'o', s = 2, alpha = 0.1, label = 'TNG at infall')
-    ax.scatter(np.log10(pmmstar_max_all), np.log10(pmrh_max_all/pmrmx_if_ar), color = 'gray', marker = 'o', s = 2, alpha = 0.1)
-    ax.axhline(np.log10(0.5), ls = '-', color = 'gray', alpha = 0.4, lw = 1)
-    ax.text(11.9, np.log10(0.5) + 0.05, '1/2', fontsize = 8, ha = 'right')
-    ax.axhline(np.log10(0.25), ls = '-', color = 'gray', alpha = 0.4, lw = 1)
-    ax.text(11.9, np.log10(0.25) + 0.05, '1/4', fontsize = 8, ha = 'right')
-    ax.axhline(np.log10(0.125), ls = '-', color = 'gray', alpha = 0.4, lw = 1)
-    ax.text(11.9, np.log10(0.125) + 0.05, '1/8', fontsize = 8, ha = 'right')
-    ax.axhline(np.log10(0.0625), ls = '-', color = 'gray', alpha = 0.4, lw = 1)
-    ax.text(11.9, np.log10(0.0625) + 0.05, '1/16', fontsize = 8, ha = 'right')
-    ax.axhline(np.log10(1/66), ls = ':', color = 'gray', alpha = 0.4, lw = 1)
-    ax.text(11.9, np.log10(1/66) + 0.05, '1/66', fontsize = 8, ha = 'right')
-    ax.axhline(np.log10(1/250), ls = ':', color = 'gray', alpha = 0.4, lw = 1)
-    ax.text(11.9, np.log10(1/250) + 0.05, '1/250', fontsize = 8, ha = 'right')
-    ax.axhline(np.log10(1/1000), ls = ':', color = 'gray', alpha = 0.4, lw = 1)
-    ax.text(11.9, np.log10(1/1000) + 0.05, '1/1000', fontsize = 8, ha = 'right')
-
-    ax.set_xlabel(r'$\log M_{\rm{star}}(M_\odot)$', fontsize = label_font)
-    ax.set_ylabel(r'$\log (R_{\rm{h0}}/r_{\rm{mx0}})$', fontsize = label_font)
-    # ax.axhline()
-    ax.set_xlim(left = 2, right = 12)
-    plt.tight_layout()
-    plt.savefig(this_fof_plotppath + 'fig2.png')
-    return None
-
-plot_fig2()
 
 
 
@@ -1984,169 +3079,6 @@ def plot_rh_vs_mstar(fof_no = 210, alpha_points = 0.1, size_points = 7.5):
 
 
 
-def plot_rh_vs_mstar_hist2d(fof_no, alpha_points = 0.1, size_points = 7.5):
-    '''
-    This is to plot the 2d histogram of size-mass relation
-    '''
-    def get_line_of_constant_surfb(mstar, S):
-        '''
-        This is to plot the line of constant surface brightness
-        mstar: Stellar mass
-        S: Surface brightness
-
-        Returns:
-        R: Half light radius in pc
-        '''
-        logR = -(1/5.)*(4.83+21.57-2.5*np.log10(mstar)+2.5*np.log10(np.pi)-S)
-        return 10**logR
-
-    def inverse_get_line_of_constant_surfb(R, S):
-        '''
-        Inverse function of get_line_of_constant_surfb
-        R: Half light radius in pc
-        S: Surface brightness
-
-        Returns:
-        mstar: Stellar mass
-        '''
-        def equation(mstar):
-            return R - get_line_of_constant_surfb(mstar, S)
-
-        mstar_guess = 1e3  # Initial guess for mstar
-        mstar_solution = fsolve(equation, mstar_guess)
-        return mstar_solution[0]
-
-    fig, (ax, ax2) = plt.subplots(nrows = 1, ncols = 2, figsize = (12, 6.15))
-    mspl_log = np.linspace(1, 13, 100)
-    # plot_lg_virgo(ax)
-    # plot_lg_virgo(ax2)
-    
-
-
-    if fof_no == 210:
-        csix = np.where((csfof == 0) | (csfof == 1 )| (csfof == 2))[0]
-        cmix = np.where((cmfof == 0) |( cmfof == 1) | (cmfof == 2))[0]
-        psix = np.where((psfof == 0) |( psfof == 1) | (psfof == 2))[0]
-        pmix = np.where((pmfof == 0) | (pmfof == 1) | (pmfof == 2))[0]
-    else:
-        csix = np.where(csfof == fof_no)[0]
-        cmix = np.where(cmfof == fof_no)[0]
-        psix = np.where(psfof == fof_no)[0]
-        pmix = np.where(pmfof == fof_no)[0]
-
-
-    # ax.scatter(csmstar_all[csix], np.array(csrh_all[csix]) * 1e3, marker = 's', fc = 'darkgreen', alpha = alpha_points, s = size_points, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
-    # ax.scatter(cmmstar_all[cmix], np.array(cmrh_all[cmix]) * 1e3, marker = 's', fc = 'purple', alpha = alpha_points, s = size_points, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
-    
-    cmstar = np.append(csmstar_all[csix], cmmstar_all[cmix]) #msun, THis is all the subhalos in the cutoff model
-    crh = np.append(csrh_all[csix], cmrh_all[cmix]) * 1e3 #kpc, This is rh of all the subhalos in the cutoff model
-    cmstar = cmstar[crh > 0]
-    crh = crh[crh > 0]
-
-
-    pmstar = np.append(psmstar_all[psix], pmmstar_all[pmix])
-    prh = np.append(psrh_all[psix], pmrh_all[pmix]) * 1e3
-    pmstar = pmstar[prh > 0]
-    prh = prh[prh > 0]
-
-
-    y_space = np.logspace(np.log10(min(crh)), np.log10(max(crh)), 100)
-    x_space = np.logspace(np.log10(min(cmstar)), np.log10(max(cmstar)), 100)
-
-
-    y_space1 = np.logspace(np.log10(min(prh)), np.log10(max(prh)), 100)
-    x_space1 = np.logspace(np.log10(min(pmstar)), np.log10(max(pmstar)), 100)
-
-    hist1, _, _ = np.histogram2d(cmstar, crh, bins=(x_space, y_space))
-    hist2, _, _ = np.histogram2d(pmstar, prh, bins=(x_space1, y_space1))
-
-    vmin = min(hist1.min(), hist2.min())
-    vmax = max(hist1.max(), hist2.max())
-
-    print(vmin, vmax)
-
-    ax.scatter(cmstar, crh, marker = 's', fc = 'darkblue', alpha = alpha_points, s = size_points, zorder = 0, edgecolor = 'darkblue', linewidth = 0.7)
-    ax.hist2d(cmstar, crh, bins = (x_space, y_space), cmin = 9, norm = 'log', zorder = 100, vmin = 9, vmax = vmax)
-    ax.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k', zorder = 200)
-    top_data = ax.get_ylim()[1]
-    right_data = ax.get_xlim()[1]
-    ax.set_xlim(left = 1e1, right = right_data)
-    ax.set_ylim(bottom = 10, top = top_data)
-
-    # ax2.scatter(psmstar_all[psix], np.array(psrh_all[psix]) * 1e3, marker = 's', fc = 'darkgreen', alpha = alpha_points, s = size_points, label = 'Survived', zorder = 200, edgecolor = 'darkgreen', linewidth = 0.7)
-    # ax2.scatter(pmmstar_all[pmix], np.array(pmrh_all[pmix]) * 1e3, marker = 's', fc = 'purple', alpha = alpha_points, s = size_points, label = 'Merged', zorder = 200, edgecolor = 'purple', linewidth = 0.7)
-    
-    
-    
-    ax2.scatter(pmstar, prh, marker = 's', fc = 'darkblue', alpha = alpha_points, s = size_points, zorder = 0, edgecolor = 'darkblue', linewidth = 0.7)
-    
-    ax2.hist2d(pmstar, prh, bins = (x_space1, y_space1), cmin = 9, norm = 'linear', zorder = 100, vmin = 9, vmax = vmax)
-    ax2.plot(10**mspl_log, 1e3 * 10**get_lrh(mspl_log), color = 'k', zorder = 200)
-    top_data2 = ax2.get_ylim()[1]
-    right_data2 = ax2.get_xlim()[1]
-    ax2.set_xlim(left = 1e1, right = right_data2)
-    ax2.set_ylim(bottom = 10, top = top_data2)
-
-
-    if True: #This section is for lines of constant surface brightness
-        angle = 62
-        yval = 0.21*top_data
-        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 24), ls = '--', color = 'gray')
-        ax.annotate(r'24 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 24), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 24), 1.05* yval), 
-                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
-        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 28), ls = '--', color = 'gray')
-        ax.annotate(r'28 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 28), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 28), 1.05* yval), 
-                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
-        ax.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 35), ls = '--', color = 'gray')
-        ax.annotate(r'35 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 35), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 35), 1.05* yval), 
-                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
-        
-        yval = 0.21*top_data2
-        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 24), ls = '--', color = 'gray')
-        ax2.annotate(r'24 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 24), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 24), 1.05* yval), 
-                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
-        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 28), ls = '--', color = 'gray')
-        ax2.annotate(r'28 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 28), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 28), 1.05* yval), 
-                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
-        ax2.plot(10**mspl_log, get_line_of_constant_surfb(10**mspl_log, 35), ls = '--', color = 'gray')
-        ax2.annotate(r'35 mag arcsec$^{-2}$', xy = (inverse_get_line_of_constant_surfb(yval, 35), yval), xytext = (inverse_get_line_of_constant_surfb(yval, 35), 1.05* yval), 
-                rotation=angle, color='gray', fontsize=10, rotation_mode='anchor')
-    
-
-    # plot_lg_virgo_some(ax, alpha = 0.2)
-    # plot_lg_virgo_some(ax2, alpha = 0.2)
-
-    # # Example usage:
-    # R = 100  # Half light radius in pc
-    # S = 25  # Surface brightness
-    # mstar_inverse = inverse_get_line_of_constant_surfb(R, S)
-    # print(mstar_inverse)
-    ax.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$', fontsize = label_font)
-    ax.set_ylabel(r'$R_{\rm{h}}$ (pc)', fontsize = label_font)
-    ax.text(0.01, 0.99, 'Cutoff', ha = 'left', va = 'top', transform=ax.transAxes)
-    ax.legend(fontsize = 8, loc = 'lower right')
-    ax.tick_params(axis='both', which = 'both', left=True, right=True, bottom = True, top = True, direction = 'in')
-
-    ax2.set_xlabel(r'$M_{\bigstar}\,\rm{(M_\odot)}$', fontsize = label_font)
-    ax2.set_ylabel(r'$R_{\rm{h}}$ (pc)', fontsize = label_font)
-    ax2.text(0.01, 0.99, 'Power law', ha = 'left', va = 'top', transform=ax2.transAxes)
-    ax2.legend(fontsize = 8, loc = 'lower right')
-    ax2.tick_params(axis='both', which = 'both', left=True, right=True, bottom = True, top = True, direction = 'in')
-
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax2.set_xscale('log')
-    ax2.set_yscale('log')
-    # fig.suptitle('FoF'+str(fof_no), fontsize = 14)
-    plt.tight_layout()
-    plt.savefig(this_fof_plotppath + 'rh_vs_mstar_hist.png')
-    plt.close()
-    return None
-
-plot_rh_vs_mstar_hist2d(210)
-
-
-
 
 
 # rpl = np.logspace(1, 3.2, 100) #r = m
@@ -2869,208 +3801,3 @@ check_compact_objects()
 
 
 
-
-def tidal_tracks():
-    '''
-    This is to plot the tidal tracks of the satellites based on Errani 22 or the plots given by Rapha
-    '''
-    
-    fig, (ax, ax2) = plt.subplots(nrows = 2, ncols = 1, figsize = (6,6), sharex = True)
-    fpl = np.linspace(-6.4, 0, 100)
-
-    # def get_first_set_l10rhbyrmx0(fpl_ar, Rh0byrmx0):
-    #     '''
-    #     fpl should be in log pleaseee
-    #     '''
-    #     l10rhbyrmx0_ar = np.zeros(0)
-    #     for fpl in fpl_ar:
-    #         if fpl > -2.5:
-    #             if Rh0byrmx0 == 1/2:
-    #                 l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by2_spl(fpl))
-    #             elif Rh0byrmx0 == 1/4:
-    #                 l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by4_spl(fpl))
-    #             elif Rh0byrmx0 == 1/8:
-    #                 l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by8_spl(fpl))
-    #             elif Rh0byrmx0 == 1/16:
-    #                 l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by16_spl(fpl))
-    #         else:
-    #             l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, np.log10(get_rmxbyrmx0(10**fpl)))
-    #     return l10rhbyrmx0_ar
-    #     # if fpl > -2.5:
-    #     #     if Rh0byrmx0 == 1/2:
-    #     #         return l10rbyrmx0_1by2_spl(fpl)
-    #     #     elif Rh0byrmx0 == 1/4:
-    #     #         return l10rbyrmx0_1by4_spl(fpl)
-    #     #     elif Rh0byrmx0 == 1/8:
-    #     #         return l10rbyrmx0_1by8_spl(fpl)
-    #     #     elif Rh0byrmx0 == 1/16:
-    #     #         return l10rbyrmx0_1by16_spl(fpl)
-    #     # else:
-    #     #     return np.log10(get_rmxbyrmx0(10**fpl))
-        
-    def get_l10rhbyrmx0(fpl_ar, Rh0byrmx0):
-        l10rhbyrmx0_ar = np.zeros(0)
-
-        for fpl in fpl_ar:
-            if (fpl > -5) and (Rh0byrmx0 == 1/66 or Rh0byrmx0 == 1/250):
-                if Rh0byrmx0 == 1/66:
-                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by66_spl(fpl))
-                elif Rh0byrmx0 == 1/250:
-                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by250_spl(fpl))
-            elif (fpl > -2.5) and (Rh0byrmx0 in [1/2, 1/4, 1/8, 1/16]):
-                if Rh0byrmx0 == 1/2:
-                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by2_spl(fpl))
-                elif Rh0byrmx0 == 1/4:
-                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by4_spl(fpl))
-                elif Rh0byrmx0 == 1/8:
-                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by8_spl(fpl))
-                elif Rh0byrmx0 == 1/16:
-                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by16_spl(fpl))
-            elif (fpl > -6.4) and (Rh0byrmx0 == 1/1000):
-                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by1000_spl(fpl))
-            else:
-                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, np.log10(get_rmxbyrmx0(10**fpl)))
-        return l10rhbyrmx0_ar
-
-        # return l10rhbyrmx0
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/2), c = 'r', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/2$')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/4), c = 'orange', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/4$')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/8), c = 'skyblue', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/8$')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/16), c = 'darkblue', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/16$')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/66), c = 'purple', ls = ':')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/250), c = 'limegreen', ls = ':')
-    ax.plot(fpl, get_l10rhbyrmx0(fpl, 1/1000), c = 'darkgreen', ls = ':')
-
-    ax.plot(fpl, np.log10(get_rmxbyrmx0(10**fpl)), c = 'black', ls = '--')
-    ax.annotate(r'$r_{\rm{mx}}$', xy = (fpl[-20], np.log10(get_rmxbyrmx0(10**fpl))[-20]), xytext = (fpl[-20], 0.8* np.log10(get_rmxbyrmx0(10**fpl))[-20]), 
-                rotation=30, color='black', fontsize=10, rotation_mode='anchor')
-
-    # ax.set_xlabel(r'$\log M_{\rm{mx}}/M_{\rm{mx0}}$', fontsize = 14)
-    ax.set_ylabel(r'$\log R_{\rm{h}}/r_{\rm{mx0}}$', fontsize = 14)
-    ax.legend(fontsize = 8, frameon=False)
-    ax.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
-    ax.tick_params(axis='x', which = 'both', direction = 'in')
-
-    # print('Why are you like this!', get_LbyL0(fpl, 1/2))
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/2)), c = 'r')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/4)), c = 'orange')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/8)), c = 'skyblue')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/16)), c = 'darkblue')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/66)), c = 'purple', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/66$', ls = ':')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/250)), c = 'limegreen', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/250$', ls = ':')
-    ax2.plot(fpl, np.log10(get_LbyL0(10 ** fpl, 1/1000)), c = 'darkgreen', label = r'$R_{\rm{h0}}/r_{\rm{mx0}} = 1/1000$', ls = ':')
-
-    ax2.set_xlabel(r'$\log M_{\rm{mx}}/M_{\rm{mx0}}$', fontsize = 14)
-    ax2.set_ylabel(r'$\log M_{\rm{star}}/M_{\rm{star,0}}$', fontsize = 14)
-    ax2.set_ylim(bottom = -3)
-    ax2.legend(fontsize = 8, frameon=False)
-    ax2.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
-    ax2.tick_params(axis='x', which = 'both', direction = 'in')
-
-
-    plt.tight_layout()
-    plt.savefig(this_fof_plotppath + 'tidal_tracks.png')
-
-    return None
-
-tidal_tracks()
-
-
-def surv_comp(cmap = 'turbo_r'):
-    '''
-    This is to compare mmx, rmx, mstar and rh between tng and the model
-    '''
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows = 2, ncols=2, figsize = (12*1/0.9, 12))
-    alpha = 0.8
-    msize = 8
-
-    pix = (psmstar_max_ar > 10**7.5) & (psmstar_max_ar < 10**9.5)
-
-
-    col_ar = pstinf_ar[pix]
-    col_label = r'$t_{\rm{inf}}$'
-    # col_ar = np.log10(psmstar_max_ar)[pix]
-    # col_label = r'$\log M_{\rm{\bigstar, max}}$'
-    sc = ax1.scatter(psmmx_f_ar[pix], psmmx_f_ar_tng[pix], c=col_ar, cmap=cmap, alpha = alpha, s = msize, marker='o', zorder = 20)
-
-    # cbar = plt.colorbar(sc, ax = ax1)
-    # cbar.set_label(col_label)
-
-    dummy = np.linspace(ax1.get_xlim()[0], ax1.get_xlim()[1], 3) 
-    ax1.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
-
-    ax1.set_xlabel(r'$M_{\rm{mx}}$ from model (M$_{\odot}$)')
-    ax1.set_ylabel(r'$M_{\rm{mx}}$ from TNG (M$_{\odot}$)')
-    ax1.set_xscale('log')
-    ax1.set_yscale('log')
-    ax1.set_xlim(10**7.5, 1e11)
-    ax1.set_ylim(10**7.5, 1e11)
-
-    sc = ax2.scatter(psrmx_f_ar[pix]*1e3, psrmx_f_ar_tng[pix]*1e3, c=col_ar, cmap=cmap, alpha = alpha, s = msize, marker='o', zorder = 20)
-
-    dummy = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], 3) 
-    ax2.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
-
-    ax2.set_xlabel(r'$r_{\rm{mx}}$ from model (pc)')
-    ax2.set_ylabel(r'$r_{\rm{mx}}$ from TNG (pc)')
-    ax2.set_xscale('log')
-    ax2.set_yscale('log')
-    ax2.set_xlim(10**2, 3*10**4)
-    ax2.set_ylim(10**2, 3*10**4)
-
-    sc = ax3.scatter(psmstar_f_ar[pix], psmstar_f_ar_tng[pix], c=col_ar, cmap=cmap, alpha = alpha, s = msize, marker='o', zorder = 20)
-
-    dummy = np.linspace(ax3.get_xlim()[0], ax3.get_xlim()[1], 3)
-    ax3.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
-
-    ax3.set_xlabel(r'$M_{\rm{star}}$ from model (M$_{\odot}$)')
-    ax3.set_ylabel(r'$M_{\rm{star}}$ from TNG (M$_{\odot}$)')
-
-    ax3.set_xscale('log')
-    ax3.set_yscale('log')
-    # ax3.set_xlim(1*10**8, 5*10**9)
-    # ax3.set_ylim(1*10**8, 5*10**9)
-
-    sc = ax4.scatter(psrh_f_ar[pix]*1e3, psrh_f_ar_tng[pix]*1e3, c=col_ar, cmap=cmap, alpha = alpha, s = msize, marker='o', zorder = 20)
-
-    dummy = np.linspace(ax4.get_xlim()[0], ax4.get_xlim()[1], 3)
-    ax4.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
-
-    ax4.set_xlabel(r'$R_{\rm{h}}$ from model (pc)')
-    ax4.set_ylabel(r'$R_{\rm{h}}$ from TNG (pc)')
-
-    ax4.set_xscale('log')
-    ax4.set_yscale('log')
-    ax4.set_xlim(10**2, 4*10**3)
-    ax4.set_ylim(10**2, 4*10**3)
-
-    for ax in [ax1, ax2, ax3, ax4]:
-        ax.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
-        ax.tick_params(axis='x', which = 'both', direction = 'in')
-
-    plt.tight_layout()
-
-    fig.subplots_adjust(right=0.9)
-    cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
-    cbar = fig.colorbar(sc, cax=cbar_ax)
-    cbar.set_label(col_label)
-
-
-    plt.savefig(this_fof_plotppath + 'surv_comp.png')
-
-    # The following part is to plot the fractional stellar mass remaining for TNG vs the model
-    fig, ax = plt.subplots(1, 1, figsize = (6,6))
-    ax.scatter(np.log10(psmstar_f_ar[pix]/psmstar_max_ar[pix]), np.log10(psmstar_f_ar_tng[pix]/psmstar_max_ar[pix]), s = 8, color = 'black', alpha = 0.4)
-    dummy = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 3)
-    ax.plot(dummy, dummy, 'k-', lw = 0.5, zorder = 0, alpha = 0.5)
-
-    ax.set_xlabel(r'$\log (M_{\rm{star}}/M_{\rm{star, max}})$ from model')
-    ax.set_ylabel(r'$\log (M_{\rm{star}}/M_{\rm{star, max}})$ from TNG')
-    ax.set_xlim(-3, 0)
-    ax.set_ylim(-3, 0)
-    plt.tight_layout()
-    plt.savefig(this_fof_plotppath + 'fstar_comp_validation.png')
-
-    return None
-
-surv_comp()

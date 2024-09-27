@@ -15,6 +15,7 @@ from functools import partial
 import sys
 from scipy.optimize import fsolve
 from joblib import Parallel, delayed #This is to parallelize the code
+from subhalo_profiles import NFWProfile
 
 
 
@@ -33,6 +34,7 @@ plotpath  = '/rhome/psadh003/bigdata/tng50/output_plots/'
 baseUrl = 'https://www.tng-project.org/api/TNG50-1/'
 headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
 basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
+miscpath = '/bigdata/saleslab/psadh003/misc_files/'
 
 ages_df = pd.read_csv(filepath + 'ages_tng.csv', comment = '#')
 
@@ -632,10 +634,9 @@ class TNG_Subhalo():
         return Rh0/rmx0
 
 
-    def get_dm_energy_dist(self, where = None, plot = True):
+    def get_dm_energies(self, where = None):
         '''
-        This is to get the energy distribution of the dark matter particles
-        We plan to compare it with the energy distribution of the NFW profile
+        This is to calculate the energies of the dark matter particles inside the subhalo and store them in ? files
         '''
         if where == None: #If the input is none, then go ahead a nd use the default values
             shsnap = self.snap
@@ -646,8 +647,8 @@ class TNG_Subhalo():
 
         z = all_redshifts[shsnap]
         filename = filepath + 'cutout_files/cutout_'+str(shid)+'_'+str(shsnap)+'.hdf5'
-        # if not os.path.exists(filename): #Uncomment this after the first run
-        if True:
+        if not os.path.exists(filename): #Uncomment this after the first run
+        # if True: #This is to download the files
             # os.remove(filename)
             print(f'Downloading data for sfid: {int(shid)} and snap: {int(shsnap)}')
             self.download_data(int(shsnap), int(shid))
@@ -669,6 +670,8 @@ class TNG_Subhalo():
         dm_xvel = dm_coords[:, 0]*np.sqrt(1 / (1+z)) - subh_vel_x
         dm_yvel = dm_coords[:, 1]*np.sqrt(1 / (1+z)) - subh_vel_y
         dm_zvel = dm_coords[:, 2]*np.sqrt(1 / (1+z)) - subh_vel_z
+
+
 
         if 'PartType0' in f.keys():
             cg = 1 #telling that gas is present
@@ -698,11 +701,17 @@ class TNG_Subhalo():
             This returns the potential energy of the star at the given position in (km/s)^2
             '''
             G1 = 4.30092e-6 #kpc/Msun * (km/s)^2
-            # pe_dm = mass_dm * np.sum(1/np.sqrt((x - dm_xcoord)**2 + (y - dm_ycoord)**2 + (z - dm_zcoord)**2))
+            # pe_dm = mass_dm * np.sum(1/np.sqrt((x - dm_xcoord)**2 + (y - dm_ycoord)**2 + (z - dm_zcoord)**2 ))
             pe_gas = 0
             if cg == 1: pe_gas = np.sum(gas_masses/np.sqrt((x - gas_xcoord)**2 + (y - gas_ycoord)**2 + (z - gas_zcoord)**2))
+            # pe_stars = np.sum(star_masses/np.sqrt((x - star_xcoord)**2 + (y - star_ycoord)**2 + (z - star_zcoord)**2 ))
+
+            pe_stars = 0
+            for jx in range(len(star_xcoord)):
+                if star_xcoord[jx] == x and star_ycoord[jx] == y and star_zcoord[jx] == z:
+                    continue
+                pe_stars = pe_stars + star_masses[jx]/np.sqrt((x - star_xcoord[jx])**2 + (y - star_ycoord[jx])**2 + (z - star_zcoord[jx])**2)
             pe_dm = 0 #It should be noted that this is for stars
-            pe_stars = np.sum(star_masses/np.sqrt((x - star_xcoord)**2 + (y - star_ycoord)**2 + (z - star_zcoord)**2))
             for ix in range(len(dm_xcoord)):
                 if dm_xcoord[ix] == x and dm_ycoord[ix] == y and dm_zcoord[ix] == z:
                     continue
@@ -716,20 +725,406 @@ class TNG_Subhalo():
             # te = pe + ke
             return ke, pe
 
-        results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_total_energy)(ix) for ix in (range(len(dm_xcoord))))
-        ke_ar = np.zeros(0)
-        pe_ar = np.zeros(0)
-        for ix in range(len(results)):
-            ke_ar = np.append(ke_ar, results[ix][0])
-            pe_ar = np.append(pe_ar, results[ix][1])
+        # UNCOMMENT THE FOLLOWING LINES AFTER YOU ARE DONE WITH SAVING POSITIONS
+        filename = filepath + 'energy_files/pe_'+str(shid)+'_'+str(shsnap)+'.npy'
+        if not os.path.exists(filename): #Uncomment this after the first run
+            results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_total_energy)(ix) for ix in (range(len(dm_xcoord)))) #CHANGE: This is only for testing!
+            ke_ar = np.zeros(0)
+            pe_ar = np.zeros(0)
+            for ix in range(len(results)):
+                ke_ar = np.append(ke_ar, results[ix][0])
+                pe_ar = np.append(pe_ar, results[ix][1])
+
+            np.save(filepath + 'energy_files/ke_'+str(shid)+'_'+str(shsnap)+'.npy', ke_ar)
+            np.save(filepath + 'energy_files/pe_'+str(shid)+'_'+str(shsnap)+'.npy', pe_ar)
+
+        
+        filename = 'energy_files/dm_dist_'+str(shid)+'_'+str(shsnap)+'.npy'
+
+        if not os.path.exists(filename): #Uncomment this after the first run
+            np.save(filepath + 'energy_files/dm_dist_'+str(shid)+'_'+str(shsnap)+'.npy', np.sqrt(dm_xcoord**2 + dm_ycoord**2 + dm_zcoord**2))
+
+
+        filename = 'energy_files/part_data_'+str(shid)+'_'+str(shsnap)+'.npy'
+        if not os.path.exists(filename):
+            #Here, we will be storing the particle massses, distances and velocities including the stellar particles
+            masses_array = np.append(np.ones(len(dm_xcoord))*mass_dm, star_masses)
+            xcoord_array = np.append(dm_xcoord, star_xcoord) + subh_pos_x
+            ycoord_array = np.append(dm_ycoord, star_ycoord) + subh_pos_y
+            zcoord_array = np.append(dm_zcoord, star_zcoord) + subh_pos_z
+            xvel_array = np.append(dm_xvel, star_xvel) + subh_vel_x
+            yvel_array = np.append(dm_yvel, star_yvel) + subh_vel_y
+            zvel_array = np.append(dm_zvel, star_zvel) + subh_vel_z
+
+            #Let us now save the file as a .csv file naming each of the columns
+            data = np.vstack((masses_array, xcoord_array, ycoord_array, zcoord_array, xvel_array, yvel_array, zvel_array)).T
+            np.savetxt(filepath + 'energy_files/part_data_'+str(shid)+'_'+str(shsnap)+'.csv', data, delimiter = ',', 
+                       header = 'mass, x, y, z, vx, vy, vz')
+            
+            print(f'The center for the subhalo assumed is at [{subh_pos_x}, {subh_pos_y}, {subh_pos_z}] kpc and the velocity is [{subh_vel_x}, {subh_vel_y}, {subh_vel_z}] km/s')
+
+            return None
+
+
+
+
+        return None
+    
+    def get_dm_energy_dist(self, where = None, plot = True):
+        '''
+        This is to get the energy distribution of the dark matter particles
+        '''
+        if where == None: #If the input is none, then go ahead a nd use the default values
+            shsnap = self.snap
+            shid = self.sfid
+        else: #If there is some input, use that to get the rotation curve
+            shsnap = self.__where_to_snap(where)
+            shid = int(self.tree['SubfindID'][self.tree['SnapNum'] == shsnap])
+
+        z = all_redshifts[shsnap]
+
+        if_treep = il.sublink.loadTree(basePath, int(shsnap), int(shid), fields = ['SnapNum', 'Group_R_Crit200', 'Group_M_Crit200'], onlyMPB = True)
+        tree_snaps = if_treep['SnapNum']
+        tree_r200 = if_treep['Group_R_Crit200']
+        rvir_subh = tree_r200[tree_snaps == (shsnap - 1)]/h/(1+z) #This is the virial radius of the subhalo in kpc, we have done - 1 here because at shsnap, the group is FoF0 progenitor
+        mvir_subh = if_treep['Group_M_Crit200'][tree_snaps == (shsnap - 1)]*1e10/h #This is the virial mass of the subhalo in Msun
+        # print(rvir_subh)
+        print('Virial masss of this subhalo is', np.log10(mvir_subh))
+        # filename = filepath + 'energy_files/pe_'+str(shid)+'_'+str(shsnap)+'.npy'
+        # filename = 'energy_files/dm_dist_'+str(shid)+'_'+str(shsnap)+'.npy'
+        filename = 'energy_files/part_data_'+str(shid)+'_'+str(shsnap)+'.npy'
+
+
+
+        if not os.path.exists(filename): #Uncomment this after the first run
+        # if True: #This is to download the files
+            # os.remove(filename)
+            print(f'Downloading data for sfid: {int(shid)} and snap: {int(shsnap)}')
+            self.get_dm_energies()
+        # else:
+        pe_ar = np.load(filepath + 'energy_files/pe_'+str(shid)+'_'+str(shsnap)+'.npy')
+        ke_ar = np.load(filepath + 'energy_files/ke_'+str(shid)+'_'+str(shsnap)+'.npy')
+        dm_dist = np.load(filepath + 'energy_files/dm_dist_'+str(shid)+'_'+str(shsnap)+'.npy')
+
+        
 
         te_ar = ke_ar + pe_ar #This is the array of total energy from the particle data
+
+
+        
+
+
+        # vmx, rmx, mmx = self.get_rot_curve(where = int(shsnap), plot = False)
+        vmx, rmx, mmx = self.get_mx_values(where = int(shsnap), typ = 'star_dominated')
+
+
+        if True: #This is to plot a histogram of the distances of the particles scaled by rmx
+            fig, ax = plt.subplots(figsize = (6, 6))
+            ax.hist(np.log10(dm_dist/rmx), histtype = 'step', color = 'k', label = 'All particles', bins = 50)
+            ax.axvline(np.log10(rvir_subh/rmx), color = 'b', ls = '--', label = r'$r_{\rm vir}$')
+            ax.axvline(0, color = 'g', ls = '--', label = r'$r_{\rm mx}$')
+            ax.axvline(np.log10(3), color = 'gray', ls = '--', label = r'$3r_{\rm mx}$')
+            ax.set_xlabel(r'$log r/r_{\rm mx}$')
+            ax.set_ylabel(r'Number of particles')
+            # ax.set_xscale('log')
+            ax.legend(fontsize = 8)
+            plt.tight_layout()
+            plt.savefig(plotpath + 'energy_dists/dm_dist_'+str(shid)+'_'+str(shsnap)+'.png')
+
+        scaled_te_ar =  - te_ar/vmx**2
+        bins2 = np.linspace(max(-3, np.log10(np.quantile(scaled_te_ar, 0.01))), np.log10(max(scaled_te_ar)), 50)
+
+        counts2, bins2, bars2 = plt.hist(np.log10(scaled_te_ar), bins = bins2)
+
+        plt.close()
+        bin_centers2 = 10**((bins2[:-1] + bins2[1:])/2)
+        bin_centers2 = bin_centers2[:-1]
+        bin_width2 = np.diff(bins2)
+        dN_by_dlogE_tng2 = counts2/bin_width2/len(ke_ar)
+        dN_by_dE_tng2 = dN_by_dlogE_tng2[:-1] / bin_centers2 / np.log(10)
+
+        if True: #This is the calculations for energy distribution for particles in 0.8 * rvir till rvir
+            ixs_lb = (dm_dist > 0.8 * rvir_subh) & (dm_dist < rvir_subh)
+            pe_lb = pe_ar[ixs_lb]
+            ke_lb = ke_ar[ixs_lb]
+            te_lb = te_ar[ixs_lb]
+            dm_dist_lb = dm_dist[ixs_lb]
+            print(f'Total number of points is {len(pe_ar)} and in the outer radii, we have {len(pe_lb)}')
+            scaled_te_lb =  - te_lb/vmx**2
+            bins2_lb = np.linspace(max(-3, np.log10(np.quantile(scaled_te_lb, 0.05))), np.log10(max(scaled_te_lb)), 50)
+            counts2_lb, bins2_lb, bars2_lb = plt.hist(np.log10(scaled_te_lb), bins = bins2_lb)
+            plt.close()
+            bin_centers2_lb = 10**((bins2_lb[:-1] + bins2_lb[1:])/2)
+            bin_centers2_lb = bin_centers2_lb[:-1]
+            bin_width2_lb = np.diff(bins2_lb)
+            dN_by_dlogE_tng2_lb = counts2_lb/bin_width2_lb/len(ke_lb)
+            dN_by_dE_tng2_lb = dN_by_dlogE_tng2_lb[:-1] / bin_centers2_lb / np.log(10)
+
+            bin_indices_lb = np.digitize(np.log10(scaled_te_lb), bins2_lb) - 1 #These are the bin indices for
+            #The goal now is to calculate the median radius in ech of the bins and the quantiles
+            dist_med_lb = np.zeros(0)
+            dist_25_lb = np.zeros(0)
+            dist_75_lb = np.zeros(0)
+            for bin_ix in range(len(bins2_lb) - 1):
+                dist_ixs = (bin_ix == bin_indices_lb)
+                this_dists = dm_dist_lb[dist_ixs] #These are all the distances which are in the given bin
+                # Let us now calculate the median and quantiles for these quantities
+                dist_med_lb = np.append(dist_med_lb, np.median(this_dists))
+                dist_25_lb = np.append(dist_25_lb, np.quantile(this_dists, 0.25))
+                dist_75_lb = np.append(dist_75_lb, np.quantile(this_dists, 0.75))
+
+
+        if True: #This is the calculations for energy distribution for particles in 0.8 * rvir till rvir
+            ixs_mx = (dm_dist > 0.9 * rmx) & (dm_dist < 1.1*rmx)
+            pe_mx = pe_ar[ixs_mx]
+            ke_mx = ke_ar[ixs_mx]
+            te_mx = te_ar[ixs_mx]
+            dm_dist_mx = dm_dist[ixs_mx]
+            print(f'Total number of points is {len(pe_ar)} and near the max radius, we have {len(pe_mx)}')
+            scaled_te_mx =  - te_mx/vmx**2
+            bins2_mx = np.linspace(max(-3, np.log10(np.quantile(scaled_te_mx, 0.05))), np.log10(max(scaled_te_mx)), 50)
+            counts2_mx, bins2_mx, bars2_mx = plt.hist(np.log10(scaled_te_mx), bins = bins2_mx)
+            plt.close()
+            bin_centers2_mx = 10**((bins2_mx[:-1] + bins2_mx[1:])/2)
+            bin_centers2_mx = bin_centers2_mx[:-1]
+            bin_width2_mx = np.diff(bins2_mx)
+            dN_by_dlogE_tng2_mx = counts2_mx/bin_width2_mx/len(ke_mx)
+            dN_by_dE_tng2_mx = dN_by_dlogE_tng2_mx[:-1] / bin_centers2_mx / np.log(10)
+
+            bin_indices_mx = np.digitize(np.log10(scaled_te_mx), bins2_mx) - 1 #These are the bin indices for
+            #The goal now is to calculate the median radius in each of the bins and the quantiles
+            dist_med_mx = np.zeros(0)
+            dist_25_mx = np.zeros(0)
+            dist_75_mx = np.zeros(0)
+            for bin_ix in range(len(bins2_mx) - 1):
+                dist_ixs = (bin_ix == bin_indices_mx)
+                this_dists = dm_dist_mx[dist_ixs] #These are all the distances which are in the given bin
+                # Let us now calculate the median and quantiles for these quantities
+                dist_med_mx = np.append(dist_med_mx, np.median(this_dists))
+                dist_25_mx = np.append(dist_25_mx, np.quantile(this_dists, 0.25))
+                dist_75_mx = np.append(dist_75_mx, np.quantile(this_dists, 0.75))
+
+
+
+
+
+        bin_indices = np.digitize(np.log10(scaled_te_ar), bins2) - 1 #These are the bin indices for
+        #The goal now is to calculate the median radius in ech of the bins and the quantiles
+        dist_med = np.zeros(0)
+        dist_25 = np.zeros(0)
+        dist_75 = np.zeros(0)
+        for bin_ix in range(len(bins2) - 1):
+            dist_ixs = (bin_ix == bin_indices)
+            this_dists = dm_dist[dist_ixs] #These are all the distances which are in the given bin
+            # Let us now calculate the median and quantiles for these quantities
+            dist_med = np.append(dist_med, np.median(this_dists)) 
+            dist_25 = np.append(dist_25, np.quantile(this_dists, 0.25))
+            dist_75 = np.append(dist_75, np.quantile(this_dists, 0.75))
+
+        fig, ax = plt.subplots(figsize = (12, 6))
+        print(f'Elengths: {len(bin_centers2)}, {len(dist_med)}')
+        ax.errorbar((bins2[:-1] + bins2[1:])/2, dist_med, yerr = [dist_med - dist_25, dist_75 - dist_med], fmt = 'ko', capsize = 2, )
+        ax.errorbar((bins2_lb[:-1] + bins2_lb[1:])/2, dist_med_lb, yerr = [dist_med_lb - dist_25_lb, dist_75_lb - dist_med_lb], fmt = 'bo', capsize = 2, )
+        ax.errorbar((bins2_mx[:-1] + bins2_mx[1:])/2, dist_med_mx, yerr = [dist_med_mx - dist_25_mx, dist_75_mx - dist_med_mx], fmt = 'go', capsize = 2, )
+        ax.set_xlabel('log(-E/vmx^2)')
+        ax.set_ylabel('Median distance in bin (kpc)')
+        ax.invert_xaxis()
+        plt.tight_layout()
+        plt.savefig(plotpath + 'energy_dists/'+ 'median_distances_' + str(int(shid)) + '_' + str(int(shsnap)) + '.png')
+
+
+
+        cg, rad_plot_cont, mass_arr_plot_cont, dm_mass_arr_cont, star_mass_arr_cont, gas_mass_arr_cont = self.get_mass_profiles(where = int(shsnap), plot = False)
+        rad_potl = (rad_plot_cont[:-1] + rad_plot_cont[1:])/2
+        mass_in_bin = np.diff(mass_arr_plot_cont)
+        phi02 = -G*np.sum(mass_in_bin/rad_potl)
+        pot_ar = np.zeros(0)
+
+        for r in rad_potl:
+            pot_r = -G*(np.sum(mass_in_bin[rad_potl<r])/r + np.sum(mass_in_bin[rad_potl>r]/rad_potl[rad_potl>r]))
+            pot_ar = np.append(pot_ar, pot_r) #This would be in (kpc/s)^2
+
+        pot_ar = (3.086e+16)**2  *  pot_ar/vmx**2 #This is to scale the potential in terms of vmx^2
+
+        subh_nfw = NFWProfile(z = all_redshifts[shsnap], rmx = rmx, vmx = vmx)
+        print('Redshift is', all_redshifts[shsnap])
+        rhos, rs = subh_nfw.get_rhos_rs_from_vir()
+        rvir = subh_nfw.rvir
+        energy_at_vir = (subh_nfw.potential(rvir) + 0.5*(subh_nfw.velocity(rvir))**2)/vmx**2
+
+        #Plotting the dN/dE vs E
+
+        
+        
+        if plot:
+            rapha_data = np.array(pd.read_csv(miscpath + 'dfdm-NFW24-rcut10.dat', delimiter=' ', header = None))
+            dN_by_dE_rapha = rapha_data[:, 1]
+            E_by_vmx2_rapha = rapha_data[:, 2]
+
+            array11 = np.log10(E_by_vmx2_rapha)
+            array21 = np.log10(dN_by_dE_rapha)
+            mask = ~np.isnan(array11) & ~np.isnan(array21)
+
+            filtered_array11 = array11[mask]
+            filtered_array21 = array21[mask]
+
+            spl2 = UnivariateSpline(filtered_array11[:-1], filtered_array21[:-1], s = 0.1)
+            norm2 = np.max(dN_by_dE_tng2) / 10**spl2(np.log10(bin_centers2)[np.argmax(np.log10(dN_by_dE_tng2))])
+
+
+            prady_data = np.load('/bigdata/saleslab/psadh003/nbopy/dNdE_nfw.npy')
+            E_by_vmx2_prady =  prady_data[:,0]
+            dN_by_dE_prady = prady_data[:,1]
+
+            array1 = np.log10(E_by_vmx2_prady)
+            array2 = np.log10(dN_by_dE_prady)
+            # Identify the indices where neither array has NaNs
+            mask = ~np.isnan(array1) & ~np.isnan(array2)
+
+            # Filter the arrays
+            filtered_array1 = array1[mask]
+            filtered_array2 = array2[mask]
+
+            # print(filtered_array1, filtered_array2)
+
+            spl = UnivariateSpline(filtered_array1[:-1], filtered_array2[:-1], s = 0.1)
+            norm = np.max(dN_by_dE_tng2) / 10**spl(np.log10(bin_centers2)[np.argmax(np.log10(dN_by_dE_tng2))]) #Here, we are trying to normalize the NFW function such that it matches the energy distribution of the particle data at its maximum
+            # print(np.log10(bin_centers2)[np.argmax(np.log10(dN_by_dE_tng2))])
+            # print(spl(np.log10(bin_centers2)[np.argmax(np.log10(dN_by_dE_tng2))]))
+
+            fig, axn = plt.subplots(nrows = 1, ncols = 1, figsize = (6, 6))
+            axn.plot(-bin_centers2, np.log10(dN_by_dE_tng2), 'kx', label = 'TNG')
+            axn.plot(-bin_centers2_lb, np.log10(dN_by_dE_tng2_lb), 'bx', label = 'TNG - 0.8*rvir to rvir')
+            axn.plot( - E_by_vmx2_prady, np.log10(dN_by_dE_prady) + np.log10(norm), 'r-.', label = 'NFW - prady')
+            axn.plot( - E_by_vmx2_rapha, np.log10(dN_by_dE_rapha) + np.log10(norm2), 'r--', label = 'NFW - rapha')
+            axn.set_xlabel('E/vmx^2')
+            axn.set_ylabel('log(dN/dE)')
+            plt.tight_layout()
+            plt.savefig( plotpath + 'energy_dists/'+ 'linear_energy_dists_' + str(int(shid)) + '_' + str(int(shsnap)) + '.png')
+
+
+            # fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize = (6, 6))
+            fig = plt.figure(figsize=(10, 10))
+            gs = fig.add_gridspec(2, 2, width_ratios=(7, 2), height_ratios=(2, 7), wspace=0.05, hspace=0.05)
+
+            # Main scatter plot
+            ax = fig.add_subplot(gs[1, 0])
+            ax.plot(np.log10(rad_plot_cont), np.log10(-subh_nfw.potential(rad_plot_cont)/vmx**2), 'b--', label = 'Best-fit NFW potential', zorder = 100, lw = 2)
+            ax.plot(np.log10(rad_plot_cont), np.log10(-(subh_nfw.potential(rad_plot_cont) + 0.5*(subh_nfw.velocity(rad_plot_cont))**2)/vmx**2), 'b-.', label = 'Circular velocity energy', zorder = 100, alpha = 1, lw = 2) 
+            
+            ax.plot(np.log10(dm_dist), np.log10(-te_ar/vmx**2), 'k.', label = 'Individual DM particles', alpha = 0.2, zorder = 0, ms = 0.5)
+            ax.axhline(np.log10(4.67), color = 'gray', ls = ':', label = 'NFW potential at center')
+            ax.axvline(np.log10(rvir), color = 'gray', ls = '-.', label = 'Virial radius')
+            ax.axvline(np.log10(rmx), color = 'gray', ls = '--', label = 'Rmx')
+            ax.set_xlabel('log Radius (kpc)')
+            ax.set_ylabel('log (-Energy) in units of $v_{mx}^2$')
+            # ax.set_xscale('log')
+            ax.set_ylim(bottom = -1)
+            ax.legend(fontsize = 8)
+
+            ax_top = fig.add_subplot(gs[0, 0], sharex=ax)
+            ax_right = fig.add_subplot(gs[1, 1], sharey=ax)
+
+            ax_top.hist(np.log10(dm_dist), histtype = 'step', color = 'k', label = 'All particles', bins = 50)
+            ax_top.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
+
+            ax_right.hist(np.log10(-te_ar/vmx**2), histtype = 'step', color = 'k', label = 'All particles', bins = 50, orientation='horizontal')
+            ax_right.tick_params(right=True, labelright=True, left=False, labelleft=False)
+
+            plt.tight_layout()
+            plt.savefig(plotpath + 'energy_dists/'+ 'potential_energy_' + str(int(shid)) + '_' + str(int(shsnap)) + '.png')
+
+
+
+            fig, (ax, ax2, ax3) = plt.subplots(nrows = 1, ncols = 3, figsize = (18, 6))
+            # eps_pl = np.linspace(min(bin_centers), max(bin_centers), 30)
+            ax.plot(np.log10(bin_centers2), np.log10(dN_by_dE_tng2), 'kx', label = 'TNG')
+            ax.plot(np.log10(bin_centers2_lb), np.log10(dN_by_dE_tng2_lb), 'bx', label = 'TNG - 0.8*rvir to rvir')
+            ax.plot(np.log10(bin_centers2_mx), np.log10(dN_by_dE_tng2_mx), 'gx', label = 'TNG - 0.9*rmx to 1.1*rmx')
+            ax.plot(np.log10(E_by_vmx2_rapha), np.log10(dN_by_dE_rapha) + np.log10(norm2), 'r--', label = 'NFW - rapha')
+            ax.plot(np.log10(E_by_vmx2_prady), np.log10(dN_by_dE_prady) + np.log10(norm), 'r-.', label = 'NFW - prady')
+            
+            ax.set_xlabel(r'$\log_{10}(-E/v_{\rm{mx}}^2)$')
+            ax.set_ylabel(r'$\log_{10}(dN/dE)$')
+            ax.axvline(np.log10(4.67), color = 'gray', ls = ':', label = 'NFW potential at center')
+            ax.axvline(np.log10(-energy_at_vir), color = 'gray', ls = '-.', label = 'NFW energy at virial radius')
+            ax.set_title('subhalo ID = '+str(shid)+' at snapshot '+str(shsnap), fontsize = 10)
+            ax.legend(fontsize = 8, loc = 'lower left')
+            ax.set_ylim(-3, 1)
+            ax.set_xlim(left = -1)
+            ax.invert_xaxis()
+
+            #Let us plot the potential in the second panel
+            ax2.plot(rad_potl, pot_ar, 'k', label = 'Potential from spherical symmetry', zorder = 100)
+            ax2.plot(rad_plot_cont, subh_nfw.potential(rad_plot_cont)/vmx**2, 'b--', label = 'Best-fit NFW potential', zorder = 100)
+            ax2.scatter(dm_dist, pe_ar/vmx**2, s = 0.5, color = 'palegreen', label = 'Individual DM particles', alpha = 0.2, zorder = 0)
+            ax2.axhline(-4.67, color = 'gray', ls = ':', label = 'NFW potential at center')
+            ax2.set_xlabel('Radius (kpc)')
+            ax2.set_ylabel(r'Potential in units of $v_{mx}^2$')
+            #Let us pring vmx and rmx values in the title of this plot
+            ax2.set_title('vmx = '+str(round(vmx, 2))+' km/s, rmx = '+str(round(rmx, 2))+' kpc', fontsize = 10)
+            ax2.set_xscale('log')
+
+
+            #The final panel is for plotting the density profile for the DM, let us also try to have the NFW profile equivalent for comparison
+            ax3.plot(rad_plot_cont, dm_mass_arr_cont / ((4/3.) * np.pi * rad_plot_cont ** 3), 'k', label = 'DM density')
+            ax3.plot(rad_plot_cont, subh_nfw.mean_density(rad_plot_cont), 'b--', label = 'Best-fit NFW density')
+            ax3.axvline(rs, color = 'gray', ls = ':', label = 'Scale radius')
+            ax3.axvline(rvir, color = 'gray', ls = '-.', label = 'Virial radius')
+            ax3.axvline(10*rs, color = 'gray', ls = '--', label = '10*rs')
+            ax3.set_xlabel('Radius (kpc)')
+            ax3.set_ylabel(r'$\rho(<r)\,\rm{M_\odot/kpc^3}$')
+            ax3.set_xscale('log')
+            ax3.set_yscale('log')
+            ax3.legend(fontsize = 8)
+
+
+            plt.tight_layout()
+            plt.savefig(plotpath + 'energy_dists/dm_energy_dist_'+str(shid)+'_'+str(shsnap)+'.png')
+            plt.close()
+
+
+
+        return None
+
+
+
+
+    def get_dm_energy_dist_OLD(self, where = None, plot = True):
+        '''
+        THIS IS OLD CODE, NOT CURRENTLY IN USE
+        This is to get the energy distribution of the dark matter particles
+        We plan to compare it with the energy distribution of the NFW profile
+        '''
+        if where == None: #If the input is none, then go ahead a nd use the default values
+            shsnap = self.snap
+            shid = self.sfid
+        else: #If there is some input, use that to get the rotation curve
+            shsnap = self.__where_to_snap(where)
+            shid = int(self.tree['SubfindID'][self.tree['SnapNum'] == shsnap])
+
+        z = all_redshifts[shsnap]
+
+        filename = filepath + 'energy_files/pe_'+str(shid)+'_'+str(shsnap)+'.npy'
+        if not os.path.exists(filename): #Uncomment this after the first run
+        # if True: #This is to download the files
+            # os.remove(filename)
+            print(f'Downloading data for sfid: {int(shid)} and snap: {int(shsnap)}')
+            self.get_dm_energies()
+        # else:
+        pe_ar = np.load(filename)
+        ke_ar = np.load(filepath + 'energy_files/ke_'+str(shid)+'_'+str(shsnap)+'.npy')
+
+        te_ar = ke_ar + pe_ar #This is the array of total energy from the particle data
+
+        # return None
         phi0 = phi0_tng = get_potential_energy(0, 0, 0) #This would be the potential energy at the center of the subhalo, no spherical assumption
         # phi0 =  -4.67 * self.vmx0**2 #This is the potential energy at the center of the subhalo assuming NFW profile, for testing
         eps_ar = 1 - te_ar/phi0
+        print(eps_ar)
 
         eps_ar = eps_ar[eps_ar > 0]
-        bins = np.linspace(max(-3, np.log10(min(eps_ar))), np.log10(max(eps_ar)), 100)
+        bins = np.linspace(max(-3, np.log10(min(eps_ar))), np.log10(max(eps_ar)), 200)
 
         counts, bins, bars = plt.hist(np.log10(eps_ar), bins = bins)
         plt.close()
@@ -738,23 +1133,77 @@ class TNG_Subhalo():
         bin_width = np.diff(bins)
         dN_by_dlogE_tng = counts/bin_width/len(star_xvel)
         dN_by_dE_tng = dN_by_dlogE_tng[:-1] / bin_centers / np.log(10)
+
+
+        #Following is the total energy scaled by vmx^2  instead of what we had above
+        scaled_te_ar =  - te_ar/vmx**2
+        bins2 = np.linspace(max(-3, np.log10(min(scaled_te_ar))), np.log10(max(scaled_te_ar)), 200)
+
+        counts2, bins2, bars2 = plt.hist(np.log10(scaled_te_ar), bins = bins2)
+        plt.close()
+        bin_centers2 = 10**((bins2[:-1] + bins2[1:])/2)
+        bin_centers2 = bin_centers2[:-1]
+        bin_width2 = np.diff(bins2)
+        dN_by_dlogE_tng2 = counts2/bin_width2/len(ke_ar)
+        dN_by_dE_tng2 = dN_by_dlogE_tng2[:-1] / bin_centers2 / np.log(10)
+
+
+
+
+
+
+
+        # Following part of the calculations are for obtaining the potential assuming spherical symmetry
+
+        cg, rad_plot_cont, mass_arr_plot_cont, dm_mass_arr_cont, star_mass_arr_cont, gas_mass_arr_cont = self.get_mass_profiles(where = int(shsnap), plot = False)
+        
+        # dm_rad = np.sqrt(dm_xcoord**2 + dm_ycoord**2 + dm_zcoord**2)
+        star_rad = np.sqrt(star_xcoord**2 + star_ycoord**2 + star_zcoord**2)
+        # if cg == 1: gas_rad = np.sqrt(gas_xcoord**2 + gas_ycoord**2 + gas_zcoord**2)
+        rad_potl = (rad_plot_cont[:-1] + rad_plot_cont[1:])/2
+        mass_in_bin = np.diff(mass_arr_plot_cont)
+        phi02 = -G*np.sum(mass_in_bin/rad_potl)
+        pot_ar = np.zeros(0)
+
+        for r in rad_potl:
+            pot_r = -G*(np.sum(mass_in_bin[rad_potl<r])/r + np.sum(mass_in_bin[rad_potl>r]/rad_potl[rad_potl>r]))
+            pot_ar = np.append(pot_ar, pot_r) #This would be in (kpc/s)^2
+
+        pot_ar = (3.086e+16)**2  *  pot_ar/vmx**2 #This is to scale the potential in terms of vmx^2
+
+        subh_nfw = NFWProfile(z = all_redshifts[shsnap], rmx = rmx, vmx = vmx)
         
         if plot:
-            fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize = (6, 6))
+            fig, (ax, ax2, ax3) = plt.subplots(nrows = 1, ncols = 3, figsize = (18, 6))
             eps_pl = np.linspace(min(bin_centers), max(bin_centers), 30)
-            ax.plot(np.log10(bin_centers), np.log10(dN_by_dE_tng), 'kx', label = 'Pariwise potential - TNG')
-            ax.set_xlabel(r'$\log_{10}(\epsilon)$')
+            ax.plot(np.log10(bin_centers2), np.log10(dN_by_dE_tng2), 'kx', label = 'Pariwise potential - TNG')
+            ax.set_xlabel(r'$\log_{10}(-E/v_{\rm{mx}}^2)$')
             ax.set_ylabel(r'$\log_{10}(dN/dE)$')
-            ax.set_title('subhalo ID = '+str(shid)+' at snapshot '+str(shsnap) + ' and', fontsize = 10)
+            ax.set_title('subhalo ID = '+str(shid)+' at snapshot '+str(shsnap), fontsize = 10)
             ax.legend(fontsize = 8, loc = 'lower left')
+            ax.invert_xaxis()
+
+            #Let us plot the potential in the second panel
+            ax2.plot(rad_potl, pot_ar, 'k', label = 'Potential from spherical symmetry')
+            ax2.plot(rad_plot_cont, subh_nfw.potential(rad_plot_cont)/vmx**2, 'b--', label = 'Best-fit NFW potential')
+            ax2.set_xlabel('Radius (kpc)')
+            ax2.set_ylabel(r'Potential in units of $v_{mx}^2$')
+            ax2.set_xscale('log')
+
+
+            #The final panel is for plotting the density profile for the DM, let us also try to have the NFW profile equivalent for comparison
+            ax3.plot(rad_plot_cont, dm_mass_arr_cont / ((4/3.) * np.pi * rad_plot_cont ** 3), 'k', label = 'DM density')
+            ax3.plot(rad_plot_cont, subh_nfw.mean_density(rad_plot_cont), 'b--', label = 'Best-fit NFW density')
+            ax3.set_xlabel('Radius (kpc)')
+            ax3.set_ylabel(r'$\rho(<r)\,\rm{M_\odot/kpc^3}$')
+            ax3.set_xscale('log')
+            ax3.set_yscale('log')
+            ax3.legend(fontsize = 8)
+
 
             plt.tight_layout()
             plt.savefig(plotpath + 'energy_dists/dm_energy_dist_'+str(shid)+'_'+str(shsnap)+'.png')
             plt.close()
-
-
-
-
 
         return None
 

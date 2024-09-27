@@ -227,7 +227,7 @@ class NFWProfile():
         else:
             self.rmx = rmx
             self.vmx = vmx
-            self.Mvir, self.cvir = self.get_mvircvir_from_mx()
+            self.Mvir, self.cvir, self.rvir = self.get_mvircvir_from_mx()
 
     def get_mvircvir_from_mx(self):
         '''
@@ -269,7 +269,26 @@ class NFWProfile():
         vmx_calc= 1.64 * r_s * 1e3 * np.sqrt(4.3e-3 * rho_s/1e9)  #this would be in Msun/kpc^3
         # print(f'Calcuated rmx / input rmx = {2.16 * r_s / self.rmx:.2f} and vmx = {vmx_calc / self.vmx:.2f}')
         assert np.isclose([2.16 * r_s, vmx_calc], [self.rmx, self.vmx]).all(), 'Looks like calculated Mvir and cvir values have not converged!'
-        return Mvir, cvir
+        return Mvir, cvir, r_vir
+    
+
+    def get_rhos_rs_from_vir(self):
+        '''
+        This is to get the values for rs and rhos from the virial mass and concentration
+        '''
+        Mvir = self.Mvir
+        cvir = self.cvir 
+
+        r_vir = (3 * Mvir / (4 * np.pi * 200 * get_critical_dens(self.z)))**(1/3)
+        
+        # Calculate scale radius
+        r_s = r_vir / cvir
+        
+        # Calculate scale density
+        rho_s = Mvir / (4 * np.pi * r_s**3 * (np.log(1 + cvir) - cvir / (1 + cvir)))
+
+        return rho_s, r_s
+
     
     def get_mx_from_vir(self):
         '''
@@ -351,6 +370,21 @@ class NFWProfile():
 
         rho_mean = self.mass(r)/(4./3 * np.pi * r**3)
         return rho_mean
+    
+
+    def potential(self, r):
+        '''
+        The potential is calculated again as per the paper
+        '''
+        rvir = (self.Mvir / (4 / 3. * np.pi * 200 * get_critical_dens(self.z))) ** (1/3.) #kpc
+        vv = 3.086e+16 *np.sqrt (G * self.Mvir / rvir) #km/s
+        s = r / rvir
+        c = self.cvir
+        def g(c):
+            return 1 / ( np.log(1 + c) - c / (1 + c) )
+        
+        phi = - vv ** 2 * g(c) * np.log(1 + c * s) / s
+        return phi #This will be in (km/s) ** 2
 
 
 

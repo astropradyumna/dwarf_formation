@@ -2,15 +2,15 @@
 #SBATCH -J RUNewTst
 #SBATCH -p saleslab
 #SBATCH --ntasks=32
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=7
 ###SBATCH --mem=100gb
 ###SBATCH --mem-per-cpu=G
-#SBATCH --time=48:00:00
-#SBATCH -o output_log/ndm.out
-#SBATCH -e output_log/ndm.err
+#SBATCH --time=99:00:00
+#SBATCH -o output_log/inner.out
+#SBATCH -e output_log/inner.err
 #SBATCH --mail-user=psadh003@ucr.edu
 #SBATCH --mail-type=ALL
-#SBATCH --nodelist=r14
+#SBATCH --nodelist=r16
 
 # Load needed modules
 # You could also load frequently used modules from within your ~/.bashrc
@@ -29,5 +29,5 @@ cd /rhome/psadh003/bigdata/tng50/dwarf_formation/
 # python3 Pradyumna_save.py
 # python3 Pradyumna_plot.py
 #python3 misc.py
-python3 tidal_track_plot.py
+python3 energy_distribution_fof.py
 # python3 poster_plots.py
