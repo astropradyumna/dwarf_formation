@@ -17,6 +17,8 @@ from scipy.optimize import fsolve
 from joblib import Parallel, delayed #This is to parallelize the code
 from subhalo_profiles import NFWProfile
 
+# warnings.simplefilter("error", RuntimeWarning) # This is to catch the runtime warnings
+
 
 
 h = 0.6774
@@ -153,7 +155,7 @@ class TNG_Subhalo():
                 ms_after_infall = np.append(ms_after_infall, mstar_ar[snap_arr == s])     
             snap_wanted = snaps_after_infall[np.argmax(ms_after_infall)]
         if isinstance(where, int):
-            if 0<= where <= self.last_snap:
+            if 0 <= where <= self.last_snap:
                 snap_wanted = where 
         return snap_wanted
 
@@ -182,6 +184,10 @@ class TNG_Subhalo():
             r2 = dmrh
             m2 = mdmrh
 
+        # Check if any of r1, r2, m1, m2 are zero or nan
+        if r1 == 0 or r2 == 0 or m1 == 0 or m2 == 0 or np.isnan(r1) or np.isnan(r2) or np.isnan(m1) or np.isnan(m2):
+            return self.get_vmax(where), self.get_rh(where, how = 'vmax'), self.get_mdm(where, how = 'vmax')
+
         
         # print(rh, mdm_rh, mdm_2rh)
         def nfw_mass(r, lrhos, lrs):
@@ -199,7 +205,11 @@ class TNG_Subhalo():
             return result
 
         input_values = [2, 0]
-        lrhos, lrs = fsolve(simul_func, input_values)
+        with warnings.catch_warnings(record=True) as w:
+            lrhos, lrs = fsolve(simul_func, input_values)
+            if len(w) > 0:
+                print(f'Warning: {w}')
+                return self.get_vmax(where), self.get_rh(where, how = 'vmax'), self.get_mdm(where, how = 'vmax')
         
         # print(simul_func([lrhos, lrs]))
 
@@ -226,6 +236,8 @@ class TNG_Subhalo():
         snap_wanted = self.__where_to_snap(where)
         m200_tree = self.tree['Group_M_Crit200']*1e10/h
         m200 = m200_tree[snap_wanted == self.tree['SnapNum']]
+        if isinstance(m200, list):
+            m200 = m200[0]
         return m200
 
     def get_mstar(self, where, how = '2rh'):
@@ -237,7 +249,10 @@ class TNG_Subhalo():
         if how == '2rh': mstar_tree = self.tree['SubhaloMassInRadType'][:, 4]*1e10/h
         elif how == 'total': mstar_tree = self.tree['SubhaloMassType'][:, 4]*1e10/h
         elif how == 'rh': mstar_tree = self.tree['SubhaloMassInHalfRadType'][:, 4]*1e10/h
+        elif how == 'vmax': mstar_tree = self.tree['SubhaloMassInMaxRadType'][:, 4]*1e10/h
         mstar = mstar_tree[snap_wanted == self.tree['SnapNum']]
+        if isinstance(mstar, list):
+            mstar = mstar[0]
         return mstar
     
     def get_mdm(self, where, how = 'total'):
@@ -250,6 +265,8 @@ class TNG_Subhalo():
         elif how == 'rh': mdm_tree = self.tree['SubhaloMassInHalfRadType'][:, 1]*1e10/h
         elif how == 'vmax': mdm_tree = self.tree['SubhaloMassInMaxRadType'][:, 1]*1e10/h
         mdm = mdm_tree[snap_wanted == self.tree['SnapNum']]
+        if isinstance(mdm, list) or isinstance(mdm, np.ndarray):
+            mdm = mdm[0]
         return mdm
     
 
@@ -263,6 +280,8 @@ class TNG_Subhalo():
         elif how == 'rh': mtot_tree = np.sum(self.tree['SubhaloMassInHalfRadType'], axis = 1)*1e10/h
         elif how == 'vmax': mtot_tree = np.sum(self.tree['SubhaloMassInMaxRadType'], axis = 1)*1e10/h
         mtot = mtot_tree[snap_wanted == self.tree['SnapNum']]
+        if isinstance(mtot, list):
+            mtot = mtot[0]
         return mtot
     
     
@@ -272,6 +291,8 @@ class TNG_Subhalo():
         '''
         snap_wanted = self.__where_to_snap(where)
         mbpid = self.tree['SubhaloIDMostbound'][snap_wanted == self.tree['SnapNum']]
+        if isinstance(mbpid, list):
+            mbpid = mbpid[0]
         return mbpid
     
 
@@ -298,12 +319,27 @@ class TNG_Subhalo():
         pos = np.array([(subh_x - cen_x), (subh_y - cen_y), (subh_z - cen_z)])
         return pos
     
+
+    def get_velocity_wrt_center(self, where):
+        '''
+        This gives us the position of the subhalo wrt the central subhalo in kpc directly.
+        '''
+        snap_wanted = self.__where_to_snap(where)
+        subh_vx, subh_vy, subh_vz = self.tree['SubhaloVel'][snap_wanted == self.tree['SnapNum']][0]
+        cen_id = self.tree['GroupFirstSub'][snap_wanted == self.tree['SnapNum']]
+        cen_vx, cen_vy, cen_vz = il.groupcat.loadSingle(basePath, snap_wanted, subhaloID = cen_id)['SubhaloVel']
+        vel = np.array([(subh_vx - cen_vx), (subh_vy - cen_vy), (subh_vz - cen_vz)])
+        return vel
+    
     def get_vmax(self, where):
         '''
         This function gives the vmax of the subhalo at a given time
         '''
         snap_wanted = self.__where_to_snap(where)
         vmax = self.tree['SubhaloVmax'][snap_wanted == self.tree['SnapNum']]
+        # Check if this is a list and return only the value if so
+        if isinstance(vmax, list) or isinstance(vmax, np.ndarray):
+            vmax = vmax[0]
         return vmax
 
     
@@ -331,12 +367,16 @@ class TNG_Subhalo():
             rh = Rh_tree[snap_wanted == self.tree['SnapNum']]
         if np.array(rh).shape[0] == 0:
             raise ValueError(f'Rh value not found for {self.sfid} at snap {self.snap}, max mstar snap is {snap_wanted}')
-        return rh/(1 + all_redshifts[snap_wanted])/h #Setting it to right units, kpc
+        if isinstance(rh, list) or isinstance(rh, np.ndarray):
+            rh = rh[0]
+        return rh/(1 + float(all_redshifts[snap_wanted]))/h #Setting it to right units, kpc
     
 
     def get_vd(self, where):
         snap_wanted = self.__where_to_snap(where)
         vd = self.tree['SubhaloVelDisp'][snap_wanted == self.tree['SnapNum']]
+        if isinstance(vd, list):
+            vd = vd[0]
         return vd
 
     def get_sfid(self, where):

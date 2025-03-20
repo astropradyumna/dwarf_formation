@@ -1,0 +1,76 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from joblib import Parallel, delayed
+import illustris_python as il
+import ast
+from tqdm import tqdm
+import sys
+import os
+from astropy import units as u
+from errani_plus_tng_subhalo import Subhalo
+
+
+filepath = '/rhome/psadh003/bigdata/tng50/tng_files/'
+outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
+baseUrl = 'https://www.tng-project.org/api/TNG50-1/'
+headers = {"api-key":"894f4df036abe0cb9d83561e4b1efcf1"}
+basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
+filepath = '/rhome/psadh003/bigdata/tng50/tng_files/'
+
+def convert_to_float(value):
+    try:
+        if isinstance(value, float) or isinstance(value, int):
+            return value
+        blah = ast.literal_eval(value)
+        if isinstance(blah, list):
+            if len(blah) == 1:
+                blah2 = float(blah[0])   
+            elif len(blah) == 3:
+                blah2 = np.array([float(blah[0]), float(blah[1]), float(blah[2])])
+        else:
+            blah2 = float(blah)        
+        return blah2
+    except (ValueError, SyntaxError):
+        # print(f"Error converting {value}") #Looks like only inf values are not being converted, which is good
+        return value 
+
+fof_no = int(sys.argv[1])
+fof_str = 'fof' + str(fof_no)
+
+this_fof = il.groupcat.loadSingle(basePath, 99, haloID = fof_no)
+central_sfid_99 = this_fof['GroupFirstSub']
+
+df = pd.read_csv(outpath + fof_str + '_surviving_evolved_everything.csv', delimiter = ',', low_memory=False)  
+# df = df.applymap(convert_to_float)
+snap_if_ar = df['snap_if_ar'].values
+sfid_if_ar = df['sfid_if_ar'].values
+
+
+ages_df = pd.read_csv(filepath + 'ages_tng.csv', comment = '#')
+
+all_snaps = np.array(ages_df['snapshot'])
+all_redshifts = np.array(ages_df['redshift'])
+all_ages = np.array(ages_df['age(Gyr)'])
+
+
+#Starting two empty columns, in an effort to have everything in one file
+df['grp_status'] = ''
+
+
+def get_grp_status(ix):
+    #Let us look where snap_if_ar[ix] and sfid_if_ar[ix] are in  msh_sfid and msh_snap and then get the last snapshot from df2
+    # subh = Subhalo(sfid = sfid_if_ar[ix], snap = snap_if_ar[ix], last_snap = int(99), central_sfid_99 = central_sfid_99) #FIXME: Please update the last_snap variable after you are done. This wil onl hold for ix = 0
+    fields = ['SnapNum', 'SubfindID', 'GroupFirstSub']
+    tree = il.sublink.loadTree(basePath, snap_if_ar[ix], sfid_if_ar[ix], fields = fields, onlyMPB = True)
+    if tree['SubfindID'][tree['SnapNum'] == (snap_if_ar[ix] - 1)] == tree['GroupFirstSub'][tree['SnapNum'] == (snap_if_ar[ix] - 1)]:
+        return 0
+    else:
+        return 1 #It comes in as a satellite  if this happens 
+
+results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_grp_status)(ix) for ix in tqdm(range(len(snap_if_ar))))
+print(results)
+df['grp_status'] = results
+
+df.to_csv(outpath + fof_str + '_surviving_evolved_everything.csv', index = False)
+

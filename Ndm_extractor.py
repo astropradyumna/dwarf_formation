@@ -34,16 +34,21 @@ from joblib import Parallel, delayed #This is to parallelize the code
 
 # This is currently being used for finding the position of the MBP 
 basePath = '/rhome/psadh003/bigdata/L35n2160TNG_fixed/output'
-fof_path = '/bigdata/saleslab/psadh003/tng50/fof_partdata/'
+# fof_path = '/bigdata/saleslab/psadh003/tng50/fof_partdata/'
+fof_path = '/bigdata/saleslab/psadh003/tng50/fof_partdata_3rvir/'
 outpath  = '/rhome/psadh003/bigdata/tng50/output_files/'
 
-
+h = 0.6774
 fof_no = int(sys.argv[1])
 fof_str = 'fof' + str(fof_no)
 
 this_fof = il.groupcat.loadSingle(basePath, 99, haloID = fof_no)
 central_sfid_99 = this_fof['GroupFirstSub']
+cen = il.groupcat.loadSingle(basePath, 99, subhaloID = central_sfid_99)
+m200 = this_fof['Group_M_Crit200'] * 1e10 / h
+r200 = this_fof['Group_R_Crit200'] / h
 
+# this_fof_path = fof_path + fof_str + '_partdata/'
 this_fof_path = fof_path + fof_str + '_partdata/'
 
 
@@ -61,11 +66,11 @@ def convert_to_float(value):
 
 
 # df = pd.read_csv(outpath + 'merged_evolved_fof0_everything.csv', delimiter = ',')
-df = pd.read_csv(outpath + fof_str +'_merged_evolved_everything.csv', delimiter = ',')  
-df = df.applymap(convert_to_float)
+# df = pd.read_csv(outpath + fof_str +'_merged_evolved_everything.csv', delimiter = ',')  
+# df = df.applymap(convert_to_float)
 
-mbpid_ar = np.array(df['mbpid_ar'])
-mbpidp_ar = np.array(df['mbpidp_ar']) #MBP ID of one snapshot before 
+# mbpid_ar = np.array(df['mbpid_ar'])
+# mbpidp_ar = np.array(df['mbpidp_ar']) #MBP ID of one snapshot before 
 
 star_ids = np.load(this_fof_path+'star_ids.npy')
 star_pos = np.load(this_fof_path+'star_pos.npy')
@@ -79,7 +84,7 @@ dm_pos = np.load(this_fof_path+'dm_pos.npy')
 
 dm_dist = np.sqrt(np.sum(dm_pos**2, axis=1))
 
-rpl = np.logspace(1, 3.2, 100) #r = m
+rpl = np.logspace(1, np.log10(2 * r200), 100) #r = m
 
 def get_Ndm(ix):
     ms = rpl[ix]
@@ -97,7 +102,7 @@ def get_Nstar(ix):
 
 results = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(get_Nstar)(ix) for ix in tqdm(range(len(rpl))))
 
-print('Nstar', results)
+print('Mstar', results)
 # pos_ar = np.zeros(0)
 
 # popix_ar = np.zeros(0)

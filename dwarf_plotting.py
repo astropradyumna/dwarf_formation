@@ -131,7 +131,7 @@ def plot_lg_virgo_some(ax, zorder = 300, alpha = 0.1, mec = 'black'):
     this function plots all the Virgo and LG data
     We will only be using the some of the data in the main paper to avoid clutter
     '''
-    ax.plot(np.log10(get_ms_from_mag(den_mg)), np.log10(den_re), marker = 'D', mfc='white', mec = mec, label = 'Nucleated galaxies', 
+    ax.plot(np.log10(get_ms_from_mag(den_mg)), np.log10(den_re), marker = 'D', mfc='None', mec = mec, label = 'Nucleated galaxies', 
             lw = 0, ms = 4, alpha = alpha, zorder = zorder)
 #     ax.plot(get_ms_from_mag(sden_mg), sden_re, marker = 'D', color = 'orangered',  label = 'Strongly nucleated dE,Ns', 
 #             lw = 0, ms = 5, alpha = alpha, zorder = zorder)

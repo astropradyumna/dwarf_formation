@@ -1,34 +1,85 @@
 import numpy as np 
 
+# def get_mstar_co(lvmax, alpha = 3.5, mu = -3.1, M0 = 97765347):
+#     eta = 10**lvmax / 50
+#     mstar = eta**alpha *np.exp(-eta**mu) * M0
+#     return np.log10(mstar)
 
 
-def get_mstar_co(lvmax, alpha = 2.93, mu = -1.39, M0 = 2.43e8):
+# def get_mstar_pl(lvmaxar, m1 = 3.72, m2 = 8.3, b = 1.5):
+#     '''
+#     This is the power law model from Santos-Santos 2022
+#     '''
+#     vchange = 57
+#     lmstarar = np.zeros(0)
+#     for lvmax in lvmaxar:
+#         if lvmax >= np.log10(vchange):
+#             lmstar = m1 * lvmax + b
+#         elif lvmax < np.log10(vchange):
+#             lmstar = m2 * lvmax + (m1 - m2)*np.log10(vchange) + b
+#         lmstarar = np.append(lmstarar, lmstar)
+#     return lmstarar
+
+
+def get_mstar_co(lvmax, alpha = 3.5, mu = -3.1, M0 = 97765347):
     eta = 10**lvmax / 50
     mstar = eta**alpha *np.exp(-eta**mu) * M0
     return np.log10(mstar)
 
 
 
-def get_mstar_pl(lvmaxar, m1 = 3.01, m2 =  4.6, b = 3.14):
+def get_mstar_pl(lvmaxar, m1 = 3.72, m2 = 8.3, b = 1.5):
     '''
     This is the power law model from Santos-Santos 2022
     Input is the log of Vmax
     '''
-    if isinstance(lvmaxar, float):
-        if lvmaxar >= np.log10(87):
+    vchange  = 57
+    if isinstance(lvmaxar, (float, np.float64, np.float32)):
+        if lvmaxar >= np.log10(vchange):
             lmstar = m1 * lvmaxar + b
-        elif lvmaxar < np.log10(87):
-            lmstar = m2 * lvmaxar + (m1 - m2)*np.log10(87) + b
+        elif lvmaxar < np.log10(vchange):
+            lmstar = m2 * lvmaxar + (m1 - m2)*np.log10(vchange) + b
         lmstarar = lmstar 
     else:
         lmstarar = np.zeros(0)
         for lvmax in lvmaxar:
-            if lvmax >= np.log10(87):
+            if lvmax >= np.log10(vchange):
                 lmstar = m1 * lvmax + b
-            elif lvmax < np.log10(87):
-                lmstar = m2 * lvmax + (m1 - m2)*np.log10(87) + b
+            elif lvmax < np.log10(vchange):
+                lmstar = m2 * lvmax + (m1 - m2)*np.log10(vchange) + b
             lmstarar = np.append(lmstarar, lmstar)
     return lmstarar
+
+
+
+
+# def get_mstar_co(lvmax, alpha = 2.93, mu = -1.39, M0 = 2.43e8):
+#     eta = 10**lvmax / 50
+#     mstar = eta**alpha *np.exp(-eta**mu) * M0
+#     return np.log10(mstar)
+
+
+
+# def get_mstar_pl(lvmaxar, m1 = 3.01, m2 =  7.87, b = 3.14):
+#     '''
+#     This is the power law model from Santos-Santos 2022
+#     Input is the log of Vmax
+#     '''
+#     if isinstance(lvmaxar, (float, np.float64, np.float32)):
+#         if lvmaxar >= np.log10(87):
+#             lmstar = m1 * lvmaxar + b
+#         elif lvmaxar < np.log10(87):
+#             lmstar = m2 * lvmaxar + (m1 - m2)*np.log10(87) + b
+#         lmstarar = lmstar 
+#     else:
+#         lmstarar = np.zeros(0)
+#         for lvmax in lvmaxar:
+#             if lvmax >= np.log10(87):
+#                 lmstar = m1 * lvmax + b
+#             elif lvmax < np.log10(87):
+#                 lmstar = m2 * lvmax + (m1 - m2)*np.log10(87) + b
+#             lmstarar = np.append(lmstarar, lmstar)
+#     return lmstarar
 
 
 def get_scatter(lvmaxar, sigma0 = 0.24, kappa = -1.26, V0 = 88.6):
@@ -36,11 +87,11 @@ def get_scatter(lvmaxar, sigma0 = 0.24, kappa = -1.26, V0 = 88.6):
     This function returns the scatter for both power law and the cutoff models
     '''
     vmaxar = 10**lvmaxar 
-    if isinstance(lvmaxar, float):
+    if isinstance(vmaxar, float) or isinstance(vmaxar, np.float64):
         if vmaxar > 57:
             sigma = sigma0
         elif vmaxar <= 57:
-            sigma = kappa * np.log10(vmax/V0)
+            sigma = kappa * np.log10(vmaxar/V0)
         sigma_ar = sigma
     else:
         sigma_ar = np.zeros(0)
@@ -57,10 +108,13 @@ def get_mstar_pl_wsc(lvmaxar):
     '''
     This gives the stellar mass of a subhalos accounting for the scatter in the relation (as provided by Santos-Santos et al. 2022)
     '''
-    mu_mstar = get_mstar_pl(lvmaxar, m1 = 2.9, m2 =  5.622, b = 3.41) #this will be the mean for the gaussian distribution
+    mu_mstar = get_mstar_pl(lvmaxar) #this will be the mean for the gaussian distribution
     sig_mstar = get_scatter(lvmaxar) #this will be the scatter in the relation which is considered to be a gaussian
-    print(len(mu_mstar), len(sig_mstar), len(lvmaxar))
-    mstar = np.random.normal(mu_mstar, sig_mstar, size = len(lvmaxar))
+    # print(len(mu_mstar), len(sig_mstar), len(lvmaxar))
+    if isinstance(lvmaxar, float) or isinstance(lvmaxar, np.float64) or isinstance(lvmaxar, np.float32):
+        mstar = np.random.normal(mu_mstar, sig_mstar, size = 1) 
+    else:
+        mstar = np.random.normal(mu_mstar, sig_mstar, size = len(lvmaxar))
     return 10**mstar
 
 
@@ -70,7 +124,10 @@ def get_mstar_co_wsc(lvmaxar):
     '''
     mu_mstar = get_mstar_co(lvmaxar) #this will be the mean for the gaussian distribution
     sig_mstar = get_scatter(lvmaxar) #this will be the scatter in the relation which is considered to be a gaussian
-    mstar = np.random.normal(mu_mstar, sig_mstar, size = len(lvmaxar))
+    if isinstance(lvmaxar, float) or isinstance(lvmaxar, np.float64) or isinstance(lvmaxar, np.float32):
+        mstar = np.random.normal(mu_mstar, sig_mstar, size = 1) 
+    else:
+        mstar = np.random.normal(mu_mstar, sig_mstar, size = len(lvmaxar))
     return 10**mstar
 
 
@@ -112,40 +169,40 @@ def get_rh_wsc(lmstar_ar):
     return 10**lrh
 
 
-G = 4.5390823753559603e-39 #This is in kpc, Msun and seconds
+# G = 4.5390823753559603e-39 #This is in kpc, Msun and seconds
 
-def get_H(z, h = 0.6774):
-    '''
-    Calculates the Hubble constant as a function of redshift z in km/s/Mpc
-    '''
-    # Cosmological model parameters
-    hubble_constant = h*100  # Hubble constant in km/s/Mpc
-    matter_density = 0.31  # Density of matter in the universe
-    dark_energy_density = 0.69  # Density of dark energy in the universe
+# def get_H(z, h = 0.6774):
+#     '''
+#     Calculates the Hubble constant as a function of redshift z in km/s/Mpc
+#     '''
+#     # Cosmological model parameters
+#     hubble_constant = h*100  # Hubble constant in km/s/Mpc
+#     matter_density = 0.31  # Density of matter in the universe
+#     dark_energy_density = 0.69  # Density of dark energy in the universe
 
-    # Calculate the Hubble parameter
-    hubble_parameter = hubble_constant * np.sqrt(matter_density * (1 + z)**3 + dark_energy_density)
+#     # Calculate the Hubble parameter
+#     hubble_parameter = hubble_constant * np.sqrt(matter_density * (1 + z)**3 + dark_energy_density)
 
-    return hubble_parameter
+#     return hubble_parameter
 
 
-def get_critical_dens(z):
-    '''
-    Returns the critical density of the universe at a given redshift in Msun/kpc^3
-    '''
-    H = get_H(z)*3.24078e-20 #in s^-1
+# def get_critical_dens(z):
+#     '''
+#     Returns the critical density of the universe at a given redshift in Msun/kpc^3
+#     '''
+#     H = get_H(z)*3.24078e-20 #in s^-1
     
-    return 3*H**2/(8*np.pi*G) #Msun, kpc
+#     return 3*H**2/(8*np.pi*G) #Msun, kpc
 
 
-def get_Mmx_from_Vmax(Mmx):
-    '''
-    This is a very bad way to get Mmx from Vmax using lots of assumptioons
-    Just to plot the assumed laws on the Mstar vs Mmx relation
-    '''
-    Mvir = Mmx/0.2
-    rvir = (Mvir / ((4/3)* np.pi * 200 * get_critical_dens(0))) ** 1/3.
-    vvir = rvir * np.sqrt((4/3.) * np.pi * G * 200 * get_critical_dens(0)) * 3.086e+16
-    vmax = 1.5 * vvir 
+# def get_Mmx_from_Vmax(Mmx):
+#     '''
+#     This is a very bad way to get Mmx from Vmax using lots of assumptioons
+#     Just to plot the assumed laws on the Mstar vs Mmx relation
+#     '''
+#     Mvir = Mmx/0.2
+#     rvir = (Mvir / ((4/3)* np.pi * 200 * get_critical_dens(0))) ** 1/3.
+#     vvir = rvir * np.sqrt((4/3.) * np.pi * G * 200 * get_critical_dens(0)) * 3.086e+16
+#     vmax = 1.5 * vvir 
     
-    return vmax
+#     return vmax

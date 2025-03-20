@@ -25,6 +25,116 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF
 from populating_stars import *
 
+
+#  ================================================
+# Just so that I don't lose the code
+
+# This is the abundance matching relation fit for the vpeak
+from scipy.stats import median_abs_deviation
+
+
+def get_mstar_co(lvmax, alpha = 3.36, mu = -2.4, M0 = 3e8):
+    eta = 10**lvmax / 50
+    mstar = eta**alpha *np.exp(-eta**mu) * M0
+    return np.log10(mstar)
+
+
+def get_mstar_pl(lvmaxar, m1, m2, b):
+    '''
+    This is the power law model from Santos-Santos 2022
+    '''
+    vchange = 57
+    lmstarar = np.zeros(0)
+    for lvmax in lvmaxar:
+        if lvmax >= np.log10(vchange):
+            lmstar = m1 * lvmax + b
+        elif lvmax < np.log10(vchange):
+            lmstar = m2 * lvmax + (m1 - m2)*np.log10(vchange) + b
+        lmstarar = np.append(lmstarar, lmstar)
+    return lmstarar
+
+
+def get_scatter(lvmaxar, sigma0 = 0.24, kappa = -1.26, V0 = 88.6):
+    '''
+    This function returns the scatter for both power law and the cutoff models
+    '''
+    vmaxar = 10**lvmaxar 
+    sigma_ar = np.zeros(0)
+    for vmax in vmaxar:
+        if vmax > 57:
+            sigma = sigma0
+        elif vmax <= 57:
+            sigma = kappa * np.log10(vmax/V0)
+        sigma_ar = np.append(sigma_ar, sigma)
+    return sigma_ar
+
+vmax_tng_cut = a4_t1_vpeak_ar[a4_t1_mstar_max_ar1 > 5e6]
+ssh_mstar_cut = a4_t1_mstar_max_ar1[a4_t1_mstar_max_ar1 > 5e6] 
+
+log_vmax = np.log10(vmax_tng_cut)
+log_mstar = np.log10(ssh_mstar_cut)
+
+bins = np.array([vmax_tng_cut.min(), 50,60, 80, 100,175, 250, vmax_tng_cut.max()+1]) #choosing bins manually
+num_bins = len(bins)
+# Digitize x into logarithmic bins
+bin_indices = np.digitize(vmax_tng_cut, bins)
+median_mstar_per_bin = np.zeros(0)
+mean_vmax_per_bin = np.zeros(0)
+mad_mstar_per_bin = np.zeros(0)
+for i in range(1, num_bins):
+    # print(i, log_vmax[bin_indices == i])
+    median_mstar_per_bin = np.append(median_mstar_per_bin, np.median(log_mstar[bin_indices == i]))
+    mad_mstar_per_bin = np.append(mad_mstar_per_bin, median_abs_deviation(log_mstar[bin_indices == i]))
+    mean_vmax_per_bin = np.append(mean_vmax_per_bin, np.mean(log_vmax[bin_indices == i]))
+
+
+
+np.random.seed(42)
+# nll = lambda *args: -log_likelihood(*args)
+
+popt = curve_fit(get_mstar_pl, mean_vmax_per_bin, median_mstar_per_bin, sigma = mad_mstar_per_bin, p0 = [3, 4.5, 0])[0]
+m1_ml, m2_ml, b_ml = popt
+print(m1_ml, m2_ml, b_ml)
+
+popt = curve_fit(get_mstar_co, mean_vmax_per_bin, median_mstar_per_bin, sigma = mad_mstar_per_bin, p0 = [3.36, -2.4, 3e8])[0]
+alpha, mu, M0 = popt
+print(alpha, mu, M0)
+
+## As of now, only plotting the abundance matching relation to check if it matters
+
+fig, ax = plt.subplots(1, 1, figsize = (6, 6))
+# a4_t1_mstar_max_ar1 = a4_t1_mstar_max_ar.copy()
+# a4_t1_mstar_max_ar1[a4_t1_mstar_max_ar == 0] = 1e3 # Setting the mass of the subhalos which are not resolved in mass to 1e3
+lvmax_pl = np.linspace(0.1, np.log10(600), 100)
+ax.scatter(mean_vmax_per_bin, median_mstar_per_bin, color = 'blue', marker = 'o', s = 10, alpha = 1, label = 'TNG binned')
+ax.scatter(np.log10(a4_t1_vpeak_ar), np.log10(a4_t1_mstar_max_ar1), color = 'gray', marker = 'o', s = 1, alpha = 0.1, label = 'TNG at infall')
+# ax.plot(lvmax_pl, get_mstar_pl(lvmax_pl, m1 = m1_ml, m2 = m2_ml, b = b_ml), color = 'red', label = 'Power law', lw = 2)
+# ax.fill_between(lvmax_pl, get_mstar_pl(lvmax_pl, m1 = m1_ml, m2 = m2_ml, b = b_ml) - get_scatter(lvmax_pl), get_mstar_pl(lvmax_pl, m1 = m1_ml, m2 = m2_ml, b = b_ml) + get_scatter(lvmax_pl), color = 'red', alpha = 0.1)
+ax.plot(lvmax_pl, get_mstar_co(lvmax_pl, alpha = alpha, mu = mu, M0 = M0), color = 'darkgreen', label = 'Cutoff', ls = '--', lw = 2)
+ax.fill_between(lvmax_pl, get_mstar_co(lvmax_pl, alpha = alpha, mu = mu, M0 = M0) - get_scatter(lvmax_pl), get_mstar_co(lvmax_pl, alpha = alpha, mu = mu, M0 = M0) + get_scatter(lvmax_pl), color = 'darkgreen', alpha = 0.1)
+ax.set_ylabel(r'$\log M_{\rm{star, max}}(M_\odot)$', fontsize = label_font)
+ax.set_xlabel(r'$\log V_{\rm{peak}}(\rm{km/s})$', fontsize = label_font)
+ax.axhline(np.log10(5e6), ls = ':', color = 'gray', alpha = 0.4)
+ax.text(0.31, 6, 'Unresolved in size\nand mass', fontsize = 8)
+ax.axhline(np.log10(1e8), ls = ':', color = 'gray', alpha = 0.4)
+ax.text(0.31, 7.3, 'Unresolved in size,\nresolved in mass', fontsize = 8)
+ax.text(0.31, 9, 'Resolved in size and mass', fontsize = 8)
+ax.axvline(np.log10(57), ls = ':', color = 'pink', alpha = 0.75, label = 'Vpeak = 57 km/s')
+
+ax.tick_params(axis='y', which = 'both', left=True, right=True, direction = 'in')
+ax.tick_params(axis='x', which = 'both', direction = 'in', top = True)
+# ax.set_xscale('log')
+# ax.set_yscale('log')
+ax.set_ylim(bottom = np.log10(7e1), top = 12)
+ax.set_xlim(left = 0.25, right = 3)
+ax.legend(fontsize = 8, loc = 'lower right')
+
+plt.tight_layout()
+
+
+
+#  =================================================
+
 kernel = 1 * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2))
 gaussian_process = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
 
