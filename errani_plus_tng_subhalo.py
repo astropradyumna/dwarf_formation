@@ -20,6 +20,12 @@ from colossus.halo import concentration
 from scipy.signal import argrelmin
 import warnings
 from populating_stars import *
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, filename='debug.log', filemode='w', 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 
 cosmology.setCosmology('planck18')
@@ -63,6 +69,83 @@ class ErraniSubhalo():
         closest_value = min(values, key=lambda x: abs(np.log10(x) - np.log10(Rh0/self.rmx0)))
         # print(closest_value)
         return closest_value
+    
+    def get_rh0byrmx0_interp(self, dist = 'log'):
+        '''
+        This is to get the two values that are closest to the rh0/rmx0 ratio
+        '''
+        # values = np.array([1/2, 1/4, 1/8, 1/16, 1/66, 1/250, 1/1000])
+        values = np.array([1/1000, 1/66, 1/250, 1/16, 1/8, 1/4, 1/2])
+        Rh0 = self.Rh
+        if np.isnan(Rh0):
+            return -1, -1, -1, -1
+
+        rh0byrmx0 = Rh0/self.rmx0
+        ix_1 = np.searchsorted(values, rh0byrmx0) - 1 # index of the closest value less than rh0byrmx0
+        ix_2 = ix_1 + 1 # index of the closest value greater than rh0byrmx0
+        # logging.debug(f'ix_1: {ix_1}, ix_2: {ix_2}')
+
+        # lets now look at the corner cases
+        if ix_1 < 0:
+            ix_1 = 0
+            ix_2 = 0
+            p = 0.5 
+            q = 0.5
+        elif ix_2 >= len(values):
+            ix_2 = len(values) - 1
+            ix_1 = len(values) - 1
+            p = 0.5
+            q = 0.5
+        else: # This is the case where there are two distinct values
+            if dist == 'log':
+                p = abs(np.log10(values[ix_1]) - np.log10(rh0byrmx0)) / abs(np.log10(values[ix_1]) - np.log10(values[ix_2]))
+                q = abs(np.log10(values[ix_2]) - np.log10(rh0byrmx0)) / abs(np.log10(values[ix_1]) - np.log10(values[ix_2]))
+            elif dist == 'linear':
+                p = abs(values[ix_1] - rh0byrmx0) / abs(values[ix_1] - values[ix_2])
+                q = abs(values[ix_2] - rh0byrmx0) / abs(values[ix_1] - values[ix_2])
+
+        # Here p is something that returns distance in log space from the lower value. Use this as the weight for the upper value
+        # and q is the distance in log space from the upper value. Use this as the weight for the lower value
+
+        return values[ix_1], values[ix_2], p, q
+    
+
+    def get_rhbyrmx0(self, fpl_ar, Rh0byrmx0): # This function is going to return the rh/rmx0 for the given fpl and rh0byrmx0
+        '''
+        This is for the evolved Rh value
+        Well, this is a standalone function
+        '''
+        l10rhbyrmx0_ar = np.zeros(0)
+
+        # Ensure fpl_ar is iterable
+        if not isinstance(fpl_ar, (list, np.ndarray)):
+            fpl_ar = [fpl_ar]
+
+        fpl_ar = np.log10(fpl_ar)  # Convert to log scale
+
+        for fpl in fpl_ar:
+            if (fpl > -5) and (Rh0byrmx0 == 1/66 or Rh0byrmx0 == 1/250):
+                if Rh0byrmx0 == 1/66:
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by66_spl(fpl))
+                elif Rh0byrmx0 == 1/250:
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by250_spl(fpl))
+            elif (fpl > -2.5) and (Rh0byrmx0 in [1/2, 1/4]):
+                if Rh0byrmx0 == 1/2:
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by2_spl(fpl))
+                elif Rh0byrmx0 == 1/4:
+                    l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by4_spl(fpl))
+            elif (fpl > -2.75) and (Rh0byrmx0 in [1/8]):
+                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by8_spl(fpl))
+            elif (fpl > -3.14) and (Rh0byrmx0 in [1/16]):    
+                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by16_spl(fpl))
+            elif (fpl > -6.4) and (Rh0byrmx0 == 1/1000):
+                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by1000_spl(fpl))
+            else:
+                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, np.log10(get_rmxbyrmx0(10**fpl)))
+        return 10 ** l10rhbyrmx0_ar
+
+
+
     
 
     # def get_rh_vd(self, frem):
@@ -229,8 +312,125 @@ class ErraniSubhalo():
         
 
         return  vmx, rmx, mmx, vd_now, rh_now, mstar
+    
+    def evolve_interp(self, tevol, V0, min_mstarf = 0):
+        '''
+        This is the function that we will be using for evolving subhalos using interpolation between two values 
+        '''
+        '''
+        This is a function that evolves the subhalo using Errani models
+
+        Args:
+        tinf: The infall time in Gyr of the subhalo  
+        tevol (float): The time for which evolution must take place
+        V0: This is a parameter of the host whn paramterized using the isothermal profile
+
+        '''
+        rmx0 = self.rmx0
+        vmx0 = self.vmx0
+        rperi = self.rperi
+        rapo = self.rapo
+
+        
+        
+        if rmx0 != rmx0:
+            raise ValueError('rmx0 is NaN!')
+        if any([rmx0, vmx0, rperi, rapo]) == None:
+            raise ValueError('Some of the required values are None, recheck if they have been updated in the Object')
+
+        tmx0 = 2 * np.pi *  ( rmx0 / vmx0 ) * 3.086e16 * 3.17098e-8 * 1e-9 #This would be in Gyrs assuming r to be in kpc and v to be in km/s
+        tperi = 2 * np.pi * ( rperi / V0) * 3.086e16 * 3.17098e-8 * 1e-9 #This is the tperi that is calculated in Errani+21
+        
+        x = rapo / rperi
+        fecc = (2 * x / (x + 1)) ** 3.2
+
+        torb = self.torb* fecc #Gyr, this is after accounting for the ellipticity of the orbit
+        
+        def get_tmx_t(t):
+            '''
+            This is the Tmx value at a given time t. 
+            We can calculate the real time t given a Tmx (for a given value of Mmx)
+            '''
+            
+            if tmx0/tperi >= 2/3: #Heavy mass loss regime
+                # print('Heavy mass loss regime')
+                tasy = 0.22 * tperi
+                y0 = (tmx0 - tasy) / tperi
+                tau_asy = 0.65 * torb
+                tau = tau_asy / y0 
+                eta = 1 - np.exp( - 2.5 * y0 )
+                inner_term = 1 + (t/tau)**eta 
+                tmx = tasy + tperi * y0 * (inner_term)**(-1/eta)
+            else: #modest mass loss regime
+                # print('Modest mass loss regime')
+                tasyp =  ( tmx0 / (1 + (tmx0/tperi))**2.2)
+                etap = 0.67
+                # yp = (tmx - tasyp)/tperi 
+                y0p = (tmx0 - tasyp)/tperi 
+                taup = torb * 1.2 * (tmx0 / tperi)**(-0.5)
+                inner_term = 1 + (t/taup)**etap
+                tmx = tasyp + tperi * y0p * (inner_term)**(-1/etap)
+            return tmx
+        
+        def get_tmx(rmx):
+            ''' 
+            This is to calculate the Tmx value from rmx and vmx
+            '''
+            vmx = vmx0 * get_vmxbyvmx0(rmx/rmx0)
+            return 2 * np.pi * rmx / vmx * 3.086e16 * 3.17098e-8 * 1e-9 
+        
+        
+        def get_time(rmx):
+            '''
+            I want to obtain the time for a given value of rmx
+            '''
+            t = fsolve(lambda t: get_tmx_t(t) - get_tmx(rmx), 2)[0]
+            return t
+        
+        tmx = get_tmx_t(tevol)
+        # print(tmx, rmx0)
+        with warnings.catch_warnings(record=True) as w:
+            rmx = fsolve(lambda rmx: get_tmx(rmx) - tmx, rmx0/1e2)[0]
+            if len(w) > 0:
+                with warnings.catch_warnings(record=True) as w:
+                    rmx = fsolve(lambda rmx: get_tmx(rmx) - tmx, rmx0/1e3)[0]
+                    if len(w) > 0:
+                        with warnings.catch_warnings(record=True) as w:
+                            rmx = fsolve(lambda rmx: get_tmx(rmx) - tmx, rmx0/1e4)[0]
+                            if len(w) > 0:
+                                rmx = fsolve(lambda rmx: get_tmx(rmx) - tmx, rmx0/1e5)[0]
+            
+        # print(rmx)
+        frem = get_mxbymx0(rmx/rmx0) 
+        
+        mmx = frem * self.mmx0
+        vmx = get_vmxbyvmx0(rmx/rmx0) * self.vmx0
+
+        rhbyrmxo1, rhbyrmxo2, p, q = self.get_rh0byrmx0_interp(dist = 'log')
+        # print(p, q)
+        logging.debug(f'P: {p}, Q: {q}')
+        if p == -1 or q == -1:
+            return vmx, rmx, mmx, -1, -1, -1
+        mstar = (get_LbyL0(frem, rhbyrmxo1) * self.mstar0 * q + get_LbyL0(frem, rhbyrmxo2) * self.mstar0 * p) / (p + q)
+            # print(mstar / get_LbyL0(frem, rhbyrmxo1))
+
+        rh_now = (self.get_rhbyrmx0(frem, rhbyrmxo1) * (self.Rh/rhbyrmxo1) * q + self.get_rhbyrmx0(frem, rhbyrmxo2) * (self.Rh/rhbyrmxo2 )* p) / (p + q)
+        vd_now = -1 # Just a dummy value because we have not been using it
+
+        if p > q:
+            logging.debug(mstar / (get_LbyL0(frem, rhbyrmxo2) * self.mstar0))
+            logging.debug(f'rhnow: {rh_now} vs {self.get_rhbyrmx0(frem, rhbyrmxo2) * (self.Rh/rhbyrmxo2 )} vs {self.get_rhbyrmx0(frem, rhbyrmxo1) * (self.Rh/rhbyrmxo1)}')
+            # print(mstar / get_LbyL0(frem, rhbyrmxo2))
+        elif p < q:
+            logging.debug(mstar / (get_LbyL0(frem, rhbyrmxo1) * self.mstar0))
+            logging.debug(f'rhnow: {rh_now} vs {self.get_rhbyrmx0(frem, rhbyrmxo2) * (self.Rh/rhbyrmxo2 )} vs {self.get_rhbyrmx0(frem, rhbyrmxo1) * (self.Rh/rhbyrmxo1)}')
 
 
+        if mstar < min_mstarf: #FIXME:Decide #10 on some limit for stellar mass from Errani model
+            mstar = 0
+            rh_now = 0
+
+        return  vmx, rmx, mmx, vd_now, rh_now, mstar
 
 class Subhalo(TNG_Subhalo):
     '''

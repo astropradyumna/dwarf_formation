@@ -79,8 +79,10 @@ The following is to plot the datasets that have been digitized for Rh values
 errani_fp = '/rhome/psadh003/bigdata/errani22_data/'
 rh1by4_df = pd.read_csv(errani_fp + 'rh1by4_errani22.csv') # Rh/rmx0 = 1/4 from digitization
 rh1by2_df = pd.read_csv(errani_fp + 'rh1by2_errani22.csv') # Rh/rmx0 = 1/2 from digitization
-rh1by8_df = pd.read_csv(errani_fp + 'rh1by8_errani22.csv')
-rh1by16_df = pd.read_csv(errani_fp + 'rh1by16_errani22.csv')
+# rh1by8_df = pd.read_csv(errani_fp + 'rh1by8_errani22.csv')
+# rh1by16_df = pd.read_csv(errani_fp + 'rh1by16_errani22.csv')
+rh1by8_df = pd.read_csv(errani_fp + 'rh0byrmx01by8.csv')
+rh1by16_df = pd.read_csv(errani_fp + 'rh0byrmx01by16.csv')
 '''
 Following are new additions from the email plot sent by Rapha
 '''

@@ -32,9 +32,14 @@ mass_dm = 3.07367708626464e-05 * 1e10/h #This is for TNG50-1
 G = 4.5390823753559603e-39 #This is in kpc, Msun and seconds
 
 # mvir = 1.5e11 #1.5e8 for 1e6 Msun and 
-mvir = 1.5e11 #1.5e8 for 1e6 Msun and 
+# mvir = 1.5e11 #1.5e8 for 1e6 Msun and 
+
+mvir = 4e8 # This is for 1e6 Msun
+# mvir = 1.5e11 # This is for 5e9 Msun
+
+
 conc=concentration.concentration(0.6744 * mvir, 'vir', 0, 'ludlow16')
-print(conc)
+print('Concentration is', conc)
 
 
 
@@ -77,7 +82,9 @@ rmx0, vmx0 = get_converted_nfw_params(mvir, conc)
 mstar = 10**get_mstar_pl(np.log10(vmx0)) #This would be the stellar mass corresponding to the virial mass in power law model
 rh = 10**get_lrh(np.log10(mstar))
 
-print(np.log10(mstar), rh) #This is the initial stellar mass and rh for the subhalo
+# print(np.log10(mstar), rh) #This is the initial stellar mass and rh for the subhalo
+
+print('Stellar mass in log Msun is', round(np.log10(mstar), 2), 'and rh in kpc is', round(rh, 2))
 
 def get_rh0byrmx0(Rh, rmx0):
     '''
@@ -98,35 +105,66 @@ frem_ar = np.logspace(-4, 0, 100)
 mstar_ar = np.zeros(0)
 rh_ar = np.zeros(0)
 
+
+def get_l10rhbyrmx0(fpl_ar, Rh0byrmx0):
+    l10rhbyrmx0_ar = np.zeros(0)
+
+    for fpl in fpl_ar:
+        if (fpl > -5) and (Rh0byrmx0 == 1/66 or Rh0byrmx0 == 1/250):
+            if Rh0byrmx0 == 1/66:
+                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by66_spl(fpl))
+            elif Rh0byrmx0 == 1/250:
+                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by250_spl(fpl))
+        elif (fpl > -2.5) and (Rh0byrmx0 in [1/2, 1/4]):
+            if Rh0byrmx0 == 1/2:
+                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by2_spl(fpl))
+            elif Rh0byrmx0 == 1/4:
+                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by4_spl(fpl))
+        elif (fpl > -2.75) and (Rh0byrmx0 in [1/8]):
+            l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by8_spl(fpl))
+        elif (fpl > -3.14) and (Rh0byrmx0 in [1/16]):    
+            l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by16_spl(fpl))
+        elif (fpl > -6.4) and (Rh0byrmx0 == 1/1000):
+                l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, l10rbyrmx0_1by1000_spl(fpl))
+        else:
+            l10rhbyrmx0_ar = np.append(l10rhbyrmx0_ar, np.log10(get_rmxbyrmx0(10**fpl)))
+    return l10rhbyrmx0_ar
+
+rh_ar = 10 ** get_l10rhbyrmx0(np.log10(frem_ar), rh0byrmx0) * (rh/rh0byrmx0) * 1e3 #coverting the rh to parsecs
+
 for frem in frem_ar:
-    rmx = get_rmxbyrmx0(frem) * rmx0
     mstar_evolved = get_LbyL0(frem, rh0byrmx0) * mstar
     mstar_ar = np.append(mstar_ar, mstar_evolved)
-    if np.log10(frem) >= -2.5:
-        if rh0byrmx0 == 0.25:
-            rh_now = 10 ** (l10rbyrmx0_1by4_spl(np.log10(frem))) * rh/rh0byrmx0
-        elif rh0byrmx0 == 0.125:
-            rh_now = 10 ** (l10rbyrmx0_1by8_spl(np.log10(frem))) * rh/rh0byrmx0
-        elif rh0byrmx0 == 0.5:
-            rh_now = 10 ** (l10rbyrmx0_1by2_spl(np.log10(frem))) * rh/rh0byrmx0
-        elif rh0byrmx0 == 0.0625:
-            rh_now = 10 ** (l10rbyrmx0_1by16_spl(np.log10(frem))) * rh/rh0byrmx0
+
+# for frem in frem_ar:
+#     rmx = get_rmxbyrmx0(frem) * rmx0
+#     mstar_evolved = get_LbyL0(frem, rh0byrmx0) * mstar
+#     mstar_ar = np.append(mstar_ar, mstar_evolved)
+#     if np.log10(frem) >= -2.5:
+#         if rh0byrmx0 == 0.25:
+#             rh_now = 10 ** (l10rbyrmx0_1by4_spl(np.log10(frem))) * rh/rh0byrmx0
+#         elif rh0byrmx0 == 0.125:
+#             rh_now = 10 ** (l10rbyrmx0_1by8_spl(np.log10(frem))) * rh/rh0byrmx0
+#         elif rh0byrmx0 == 0.5:
+#             rh_now = 10 ** (l10rbyrmx0_1by2_spl(np.log10(frem))) * rh/rh0byrmx0
+#         elif rh0byrmx0 == 0.0625:
+#             rh_now = 10 ** (l10rbyrmx0_1by16_spl(np.log10(frem))) * rh/rh0byrmx0
 
 
-    elif np.log10(frem) < -2.5:
-        rh_now = rmx
+#     elif np.log10(frem) < -2.5:
+#         rh_now = rmx
 
-    rh_ar = np.append(rh_ar, rh_now)
+#     rh_ar = np.append(rh_ar, rh_now)
 
-rh_ar = rh_ar * 1e3 #coverting the rh to parsecs
+# rh_ar = rh_ar * 1e3 #coverting the rh to parsecs
 
 df = pd.DataFrame({'mstar': mstar_ar, 'rh': rh_ar, 'frem': frem_ar})
 
 
 filepath = '/bigdata/saleslab/psadh003/misc_files/'
 
-# df.to_csv(filepath + '1e6_tidal_tracks.csv', index = False)
-# df.to_csv(filepath + '5e9_tidal_tracks.csv', index = False)
+df.to_csv(filepath + '1e6_tidal_tracks2.csv', index = False)
+# df.to_csv(filepath + '5e9_tidal_tracks2.csv', index = False)
 
 # plt.plot(np.log10(mstar_ar), np.log10(rh_ar))
 # plt.show()
