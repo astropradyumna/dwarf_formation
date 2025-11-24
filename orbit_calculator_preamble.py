@@ -14,7 +14,7 @@ import illustris_python as il
 import os
 from scipy.optimize import fsolve
 from scipy.interpolate import UnivariateSpline
-from scipy.misc import derivative
+# from scipy.misc import derivative
 from tqdm import tqdm
 import time
 from matplotlib.backends.backend_pdf import PdfPages
