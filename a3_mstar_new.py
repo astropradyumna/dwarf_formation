@@ -1,3 +1,7 @@
+## This code is to check what happens with the evolution when we have satellites evolving with isothermal parameter set at V0 at the infall snapshot. 
+
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -17,6 +21,7 @@ import ast
 fofno = int(sys.argv[1])
 fofstr = 'fof' + str(int(fofno))
 
+
 ages_df = pd.read_csv('ages_tng.csv', comment = '#')
 
 all_snaps = np.array(ages_df['snapshot'])
@@ -28,15 +33,37 @@ all_ages = np.array(ages_df['age(Gyr)'])
 # Now we will try to get the V0 for the central at snapshot 99 
 this_fof = il.groupcat.loadSingle(basePath, 99, haloID = fofno)
 central_sfid_99 = this_fof['GroupFirstSub'] 
-cen = il.groupcat.loadSingle(basePath, 99, subhaloID = central_sfid_99)
-fields = ['SubhaloID']
-central_mpb = il.sublink.loadTree(basePath, 99, central_sfid_99, fields = ['SubhaloID', 'SnapNum', 'SubfindID'], onlyMPB = True)
-central_sfids = central_mpb['SubfindID']
-central_snaps = central_mpb['SnapNum']
-m200 = this_fof['Group_M_Crit200'] * 1e10 / h
-r200 = this_fof['Group_R_Crit200'] / h
-assert np.isclose(G, 4.3e-6) # This is in kpc, Msun and seconds
-v200 = float(np.sqrt(G * m200 / r200)) # This is in km/s
+# cen = il.groupcat.loadSingle(basePath, 99, subhaloID = central_sfid_99)
+# fields = ['SubhaloID']
+# central_mpb = il.sublink.loadTree(basePath, 99, central_sfid_99, fields = ['SubhaloID', 'SnapNum', 'SubfindID'], onlyMPB = True)
+# central_snaps = central_mpb['SnapNum']
+# m200 = this_fof['Group_M_Crit200'] * 1e10 / h
+# r200 = this_fof['Group_R_Crit200'] / h
+# assert np.isclose(G, 4.3e-6) # This is in kpc, Msun and seconds
+# v200 = float(np.sqrt(G * m200 / r200)) # This is in km/s
+
+
+
+
+
+central_fields = ['GroupFirstSub', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel', 'SubfindID']
+central_tree = il.sublink.loadTree(basePath, 99, central_sfid_99, fields=central_fields, onlyMPB=True)
+central_snaps = central_tree['SnapNum']
+central_sfids = central_tree['SubfindID']
+central_redshift = all_redshifts[central_snaps]
+central_x = central_tree['SubhaloPos'][:, 0] / (1 + central_redshift) / h
+central_y = central_tree['SubhaloPos'][:, 1] / (1 + central_redshift) / h
+central_z = central_tree['SubhaloPos'][:, 2] / (1 + central_redshift) / h
+central_r200 = central_tree['Group_R_Crit200'] / (1 + central_redshift) / h  # This is the virial radius of the group
+ages_rvir = all_ages[central_snaps]  # Ages corresponding to the virial radii
+central_grnr = central_tree['SubhaloGrNr']
+central_gr_m200 = central_tree['Group_M_Crit200'] * 1e10 / h  # This is the M200 of the central group
+central_vx = central_tree['SubhaloVel'][:, 0]  # km/s
+central_vy = central_tree['SubhaloVel'][:, 1]
+central_vz = central_tree['SubhaloVel'][:, 2]
+
+central_v0 = np.sqrt(4.3e-6 * central_gr_m200 / central_r200)  # this is the isothermal speed of the FoF halo for all snapshots
+
 
 # Let us not get the full tree of the central to see which of the Type-2s are directly getting merged into the central
 cft = il.sublink.loadTree(basePath, 99, central_sfid_99, fields = ['SubhaloID', 'DescendantID', 'SnapNum', 'SubfindID', 'SubhaloIDMostbound'])
@@ -237,9 +264,11 @@ t1_tinf_ar = df['tinf_ar'].values # This is the infall time based on which we wi
 
 t1_vd_max_ar = df['vd_max_ar'].values # This is the maximum velocity dispersion based on which we will be evolving the subhalos
 
+t1_snap_if_ar = df['snap_if_ar'].values
 
 
-# for ix in range(len(t1_mstar_max_ar[:50])):
+
+# for ix in range(len(t1_mstar_max_ar[:50])): # Test for the first 50 satellites
 #     if t1_mstar_max_ar[ix] > 5e6:
 #         pass
 #     else:
@@ -260,13 +289,9 @@ t1_vd_max_ar = df['vd_max_ar'].values # This is the maximum velocity dispersion 
 #                 pass
 #             else:
 #                 subh_pl = ErraniSubhalo(torb = float(t1_torb_ar[ix]), rperi = float(t1_rperi_ar[ix]), rapo = float(t1_rapo_ar[ix]), Rh = float(rh_max_pl), mstar0 = float(mstar_max_pl), rmx0 = float(t1_rmx_if_ar[ix]), mmx0 = float(t1_mmx_if_ar[ix]), vmx0 = float(t1_vmx_if_ar[ix]))
-#                 _, _, _, _, rh_f_pl, mstar_f_pl = subh_pl.evolve_interp(tevol = float(all_ages[99]) - float(t1_tinf_ar[ix]), V0 = v200, min_mstarf = 0)
+#                 _, _, _, _, rh_f_pl, mstar_f_pl = subh_pl.evolve_interp(tevol = float(all_ages[99]) - float(t1_tinf_ar[ix]), V0 = central_v0[central_snaps == t1_snap_if_ar[ix]], min_mstarf = 0)
 #                 subh_co = ErraniSubhalo(torb = float(t1_torb_ar[ix]), rperi = float(t1_rperi_ar[ix]), rapo = float(t1_rapo_ar[ix]), Rh = rh_max_co, mstar0 = mstar_max_co, rmx0 = float(t1_rmx_if_ar[ix]), mmx0 = float(t1_mmx_if_ar[ix]), vmx0 = float(t1_vmx_if_ar[ix]))
-#                 _, _, _, _, rh_f_co, mstar_f_co = subh_co.evolve_interp(tevol = float(all_ages[99]) - float(t1_tinf_ar[ix]), V0 = v200, min_mstarf = 0)
-
-
-# sys.exit(0)
-        
+#                 _, _, _, _, rh_f_co, mstar_f_co = subh_co.evolve_interp(tevol = float(all_ages[99]) - float(t1_tinf_ar[ix]), V0 = central_v0[central_snaps == t1_snap_if_ar[ix]], min_mstarf = 0) # Assuming the V0 to be the same as the V0 at the time of infall
 
 
 def get_new_mstar_t1(ix):
@@ -294,10 +319,10 @@ def get_new_mstar_t1(ix):
             return mstar_max_pl, rh_max_pl, mstar_max_co, rh_max_co, -1, -1, -1, -1 # This is the case where the orbital time is too high
         subh_pl = ErraniSubhalo(torb = float(t1_torb_ar[ix]), rperi = float(t1_rperi_ar[ix]), rapo = float(t1_rapo_ar[ix]), Rh = float(rh_max_pl), mstar0 = float(mstar_max_pl), rmx0 = float(t1_rmx_if_ar[ix]), mmx0 = float(t1_mmx_if_ar[ix]), vmx0 = float(t1_vmx_if_ar[ix])) 
         # _, _, _, _, rh_f_pl, mstar_f_pl = subh_pl.evolve(tevol = float(all_ages[99]) - float(t1_tinf_ar[ix]), V0 = v200, min_mstarf = 0)
-        _, _, _, _, rh_f_pl, mstar_f_pl = subh_pl.evolve_interp(tevol = float(all_ages[99]) - float(t1_tinf_ar[ix]), V0 = v200, min_mstarf = 0)
+        _, _, _, _, rh_f_pl, mstar_f_pl = subh_pl.evolve_interp(tevol = float(all_ages[99]) - float(t1_tinf_ar[ix]), V0 = central_v0[central_snaps == t1_snap_if_ar[ix]], min_mstarf = 0)
         subh_co = ErraniSubhalo(torb = float(t1_torb_ar[ix]), rperi = float(t1_rperi_ar[ix]), rapo = float(t1_rapo_ar[ix]), Rh = rh_max_co, mstar0 = mstar_max_co, rmx0 = float(t1_rmx_if_ar[ix]), mmx0 = float(t1_mmx_if_ar[ix]), vmx0 = float(t1_vmx_if_ar[ix]))
         # _, _, _, _, rh_f_co, mstar_f_co = subh_co.evolve(tevol = float(all_ages[99]) - float(t1_tinf_ar[ix]), V0 = v200, min_mstarf = 0) 
-        _, _, _, _, rh_f_co, mstar_f_co = subh_co.evolve_interp(tevol = float(all_ages[99]) - float(t1_tinf_ar[ix]), V0 = v200, min_mstarf = 0) 
+        _, _, _, _, rh_f_co, mstar_f_co = subh_co.evolve_interp(tevol = float(all_ages[99]) - float(t1_tinf_ar[ix]), V0 = central_v0[central_snaps == t1_snap_if_ar[ix]], min_mstarf = 0) 
     return mstar_max_pl, rh_max_pl, mstar_max_co, rh_max_co, mstar_f_pl, rh_f_pl, mstar_f_co, rh_f_co
 
         
@@ -340,14 +365,10 @@ df['hof_flag'] = [value for value in results]
 
 
 # suffix = '_vpeak_bestfits'
-# suffix = '_interpolation'
+suffix = '_interpolation_v0inf'
 # suffix = '_interpolation2'
-suffix = '_interpolation3'
-
-
 df.to_csv(filepath + fofstr +  '_surviving_evolved_everything' + suffix + '.csv', index = False)
 
-# sys.exit(0) # Comment this out so that you can go on to Type-2s
 
 # ======================================
 # We will now move on to Type-2s 
@@ -398,10 +419,10 @@ def get_new_mstar_t2(ix):
             return mstar_max_pl, rh_max_pl, mstar_max_co, rh_max_co, -1, -1, -1, -1 # This is the case where the orbital time is too high
         subh_pl = ErraniSubhalo(torb = float(t2_torb_ar[ix]), rperi = float(t2_rperi_ar[ix]), rapo = float(t2_rapo_ar[ix]), Rh = float(rh_max_pl), mstar0 = float(mstar_max_pl), rmx0 = float(t2_rmx_if_ar[ix]), mmx0 = float(t2_mmx_if_ar[ix]), vmx0 = float(t2_vmx_if_ar[ix]))
         # _, _, _, _, rh_f_pl, mstar_f_pl = subh_pl.evolve(tevol = float(all_ages[99]) - float(t2_tinf_ar[ix]), V0 = v200, min_mstarf = 0)
-        _, _, _, _, rh_f_pl, mstar_f_pl = subh_pl.evolve_interp(tevol = float(all_ages[99]) - float(t2_tinf_ar[ix]), V0 = v200, min_mstarf = 0)
+        _, _, _, _, rh_f_pl, mstar_f_pl = subh_pl.evolve_interp(tevol = float(all_ages[99]) - float(t2_tinf_ar[ix]), V0 = central_v0[central_snaps == t2_snap_if_ar[ix]], min_mstarf = 0)
         subh_co = ErraniSubhalo(torb = float(t2_torb_ar[ix]), rperi = float(t2_rperi_ar[ix]), rapo = float(t2_rapo_ar[ix]), Rh = rh_max_co, mstar0 = mstar_max_co, rmx0 = float(t2_rmx_if_ar[ix]), mmx0 = float(t2_mmx_if_ar[ix]), vmx0 = float(t2_vmx_if_ar[ix]))
         # _, _, _, _, rh_f_co, mstar_f_co = subh_co.evolve(tevol = float(all_ages[99]) - float(t2_tinf_ar[ix]), V0 = v200, min_mstarf = 0)
-        _, _, _, _, rh_f_co, mstar_f_co = subh_co.evolve_interp(tevol = float(all_ages[99]) - float(t2_tinf_ar[ix]), V0 = v200, min_mstarf = 0)
+        _, _, _, _, rh_f_co, mstar_f_co = subh_co.evolve_interp(tevol = float(all_ages[99]) - float(t2_tinf_ar[ix]), V0 = central_v0[central_snaps == t2_snap_if_ar[ix]], min_mstarf = 0)
     return mstar_max_pl, rh_max_pl, mstar_max_co, rh_max_co, mstar_f_pl, rh_f_pl, mstar_f_co, rh_f_co
 
 results = Parallel(n_jobs = 32, pre_dispatch = '1.5*n_jobs')(delayed(get_new_mstar_t2)(ix) for ix in tqdm(range(len(t2_mstar_max_ar))) )
@@ -499,9 +520,8 @@ df['mbpID'] = [value[7] for value in results]
 df['hof_flag'] = [value[8] for value in results]
 
 # suffix = '_vpeak_bestfits'
-# suffix = '_interpolation'
+suffix = '_interpolation_v0inf'
 # suffix = '_interpolation2'
-suffix = '_interpolation3'
-
 df.to_csv(filepath + fofstr +  '_merged_evolved_everything' + suffix + '.csv', index = False)
 # ======================================
+

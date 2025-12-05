@@ -5,8 +5,8 @@
 #SBATCH --cpus-per-task=7
 #SBATCH --time=48:00:00
 #SBATCH --mem=300gb
-#SBATCH -o output_log/t50h0.out
-#SBATCH -e output_log/t50h0.err
+#SBATCH -o output_log/t50h2_a3.out
+#SBATCH -e output_log/t50h2_a3.err
 #SBATCH --mail-user=psadh003@ucr.edu
 #SBATCH --mail-type=ALL
 
@@ -18,5 +18,7 @@ module load openmpi # Should already be loaded
 
 # Swtich to the working directory
 cd /bigdata/saleslab/psadh003/tng50/dwarf_formation
+source ~/.bashrc
 # python3 main_now_everything.py 0
-python3 main_stellar_mass_new.py 0
+python3 a3_mstar_new.py 2
+# python3 main_stellar_mass_new.py 2

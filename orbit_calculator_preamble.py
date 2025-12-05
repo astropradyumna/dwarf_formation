@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import pandas as pd
 import requests
-import IPython
+# import IPython
 import illustris_python as il
 import os
 from scipy.optimize import fsolve
