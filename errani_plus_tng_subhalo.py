@@ -561,7 +561,7 @@ class Subhalo(TNG_Subhalo):
         central_id_at99 = self.central_sfid_99
 
 
-        self.central_fields = ['GroupFirstSub', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel']
+        self.central_fields = ['GroupFirstSub', 'SubhaloGrNr', 'SnapNum', 'GroupNsubs', 'SubhaloPos', 'Group_R_Crit200', 'Group_M_Crit200', 'SubhaloVel', 'GroupMass']
         self.central_tree = il.sublink.loadTree(basePath, 99, central_id_at99, fields = self.central_fields, onlyMPB = True)
         self.central_snaps = self.central_tree['SnapNum']
         self.central_redshift = all_redshifts[self.central_snaps]
@@ -575,6 +575,7 @@ class Subhalo(TNG_Subhalo):
         self.central_vx = self.central_tree['SubhaloVel'][:, 0] #km/s
         self.central_vy = self.central_tree['SubhaloVel'][:, 1]
         self.central_vz = self.central_tree['SubhaloVel'][:, 2]
+        self.central_gr_m = self.central_tree['GroupMass']*1e10/h #This is the total mass of the central group
 
         self.central_v0 = np.sqrt(4.3e-6 * self.central_gr_m200 / self.central_r200) #this is the isothermal speed of the FoF halo for all snapshots
         return None
