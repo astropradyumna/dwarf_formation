@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import illustris_python as il
 from orbit_calculator_preamble import *
-from galpy.potential import NFWPotential, TimeDependentAmplitudeWrapperPotential
+from galpy.potential import PowerSphericalPotentialwCutoff, NFWPotential #NFWPotential is kept for plot_orbit_comprehensive option
 from galpy.orbit import Orbit
 from astropy import units as u
 from testing_errani import get_rmxbyrmx0, get_vmxbyvmx0, get_mxbymx0, get_LbyL0, l10rbyrmx0_1by4_spl,l10rbyrmx0_1by2_spl, l10rbyrmx0_1by8_spl, l10rbyrmx0_1by16_spl, l10vbyvmx0_1by2_spl, l10vbyvmx0_1by4_spl, l10vbyvmx0_1by8_spl, l10vbyvmx0_1by16_spl, l10rbyrmx0_1by66_spl, l10rbyrmx0_1by250_spl, l10rbyrmx0_1by1000_spl, l10vbyvmx0_1by66_spl, l10vbyvmx0_1by250_spl, l10vbyvmx0_1by1000_spl
@@ -875,7 +875,32 @@ class Subhalo(TNG_Subhalo):
         #     A = 1
         #     return A
 
-        potential = NFWPotential(conc=concentration.concentration(0.6744 * mvir, 'vir', te_snap_z, 'ludlow16'), mvir=mvir/1e12, wrtcrit = True, overdens = 200 * get_critical_dens(te_snap_z)/get_critical_dens(0))
+        # Get V0 and total mass for this snapshot
+        v0 = self.central_v0[te_central_ix].item()  # V0 at last detected snapshot (km/s)
+        mtot = self.central_gr_m[te_central_ix].item()  # Total FoF mass (Msun)
+
+        # G in GALPY units: kpc^3 / (Msun * (km/s)^2)
+        G_galpy = 4.302e-6  # kpc (km/s)^2 / Msun
+
+        # Set reference radius
+        r1 = 1.0  # kpc
+
+        # Calculate amplitude: amp = V0^2/(4πG * r1^2)
+        # Units: (km/s)^2 / (kpc (km/s)^2 / Msun * kpc^2) = Msun/kpc^3
+        amp = (v0**2) / (4 * np.pi * G_galpy * r1**2)  # in Msun/kpc^3
+
+        # Calculate cutoff radius: rc = Mtot/(2 * π * sqrt(π) * amp)
+        rc = mtot / (2 * np.pi * np.sqrt(np.pi) * amp)  # in kpc
+
+        # Set distance and velocity scales for GALPY
+        ro = 1.0 * u.kpc  # distance scale
+        vo = 1.0 * u.km / u.s  # velocity scale
+
+        # Create isothermal potential with cutoff
+        potential = PowerSphericalPotentialwCutoff(amp=amp * u.Msun / u.kpc**3, alpha=2.0, r1=r1 * u.kpc, 
+                                           ro=ro, vo=vo, rc=rc * u.kpc)
+
+        # potential = NFWPotential(conc=concentration.concentration(0.6744 * mvir, 'vir', te_snap_z, 'ludlow16'), mvir=mvir/1e12, wrtcrit = True, overdens = 200 * get_critical_dens(te_snap_z)/get_critical_dens(0))
         # potential = TimeDependentAmplitudeWrapperPotential(A = get_nfw_at_t, pot = nfw) #This is to vary the potential with time 
 
         x, y, z = subh_x_cen, subh_y_cen, subh_z_cen
@@ -1297,7 +1322,7 @@ class Subhalo(TNG_Subhalo):
     
 
 
-    def plot_orbit_comprehensive(self, when_te = 'last', show = False):
+    def plot_orbit_comprehensive(self, when_te = 'last', show = False, potential_type = 'isothermal'):
         '''
         This function plots the orbit comprehensively with energy and masses variation with time
         
@@ -1307,6 +1332,7 @@ class Subhalo(TNG_Subhalo):
         snap and sfid: THIS HAS TO BE THE INFALL SNAPSHOT FOR SUBHALOS THAT MERGE and the infall snapshot for the surviving subhalos
         ax_ar: This is an array of plotting axes. Please pass 5 axes
         merged(boolean): If the subhalo merged, then please give this as True
+        potential_type (str): 'isothermal' (default) or 'nfw' - chooses which potential to use for orbit integration
 
         Returns None because this is only a plotting routine
         ''' 
@@ -1428,7 +1454,37 @@ class Subhalo(TNG_Subhalo):
         #     A = 1
         #     return A
 
-        potential = NFWPotential(conc=concentration.concentration(0.6744 * mvir, 'vir', te_snap_z, 'ludlow16'), mvir=mvir/1e12, wrtcrit = True, overdens = 200 * get_critical_dens(te_snap_z)/get_critical_dens(0))
+        # Choose potential type based on input parameter
+        if potential_type.lower() == 'nfw':
+            potential = NFWPotential(conc=concentration.concentration(0.6744 * mvir, 'vir', te_snap_z, 'ludlow16'), mvir=mvir/1e12, wrtcrit = True, overdens = 200 * get_critical_dens(te_snap_z)/get_critical_dens(0))
+        elif potential_type.lower() == 'isothermal':
+            # Get V0 and total mass for this snapshot
+            v0 = self.central_v0[te_central_ix].item()  # V0 at last detected snapshot (km/s)
+            mtot = self.central_gr_m[te_central_ix].item()  # Total FoF mass (Msun)
+
+            # G in GALPY units: kpc^3 / (Msun * (km/s)^2)
+            G_galpy = 4.302e-6  # kpc (km/s)^2 / Msun
+
+            # Set reference radius
+            r1 = 1.0  # kpc
+
+            # Calculate amplitude: amp = V0^2/(4πG * r1^2)
+            # Units: (km/s)^2 / (kpc (km/s)^2 / Msun * kpc^2) = Msun/kpc^3
+            amp = (v0**2) / (4 * np.pi * G_galpy * r1**2)  # in Msun/kpc^3
+
+            # Calculate cutoff radius: rc = Mtot/(2 * π * sqrt(π) * amp * r1^2)
+            rc = mtot / (2 * np.pi * np.sqrt(np.pi) * amp * r1**2)  # in kpc
+
+            # Set distance and velocity scales for GALPY
+            ro = 1.0 * u.kpc  # distance scale
+            vo = 1.0 * u.km / u.s  # velocity scale
+
+            # Create isothermal potential with cutoff
+            potential = PowerSphericalPotentialwCutoff(amp=amp * u.Msun / u.kpc**3, alpha=2.0, r1=r1 * u.kpc, 
+                                               ro=ro, vo=vo, rc=rc * u.kpc)
+        else:
+            raise ValueError(f"potential_type must be 'nfw' or 'isothermal', got '{potential_type}'")
+        
         # potential = TimeDependentAmplitudeWrapperPotential(A = get_nfw_at_t, pot = nfw) #This is to vary the potential with time 
 
         x, y, z = subh_x_cen, subh_y_cen, subh_z_cen
@@ -1546,6 +1602,12 @@ class Subhalo(TNG_Subhalo):
         subh_max_mstar = round(np.log10(max(subh_mstar)), 2)
         ax.set_title(f'ID at snap {int(self.last_snap)} is '+str(tree['SubfindID'][0])+r'    $\rm{\log_{10}M_\bigstar} = $'+str(subh_max_mstar), fontsize = 10)
         # ax.text(1.05, 0.25, r'$\rm{\log_{10}M_\bigstar} = $'+str(subh_max_mstar), transform=ax.transAxes, fontsize = 11)
+        
+        # Add text box showing potential type in center top
+        potential_type_display = potential_type.upper() if potential_type.lower() == 'nfw' else 'Isothermal'
+        ax.text(0.5, 0.95, f'Potential: {potential_type_display}', transform=ax.transAxes, 
+                fontsize=10, ha='center', va='top',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
         
 

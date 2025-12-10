@@ -125,9 +125,9 @@ def get_mstar_co_wsc(lvmaxar):
     mu_mstar = get_mstar_co(lvmaxar) #this will be the mean for the gaussian distribution
     sig_mstar = get_scatter(lvmaxar) #this will be the scatter in the relation which is considered to be a gaussian
     if isinstance(lvmaxar, float) or isinstance(lvmaxar, np.float64) or isinstance(lvmaxar, np.float32):
-        mstar = np.random.normal(mu_mstar, sig_mstar, size = 1) 
+        mstar = np.random.normal(mu_mstar, 2 *sig_mstar, size = 1) 
     else:
-        mstar = np.random.normal(mu_mstar, sig_mstar, size = len(lvmaxar))
+        mstar = np.random.normal(mu_mstar, 2 * sig_mstar, size = len(lvmaxar))
     return 10**mstar
 
 
