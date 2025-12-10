@@ -748,7 +748,7 @@ class Subhalo(TNG_Subhalo):
         
 
 
-    def get_orbit(self, merged, when_te = 'last'):
+    def get_orbit(self, merged, when_te = 'last', potential_type = 'isothermal'):
         '''
         This function calculates all the parameters related to the orbit.
         To visualize the orbit, use subhalo_time_evolution.py, this function does not plot anything.
@@ -758,6 +758,7 @@ class Subhalo(TNG_Subhalo):
         Args:
         merged (boolean): True if the subhalo merged, false otherwise
         when_te (string): 'last'(default) for the last surviving snapshot, 'infall' for the energy to be taken at infall, 'first_peri' for the energy to be taken at the first pericenter, 'if_r200' for the energy to be taken at the first crossing into virial radius
+        potential_type (str): 'isothermal' (default) or 'nfw' - chooses which potential to use for orbit integration
         
         Returns:
         rperi: The pericenric radius
@@ -875,30 +876,45 @@ class Subhalo(TNG_Subhalo):
         #     A = 1
         #     return A
 
-        # Get V0 and total mass for this snapshot
-        v0 = self.central_v0[te_central_ix].item()  # V0 at last detected snapshot (km/s)
-        mtot = self.central_gr_m[te_central_ix].item()  # Total FoF mass (Msun)
+        # Choose potential type based on input parameter
+        if potential_type.lower() == 'nfw':
+            potential = NFWPotential(conc=concentration.concentration(0.6744 * mvir, 'vir', te_snap_z, 'ludlow16'), mvir=mvir/1e12, wrtcrit = True, overdens = 200 * get_critical_dens(te_snap_z)/get_critical_dens(0))
+        elif potential_type.lower() == 'isothermal':
+            # Get V0 and total mass for this snapshot
+            v0 = self.central_v0[te_central_ix].item()  # V0 at last detected snapshot (km/s)
+            mtot = self.central_gr_m[te_central_ix].item()  # Total FoF mass (Msun)
 
-        # G in GALPY units: kpc^3 / (Msun * (km/s)^2)
-        G_galpy = 4.302e-6  # kpc (km/s)^2 / Msun
+            # Validate inputs
+            if np.isnan(v0) or np.isinf(v0) or v0 <= 0:
+                raise ValueError(f"Invalid v0 value: {v0}")
+            if np.isnan(mtot) or np.isinf(mtot) or mtot <= 0:
+                raise ValueError(f"Invalid mtot value: {mtot}")
 
-        # Set reference radius
-        r1 = 1.0  # kpc
+            # G in GALPY units: kpc^3 / (Msun * (km/s)^2)
+            G_galpy = 4.302e-6  # kpc (km/s)^2 / Msun
 
-        # Calculate amplitude: amp = V0^2/(4πG * r1^2)
-        # Units: (km/s)^2 / (kpc (km/s)^2 / Msun * kpc^2) = Msun/kpc^3
-        amp = (v0**2) / (4 * np.pi * G_galpy * r1**2)  # in Msun/kpc^3
+            # Set reference radius
+            r1 = 1.0  # kpc
 
-        # Calculate cutoff radius: rc = Mtot/(2 * π * sqrt(π) * amp)
-        rc = mtot / (2 * np.pi * np.sqrt(np.pi) * amp)  # in kpc
+            # Calculate amplitude: amp = V0^2/(4πG * r1^2)
+            # Units: (km/s)^2 / (kpc (km/s)^2 / Msun * kpc^2) = Msun/kpc^3
+            amp = (v0**2) / (4 * np.pi * G_galpy * r1**2)  # in Msun/kpc^3
+            
+            # Validate amp
+            if np.isnan(amp) or np.isinf(amp) or amp <= 0:
+                raise ValueError(f"Invalid amp value: {amp} (v0={v0}, G_galpy={G_galpy})")
 
-        # Set distance and velocity scales for GALPY
-        ro = 1.0 * u.kpc  # distance scale
-        vo = 1.0 * u.km / u.s  # velocity scale
+            # Calculate cutoff radius: rc = Mtot/(2 * π * sqrt(π) * amp * r1^2)
+            rc = mtot / (2 * np.pi * np.sqrt(np.pi) * amp * r1**2)  # in kpc
+            
+            # Validate rc
+            if np.isnan(rc) or np.isinf(rc) or rc <= 0:
+                raise ValueError(f"Invalid rc value: {rc} (mtot={mtot}, amp={amp})")
 
-        # Create isothermal potential with cutoff
-        potential = PowerSphericalPotentialwCutoff(amp=amp * u.Msun / u.kpc**3, alpha=2.0, r1=r1 * u.kpc, 
-                                           ro=ro, vo=vo, rc=rc * u.kpc)
+            # Create isothermal potential with cutoff
+            potential = PowerSphericalPotentialwCutoff(amp=amp * u.Msun / u.kpc**3, alpha=2.0, r1=r1 * u.kpc, rc=rc * u.kpc)
+        else:
+            raise ValueError(f"potential_type must be 'nfw' or 'isothermal', got '{potential_type}'")
 
         # potential = NFWPotential(conc=concentration.concentration(0.6744 * mvir, 'vir', te_snap_z, 'ludlow16'), mvir=mvir/1e12, wrtcrit = True, overdens = 200 * get_critical_dens(te_snap_z)/get_critical_dens(0))
         # potential = TimeDependentAmplitudeWrapperPotential(A = get_nfw_at_t, pot = nfw) #This is to vary the potential with time 
@@ -931,14 +947,10 @@ class Subhalo(TNG_Subhalo):
 
 
         subhalo_orbit.integrate(ts * u.Gyr, potential, method = 'leapfrog')
-        fig, = subhalo_orbit.plot(d1 = 't', d2 = 'x')
-        plt.close()
-        fig2, = subhalo_orbit.plot(d1 = 'y', d2 = 'z')
-        plt.close()
-        t_gp = fig.get_xdata() + te_time
-        x_gp = fig.get_ydata()
-        y_gp = fig2.get_xdata()
-        z_gp = fig2.get_ydata()
+        t_gp = ts + te_time
+        x_gp = subhalo_orbit.x(ts*u.Gyr)[0,:]
+        y_gp = subhalo_orbit.y(ts*u.Gyr)[0,:]
+        z_gp = subhalo_orbit.z(ts*u.Gyr)[0,:]
         dist_initial = np.sqrt(subh_x_cen**2 + subh_y_cen**2 + subh_z_cen**2)
         dist_gp = np.sqrt(x_gp**2 + y_gp**2 + z_gp**2)
         # print(dist_gp)
@@ -1454,13 +1466,21 @@ class Subhalo(TNG_Subhalo):
         #     A = 1
         #     return A
 
-        # Choose potential type based on input parameter
+        
+
         if potential_type.lower() == 'nfw':
+            
             potential = NFWPotential(conc=concentration.concentration(0.6744 * mvir, 'vir', te_snap_z, 'ludlow16'), mvir=mvir/1e12, wrtcrit = True, overdens = 200 * get_critical_dens(te_snap_z)/get_critical_dens(0))
         elif potential_type.lower() == 'isothermal':
             # Get V0 and total mass for this snapshot
             v0 = self.central_v0[te_central_ix].item()  # V0 at last detected snapshot (km/s)
             mtot = self.central_gr_m[te_central_ix].item()  # Total FoF mass (Msun)
+
+            # Validate inputs
+            if np.isnan(v0) or np.isinf(v0) or v0 <= 0:
+                raise ValueError(f"Invalid v0 value: {v0}")
+            if np.isnan(mtot) or np.isinf(mtot) or mtot <= 0:
+                raise ValueError(f"Invalid mtot value: {mtot}")
 
             # G in GALPY units: kpc^3 / (Msun * (km/s)^2)
             G_galpy = 4.302e-6  # kpc (km/s)^2 / Msun
@@ -1471,17 +1491,20 @@ class Subhalo(TNG_Subhalo):
             # Calculate amplitude: amp = V0^2/(4πG * r1^2)
             # Units: (km/s)^2 / (kpc (km/s)^2 / Msun * kpc^2) = Msun/kpc^3
             amp = (v0**2) / (4 * np.pi * G_galpy * r1**2)  # in Msun/kpc^3
+            
+            # Validate amp
+            if np.isnan(amp) or np.isinf(amp) or amp <= 0:
+                raise ValueError(f"Invalid amp value: {amp} (v0={v0}, G_galpy={G_galpy})")
 
             # Calculate cutoff radius: rc = Mtot/(2 * π * sqrt(π) * amp * r1^2)
             rc = mtot / (2 * np.pi * np.sqrt(np.pi) * amp * r1**2)  # in kpc
-
-            # Set distance and velocity scales for GALPY
-            ro = 1.0 * u.kpc  # distance scale
-            vo = 1.0 * u.km / u.s  # velocity scale
+            
+            # Validate rc
+            if np.isnan(rc) or np.isinf(rc) or rc <= 0:
+                raise ValueError(f"Invalid rc value: {rc} (mtot={mtot}, amp={amp})")
 
             # Create isothermal potential with cutoff
-            potential = PowerSphericalPotentialwCutoff(amp=amp * u.Msun / u.kpc**3, alpha=2.0, r1=r1 * u.kpc, 
-                                               ro=ro, vo=vo, rc=rc * u.kpc)
+            potential = PowerSphericalPotentialwCutoff(amp=amp * u.Msun / u.kpc**3, alpha=2.0, r1=r1 * u.kpc, rc=rc * u.kpc)
         else:
             raise ValueError(f"potential_type must be 'nfw' or 'isothermal', got '{potential_type}'")
         
@@ -1552,23 +1575,33 @@ class Subhalo(TNG_Subhalo):
 
 
         # Following is a weird way to obtain the orbit data since this does not work directly in galpy 1.7
-        fig, = subhalo_orbit.plot(d1 = 't', d2 = 'x')
-        plt.close()
-        fig2, = subhalo_orbit.plot(d1 = 'y', d2 = 'z')
-        plt.close()
-        fig3, = subhalo_orbit.plot(d1 = 'vx', d2 = 'vy')
-        plt.close()
-        fig4, = subhalo_orbit.plot(d1 = 'vz', d2 = 'E')
-        plt.close()
+        # fig, = subhalo_orbit.plot(d1 = 't', d2 = 'x')
+        # plt.close()
+        # fig2, = subhalo_orbit.plot(d1 = 'y', d2 = 'z')
+        # plt.close()
+        # fig3, = subhalo_orbit.plot(d1 = 'vx', d2 = 'vy')
+        # plt.close()
+        # fig4, = subhalo_orbit.plot(d1 = 'vz', d2 = 'E')
+        # plt.close()
+        
 
-        t_gp = fig.get_xdata() + te_time
-        x_gp = fig.get_ydata()
-        y_gp = fig2.get_xdata()
-        z_gp = fig2.get_ydata()
-        vx_gp = fig3.get_xdata()
-        vy_gp = fig3.get_ydata()
-        vz_gp = fig4.get_xdata()
-        E_gp = fig4.get_ydata()
+        # t_gp = fig.get_xdata() + te_time
+        # x_gp = fig.get_ydata()
+        # y_gp = fig2.get_xdata()
+        # z_gp = fig2.get_ydata()
+        # vx_gp = fig3.get_xdata()
+        # vy_gp = fig3.get_ydata()
+        # vz_gp = fig4.get_xdata()
+        # E_gp = fig4.get_ydata()
+        # print(subhalo_orbit.vz(ts*u.Gyr))
+        t_gp = ts + te_time
+        x_gp = subhalo_orbit.x(ts*u.Gyr)[0,:]
+        y_gp = subhalo_orbit.y(ts*u.Gyr)[0,:]
+        z_gp = subhalo_orbit.z(ts*u.Gyr)[0,:]
+        vx_gp = subhalo_orbit.vx(ts*u.Gyr)[0,:]
+        vy_gp = subhalo_orbit.vy(ts*u.Gyr)[0,:]
+        vz_gp = subhalo_orbit.vz(ts*u.Gyr)[0,:]
+        E_gp = subhalo_orbit.E(ts*u.Gyr)[0,:]
 
         # print(t_gp)
 

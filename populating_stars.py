@@ -87,7 +87,7 @@ def get_scatter(lvmaxar, sigma0 = 0.24, kappa = -1.26, V0 = 88.6):
     This function returns the scatter for both power law and the cutoff models
     '''
     vmaxar = 10**lvmaxar 
-    if isinstance(vmaxar, float) or isinstance(vmaxar, np.float64):
+    if isinstance(vmaxar, float) or isinstance(vmaxar, np.float64) or isinstance(vmaxar, np.float32):
         if vmaxar > 57:
             sigma = sigma0
         elif vmaxar <= 57:
