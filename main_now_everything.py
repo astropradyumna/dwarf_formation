@@ -26,7 +26,7 @@ from constants import * #This is to get the constants
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-suffix = '_Vpeak_newall' # this run is for the new power law model
+suffix = '_Vpeak_newall_isothermal' # this run is for the new power law model
 
 ages_df = pd.read_csv('ages_tng.csv', comment = '#')
 
@@ -40,6 +40,21 @@ fof_str = 'fof' + str(fof_no)
 
 this_fof = il.groupcat.loadSingle(basePath, 99, haloID = fof_no)
 central_sfid_99 = this_fof['GroupFirstSub']
+
+# Load the central tree for descendant tracking (needed for Type-2 additional details)
+central_mpb = il.sublink.loadTree(basePath, 99, central_sfid_99, fields = ['SubhaloID', 'SnapNum', 'SubfindID'], onlyMPB = True)
+central_sfids = central_mpb['SubfindID']
+central_snaps = central_mpb['SnapNum']
+
+# Load the full central tree for Type-2 additional details
+cft = il.sublink.loadTree(basePath, 99, central_sfid_99, fields = ['SubhaloID', 'DescendantID', 'SnapNum', 'SubfindID', 'SubhaloIDMostbound'])
+cft_shid = cft['SubhaloID']
+cft_desc = cft['DescendantID']
+cft_snap = cft['SnapNum']
+cft_sfid = cft['SubfindID']
+cft_mbpid = cft['SubhaloIDMostbound']
+
+np.random.seed(42)
 
 # Let us now import the Type-1 subhalos 
 t1_df = pd.read_csv(filepath + 'hydrofofno_' + str(fof_no) + '.csv', comment = '#')
@@ -184,19 +199,43 @@ for ix in range(len(results)):
     df.loc[len(df)] = results[ix]
 
 df['fof'] = fof_no
+
+# Add hof_flag for Type-1 subhalos
+t1_vpeak_ar = df['vpeak_ar'].values
+
+def type1_additional_details(ix):
+    '''
+    This function will return the additional details for the Type-1 subhalos. 
+
+    Returns:
+    hof_flag
+    '''
+    # Set seed for reproducibility in parallel processing
+    # Using base seed + index ensures each item gets consistent random numbers
+    np.random.seed(42 + ix)
+    def hof(lvpeak, x0 = 1.29, x1 = 0.05):
+        return 0.5 * (1 + np.tanh((lvpeak - x0) / x1)) 
+    lvpeak = np.log10(t1_vpeak_ar[ix])
+    this_hof = hof(lvpeak)
+    hof_flag = np.random.rand() < this_hof
+    return hof_flag
+
+results_hof = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(type1_additional_details)(ix) for ix in tqdm(range(len(df))))
+df['hof_flag'] = [value for value in results_hof]
+
 df.to_csv(filepath + fof_str + '_surviving_evolved_everything' + suffix + '.csv', index = False)
 
 
 # To save on memory, let us delete all the variables that we do not need
 
-del df, results, t1_df, t1_sfid_if_ar, t1_snap_if_ar
+del df, results, results_hof, t1_df, t1_sfid_if_ar, t1_snap_if_ar, t1_vpeak_ar
 
 # Let us now import the Type-2 subhalos
 
-df = pd.read_csv(filepath + 'hydrofofno_' + str(fof_no) + '_t2.csv', comment = '#')
-t2_snap_if_ar = np.array(df['snap_if_ar'], dtype=int) # This is the infall snap of the subhalo
-t2_sfid_if_ar = np.array(df['sfid_if_ar'], dtype=int) # This is the infall sfid of the subhalo
-t2_snap_merger_ar = np.array(df['snap_merger_ar'], dtype=int) # This is the merger snap of the subhalo
+df0 = pd.read_csv(filepath + 'hydrofofno_' + str(fof_no) + '_t2.csv', comment = '#')
+t2_snap_if_ar = np.array(df0['snap_if_ar'], dtype=int) # This is the infall snap of the subhalo
+t2_sfid_if_ar = np.array(df0['sfid_if_ar'], dtype=int) # This is the infall sfid of the subhalo
+t2_snap_merger_ar = np.array(df0['snap_merger_ar'], dtype=int) # This is the merger snap of the subhalo
 
 def save_merged_subhalos(ix):
     '''
@@ -288,6 +327,81 @@ for ix in range(len(results)):
     df.loc[len(df)] = results[ix]
 
 df['fof'] = fof_no
+
+# Add additional details for Type-2 subhalos (merger_snap, merger_sfid, posx, posy, posz, desc_flag, desc_flag2, mbpID, hof_flag)
+# Use the parent catalog that was already loaded (df0)
+par_snap_if_ar = np.array(df0['snap_if_ar'].values, dtype = int)
+par_sfid_if_ar = np.array(df0['sfid_if_ar'].values, dtype = int)
+par_snap_merger_ar = np.array(df0['snap_merger_ar'].values, dtype = int)
+par_sfid_merger_ar = np.array(df0['sfid_merger_ar'].values, dtype = int)
+par_posx_ar = np.array(df0['posx_ar'].values)
+par_posy_ar = np.array(df0['posy_ar'].values)
+par_posz_ar = np.array(df0['posz_ar'].values)
+
+# Get arrays from evolved results dataframe
+t2_snap_if_evolved_ar = df['snap_if_ar'].values
+t2_sfid_if_evolved_ar = df['sfid_if_ar'].values
+t2_vpeak_evolved_ar = df['vpeak_ar'].values
+
+def type2_additional_details(ix):
+    '''
+    This function will return the additional details for the Type-2 subhalos. 
+
+    Returns:
+    merger_snap, merger_sfid, posx, posy, posz, desc_flag, desc_flag2, mbpID, hof_flag
+    '''
+    # Set seed for reproducibility in parallel processing
+    # Using base seed + index ensures each item gets consistent random numbers
+    np.random.seed(42 + ix)
+    # For each subhalo in the evolved catalog, lets get the subhalo from the parent catalog
+    snap_if = t2_snap_if_evolved_ar[ix]
+    sfid_if = t2_sfid_if_evolved_ar[ix]
+
+    # look for these in the par_snap_if_ar and par_sfid_if_ar
+    ix2 = np.where((par_snap_if_ar == snap_if) & (par_sfid_if_ar == sfid_if))[0][0]
+    merger_snap = par_snap_merger_ar[ix2]
+    merger_sfid = par_sfid_merger_ar[ix2]
+
+    subh_tree = il.sublink.loadTree(basePath, merger_snap, merger_sfid, fields = ['SubhaloID', 'DescendantID', 'SnapNum', 'SubfindID', 'SubhaloIDMostbound'], onlyMDB = True)
+    subh_sfid = subh_tree['SubfindID']
+    subh_snap = subh_tree['SnapNum']
+    subh_desc = subh_tree['DescendantID']
+    subh_shid = subh_tree['SubhaloID']
+    if len(subh_snap[subh_snap == merger_snap+1]) > 1 :
+        desc_flag2 = 0
+    else:
+        desc_flag2 = 1
+
+    ix_merged = np.where((cft_snap == merger_snap) & (cft_sfid == merger_sfid))[0][0]
+    ix_desc = np.where(cft_shid == cft_desc[ix_merged])[0][0] # This is the index of the descendant in the cft
+    desc_sfid = cft_sfid[ix_desc]
+    desc_snap = cft_snap[ix_desc]
+    if desc_sfid == central_sfids[central_snaps == desc_snap]:
+        desc_flag = 1
+    else: 
+        desc_flag = 0
+
+    # hof_flag calculation
+    def hof(lvpeak, x0 = 1.29, x1 = 0.05):
+        return 0.5 * (1 + np.tanh((lvpeak - x0) / x1))
+    lvpeak = np.log10(t2_vpeak_evolved_ar[ix])
+    this_hof = hof(lvpeak)
+    hof_flag = np.random.rand() < this_hof
+
+    return merger_snap, merger_sfid, par_posx_ar[ix2], par_posy_ar[ix2], par_posz_ar[ix2], desc_flag, desc_flag2, cft_mbpid[ix_merged] , hof_flag
+
+results_add = Parallel(n_jobs=32, pre_dispatch='1.5*n_jobs')(delayed(type2_additional_details)(ix) for ix in tqdm(range(len(df))))
+
+df['merger_snap'] = [value[0] for value in results_add]
+df['merger_sfid'] = [value[1] for value in results_add]
+df['posx'] = [value[2] for value in results_add]
+df['posy'] = [value[3] for value in results_add]
+df['posz'] = [value[4] for value in results_add]
+df['desc_flag'] = [value[5] for value in results_add]
+df['desc_flag2'] = [value[6] for value in results_add]
+df['mbpID'] = [value[7] for value in results_add]
+df['hof_flag'] = [value[8] for value in results_add]
+
 df.to_csv(filepath + fof_str + '_merged_evolved_everything' + suffix + '.csv', index = False)
 
 
